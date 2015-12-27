@@ -1,0 +1,210 @@
+[list -]
+%if 0
+
+RxOPTION - RxDOS assemble options
+
+Public domain.
+
+%endif
+
+%if 0
+		; RxDOS 7.20 doesn't use most of this defines, but RxDOS 7.30 should do.
+%ifnnum __RXOPTION_MAC__
+%assign __RXOPTION_MAC__ 1
+
+;..def name,		default
+numdef 186,		0		; allow code for 80186+ processors, won't run on 8086
+numdef 386,		0		; allow code for 80386+ processors, won't run on 8086, 80186 or 80286
+incdef 386, 186				; excluding 186 opcodes on 386+ seems not useful
+numdef DEBUG,		0		; generic debug - include some code to make debugging easier
+					;  (not useful if RxDOS isn't debugged with DEBUG.COM)
+numdef DEBUG0,		0		; 1st level debug - print numbers indicating system startup process
+numdef DEBUG1,		0		; 2nd level debug - print numbers on command interpreter debugging codes
+numdef DEBUG2,		0		; 3rd level debug - show warnings on unsupported DOS/AMIS calls
+numdef DEBUG3,		0		; 4th level debug - include d3 code/breakpoints
+numdef DEBUG4,		0		; 5th level debug - include d4 code/breakpoints
+				; Note:	All debug levels are independent and can be combined in any way.
+numdef EBDA,		1		; move EBDA (restore on hot boot)
+numdef HOTBOOT,		1		; hot boot when Int19 called (else warm boot)
+numdef LFN,		0		; use LFNs (RxCMD) or provide LFNs (RxDOS)
+numdef FAT32,		1		; use FAT32 (RxCMD) or provide FAT32 (RxDOS)
+numdef LBA,		1		; use LBA disk access (RxDOS)
+numdef FORCECHS,	0		; use CHS disk access for low partitions even if LBA available (RxDOS)
+numdef HMA,		1		; manage the HMA if available
+numdef UMA,		1		; manage UMA if available
+ %ifn _HMA				; no need to include HMA handling if not managing HMA
+%assign DOSCODEHMA 0
+ %endif
+ %ifn _UMA				; no need to include UMA handling if not managing UMA
+%assign DOSCODEUMA 0
+%assign DOSDATAUMA 0
+ %endif
+numdef DOSCODEUMA,	1		; move the DOS code into UMA if available
+numdef DOSCODEHMA,	1		; move the DOS code into HMA if available
+numdef DOSCODEROM,	0		; execute the DOS code from ROM if we started from ROM
+numdef RXROMDOS,	0		; ROM version of RxDOS (execute DOS code in ROM)
+incdef RXROMDOS, DOSCODEROM
+%assign _RELOCATEDOSCODE (_DOSCODEUMA| _DOSCODEHMA| _DOSCODEROM)	; relocation of DOS code required ?
+numdef DOSDATAUMA,	1		; move the DOS data into UMA if available
+%assign _RELOCATEDOSDATA _DOSDATAUMA	; relocation of DOS data required ?
+numdef RXROMCMD,	0		; ROM version of RxCMD (execute transient in ROM)
+numdef LARGESDA,	0		; provide a larger SDA (better MS-DOS compatibibility, needs some memory)
+numdef VERIFYMCB,	0		; check if requested MCB is in the MCB chain
+numdef VERIFYDEV,	0		; check if requested device is in the device chain
+numdef LOCKSTUB,	0		; provide stub code pretending successful on MS-DOS 7+ lock calls
+; numdef RXDOSANSI,	0		; provide resident part of RxANSI internally
+; numdef RXDOSVDISK,	0		; provide resident part of RxVDISK internally
+numdef PRESETVER,	0		; use PRESETVER storage
+numdef CODCONFIG,	0		; parse some pre-compiled system configuration values
+numdef PRECONFIG,	0		; use PRECONFIG (regardless of _DEFCONFIG/_ALTCONFIG)
+numdef DEFCONFIG,	1		; use DEFCONFIG if found
+numdef ALTCONFIG,	1		; if DEFCONFIG not found, use ALTCONFIG
+numdef DEFAUTO,		0		; use DEFAUTO if found
+numdef ALTAUTO,		1		; if DEFAUTO not found, use ALTAUTO
+numdef ALTCLI,		1		; if DEFCLI not found, use ALTCLI
+				; Note:	The usage of DEFCLI can't be disabled.
+numdef RPL,		1		; support boot loading by RPL
+numdef DRDOSLOADER,	0
+ %if _DRDOSLOADER			; LOADER passes wrong dl value and no partition
+%assign FORCEBOOTDRIVE	1
+%assign FORCEBOOTPARTITION	1
+%assign FORCEDBOOTDRIVE	80h		; (LOADER seems to work with the first HDD only)
+%assign FORCEDBOOTPARTITION	0	; so the LOADER version assumes first partition of first HDD
+ %endif
+numdef FORCEBOOTDRIVE,	0		; force boot drive
+numdef FORCEBOOTPARTITION,	0	; force boot partition
+numdef FORCEDBOOTDRIVE,	80h		; forced boot drive (Int13 unit)
+numdef FORCEDBOOTPARTITION,	0	; forced boot partition (LBA start. 0 means first or only partition)
+
+
+					; Following strings may be modified to use custom filenames.
+strdef _DOSFILE,	"RXDOS.SYS"		; RxDOS filename, 8.3
+strdef _DEFCLI,		"RXCMD.COM"		; default command line interpreter filename
+strdef _ALTCLI,		"COMMAND.COM"		; alternative
+ %if _ALTCONFIG
+strdef _DEFCONFIG,	"RX"			; default configuration filename
+					; Stored without zero terminator in front of __ALTCONFIG.
+strdef _ALTCONFIG,	"CONFIG.SYS"		; alternative
+ %else
+strdef _DEFCONFIG,	"RXCONFIG.SYS"
+ %endif
+strdef _CONFIGSECTION,	"RXDOS"			; RXCONFIG.SYS section to execute (beside COMMON and MENU)
+strdef _DEFAUTO,	"RXAUTO.BAT"		; default automatic startup script filename
+strdef _ALTAUTO,	"AUTOEXEC.BAT"		; alternative
+
+strdef CLIPARAM,	" /D"
+strdef CLIPARAMAUTO,	" /K "			; followed by either DEFAUTO or ALTAUTO, only if file found
+
+
+					; Default configuration
+numdef DEFAULT_SFTS,		8
+numdef DEFAULT_CDS,		'E' -'A'
+numdef DEFAULT_FCBS,		0
+; numdef DEFAULT_DOS,		(DOSLOW| DOSNOUMB)
+numdef DEFAULT_BREAK,		1
+numdef DEFAULT_VERIFY,		1
+numdef DEFAULT_NUMLOCK,		2
+strdef DEFAULT_SWITCHCHAR,	'/'
+numdef DEFAULT_AVAILDEV,	0
+
+
+					; The following is an example for the PRECONFIG storage.
+					; Read in CONFIG.TXT what these configuration commands mean.
+%if _PRECONFIG
+%define PRECONFIG "DOS=HIGH,UMB",10, \
+		  "BREAK=ON",10, \
+		  "SFTS=20",10, \
+		  "CDS=L",10, \
+		  "NUMLOCK=OFF",10, \
+		  "DEVICE=JEMMEX.EXE",10,0
+%endif
+
+	verdef RXDOS,C, 7,30			; RxDOS compatible, Int21.335E/Int2D.0010
+	verdef RXDOS,P, 7,30			; RxDOS private, Int21.335E/Int2D.0000
+	numdef RXDOSBETA,0			;  > 0 is the beta version number
+%defstr RXDOSBETA _RXDOSBETA
+	verdef RXCMD,C, 7,30			; RxCMD compatible, Int2D.mm10
+	verdef RXCMD,P, 7,30			; RxCMD private, Int2D.mm00
+	numdef RXCMDBETA,0			;  > 0 is the beta version number
+%defstr RXCMDBETA _RXCMDBETA
+
+
+					; Following strings may be modified to show custom messages
+%define RXDOS			"RxDOS"
+%define RXDOSLONG		"RxDOS"		; where should it be used ?
+%define RXDOSEXPIRED		0 ; date(2008,11,08)
+%strcat RXDOSVERSION		RXDOS_VERP_STR				; "1.00"
+%strcat RXDOSVERSIONLONG	RXDOS_VERP_STR				; "1.00"
+%if _RXDOSBETA
+%strcat RXDOSVERSION		RXDOSVERSION, "b", RXDOSBETA		; "1.00b1"
+%strcat RXDOSVERSIONLONG	RXDOSVERSIONLONG, " beta ", RXDOSBETA	; "1.00 beta 1"
+%endif
+
+%define RXCMD			"RxCMD"		; used in PROMPT $V and other strings
+%define RXCMDLONG		"RxCMD"		; used in VER, STATUS and startup version string
+%define RXCMDAMISVENDOR		"cm"		; up to 8 characters; AMIS vendor identifier
+%define RXCMDAMISPRODUCT	"RxCMD"		; up to 8 characters; AMIS (Int2D.mm00) product identifier
+%define RXCMDSIGNATURE		"RxCMD"		; up to 5 characters; used for file/transient signature
+%define RXCMDMCBNAME		"RXCMD"		; up to 8 characters; MCB name of RxCMD's PSP
+%assign RXCMDEXPIRED		0 ; date(2008,11,08); show message if current date higher; 0 to disable
+%strcat RXCMDVERSION		RXCMD_VERP_STR	; used in PROMPT $V string
+%strcat RXCMDVERSIONLONG	RXCMD_VERP_STR	; used in VER, STATUS and startup version string
+%if _RXCMDBETA
+%strcat RXCMDVERSION		RXCMDVERSION, "b", RXCMDBETA
+%strcat RXCMDVERSIONLONG	RXCMDVERSIONLONG, " beta ", RXCMDBETA
+%endif
+
+%define COPYRIGHT0	"Copyright (C) 1990-1999 Mike Podanoffsky"
+%assign COPYRIGHT1	0
+
+%define LICENSE0	"This product is distributed AS IS and contains no warranty whatsoever,"
+%define LICENSE1	"including warranty of merchantability or fitness for a particular purpose."
+%define LICENSE2	""
+%define LICENSE3	"This is free software; you can redistribute it and/or modify it under the terms"
+%define LICENSE4	"of the GNU General Public License, see the file LICENSE.TXT."
+%assign LICENSE5	0
+
+
+%if 0
+%assign RXDOS_MS_VERSION	RXDOS_VERP_X	; reported MS-DOS version, Int21.30
+					; Determine which MS-DOS version fits best by provided functions:
+%elif _FAT32					; if FAT32 provided, report
+%assign RXDOS_MS_VERSION	verx(7,10)	;  version 7.10, FAT32 not expected (and possible LFNs)
+%elif _LFN					; else if LFNs provided, report
+%assign RXDOS_MS_VERSION	verx(7,00)	;  version 7.00, FAT32 not expected (but possible LFNs)
+%else						; else if neither FAT32 nor LFNs provided, report
+%assign RXDOS_MS_VERSION	verx(6,22)	;  version 6.22, FAT32 and LFNs not expected
+%endif
+
+					; The HMA flag is set on startup and mustn't be modified here.
+%assign RXDOS_DOSLOCATION	00h		; DOS code location
+						; 08h:	DOS code is in ROM
+						; 10h:	DOS code moved to HMA (not set here)
+						;  All other flags are reserved.
+
+%if _RXROMDOS
+%assign RXDOS_DOSLOCATION	RXDOS_DOSLOCATION |08h
+%endif
+
+
+%assign RXDOS_USERSERIALNUMBER	000000h		; User serial number (0 to 0FFFFFFh), Int21.30
+%assign RXDOS_MS_TRUEVERSION	RXDOS_VERP_X	; Reported true MS-DOS version, Int21.3306
+%assign RXDOS_MS_REVISION	0		; Reported MS-DOS revision (0 to 255), Int21.3306
+%assign RXDOS_OEMNUMBER		5Eh		; Vendor identifier (00h to 0FFh), Int21.30
+						; FFh:	MS-DOS
+						; FDh:	FreeDOS kernel (DOS-C)
+						; EFh until
+						; E0h:	DR-DOS
+						; DFh until
+						; D0h:	Assigned to other systems by PVer
+						; CDh:	Paragon Technology Systems PTS-DOS
+						; 99h:	General Software Embedded DOS
+						; 66h:	PhysTechSoft PTS-DOS
+						; 5Eh:	RxDOS
+						; 4Fh until
+						; 01h:	(mostly) MS-DOS OEM versions
+						; 00h:	PC-DOS
+
+%endif
+%endif
+[list +]

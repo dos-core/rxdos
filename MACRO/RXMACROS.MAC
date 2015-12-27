@@ -1,0 +1,1226 @@
+[list -]
+%if 0
+
+RxMACROS - RxDOS & DOS macro definitions
+
+This product is distributed AS IS and contains no warranty
+whatsoever, including warranty of merchantability or
+fitness for a particular purpose.
+
+Copyright (C) 1990-1999 Mike Podanoffsky
+
+This is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, see
+the file LICENSE.TXT.
+
+%endif
+
+%ifndef __RXMACROS_MAC__
+%assign __RXMACROS_MAC__ 1
+
+
+%assign RXDOS720N 0
+
+		; RxDOS 7.20N: New macros
+%ifdef __CMMACROS_MAC__
+ %fatal "CMMACROS.MAC already included"
+%endif
+%ifdef __RXOPTION_MAC__
+ %fatal "RXOPTION.MAC or replacement already included"
+%endif
+
+%include "CMMACROS.MAC"
+[list -]
+%include "RXOPTION.MAC"
+[list -]
+
+
+%if RXDOS720N
+		; Make all jumps strict
+	%imacro jmp 1+.nolist
+%push jmp
+
+%defstr %$short %1
+%substr %$short %$short 1,5
+
+%defstr %$far %1
+%substr %$far %$far 1,3
+
+%defstr %$instlen %1
+%strlen %$instlen %$instlen
+%assign %$coloncount 0
+%assign %$colonfound 0
+
+%rep %$instlen
+
+%assign %$coloncount %$coloncount+1
+%defstr %$colon %1
+%substr %$colon %$colon %$coloncount,1
+
+%ifidn %$colon, ":"
+%assign %$colonfound 1
+%exitrep
+%endif
+
+%endrep
+
+%ifidni %$short, "short"
+		%? %1			; Really a jmp "short"
+%elifidni %$far, "far"
+		%? %1			; Really a jmp "far"
+%else
+%if %$colonfound
+		%? %1			; Really a jmp "far" with a colon seperated seg:ofs address
+%else
+		%? strict near %1	; It _is_ a jmp "near", so say NASM so
+%endif ; %$colonfound
+%endif ; %$far, %$short
+%pop ; jmp
+	%endmacro
+
+%endif
+
+
+%if 0
+
+%ifn _386
+		; movzx macro for CPUs below 386
+		;
+		; %1 = word destination
+		; %2 = byte source
+	%imacro movzx 2.nolist
+	ifidni %1,_16regs
+%ifn __idni
+ %error "Unknown movzx operand. Only movzx reg16,r/m8 supported"
+%elif __idnicount > 4
+ %error "Unhandled movzx operand si, di, bp or sp. Code manually"
+%else
+		xor %1, %1			; clear the high part of the destination register
+	getoneparam ((__idnicount-1)*2)+1,_8regs; __oneparam set to low 8bit section of 16bit register
+		mov __oneparam, %2		; move the source into the low section of the destination
+%endif
+	%endmacro
+%endif
+
+%ifn _186
+		; pusha and popa macros for 8086 CPUs
+	%imacro pusha 0.nolist
+%if 1
+		mpush ax, cx, dx, bx, sp, bp, si, di
+%else
+					; pusha is described to push the value of sp before the actual
+					; pusha instruction. This is normally total useless because
+					; popa doesn't use the stacked sp, but here is some alternative
+					; code that works _exactly_ like pusha.
+		mpush ax, cx, dx, bx
+		push ax
+		mov ax, sp
+		add ax, byte 10			; adjust for ax, bx, dx, cx, ax (5 words)
+		push bp
+		mov bp, sp
+		xchg ax, [ bp + 2 ]		; [ bp + 2 ] = adjusted sp, ax = stacked ax
+		pop bp				; need to preserve it!
+		mpush bp, si, di
+%endif
+	%endmacro
+
+	%imacro popa 0.nolist
+		mpop di, si, bp, bx, bx, dx, cx, ax
+	%endmacro
+%endif
+
+%endif ;0
+
+
+		; Compare and goto (short jump)
+		;
+		; %1 = Compare this value to al or ax
+		; %2 = Jump short to this label if value matches
+		;
+		; Hint:	If you want to compare a value <= 0FFh to ax,
+		;	write "10000h|value" (or just the value + 10000h)
+	%imacro gotos 2.nolist
+%if %1 > 0FFh
+		cmp ax, %1 & 0FFFFh
+%else
+		cmp al, %1 & 0FFh
+%endif
+		je %2
+	%endmacro
+
+
+	%if RXDOS720N
+		; Specify device header (RxDOS 7.20N)
+		;
+		; %1 = Label to place in front of the header
+		; %2 = Pointer of the next driver
+		; %3 = Segment of the next driver
+		; %4 = Device attributes
+		; %5 = Pointer to the driver's strategy code
+		; %6 = Pointer to the driver's interrupt code
+		; %7 = For character devices, device name (gets filled to 8 with blanks)
+		;      For block devices, number of supported units
+		; %8 = word data to append after the header
+		; %8 is "greedy"
+	%macro devheader 7-9+.nolist
+%1:		dw %2,%3,%4,%5,%6	; Addresses and attribute
+
+%if %4 & 8000h				; If it's a character device
+		fill 8,32,db %7		;  then fill name with blanks (32)
+%else
+		fill 8,0,db %7		;  else store supported units and fill with zeros
+%endif
+
+%if %0 >= 8				; if 8th parameter given
+%ifnidn %8,-
+		dw %8			;  then append word
+%endif
+%if %0 >= 9				; if 9th parameter given
+		dw %9			;  then append words
+%endif
+%endif
+	%endmacro
+
+	%else
+		; Specify device header (RxDOS 7.30)
+		;
+		; %1 = Label to place in front of the header
+		; %2 = Pointer of the next driver
+		; %3 = Segment of the next driver
+		; %4 = Device attributes
+		; %5 = Pointer to the driver's strategy code
+		; %6 = Pointer to the driver's interrupt code
+		; %7 = For character devices, device name (gets filled to 8 with blanks)
+		;      For block devices, number of supported units
+		; %8 = For block devices, device name (gets filled to 7 with blanks)
+	%macro devheader 7-8.nolist
+%1:		dw %2,%3,%4,%5,%6	; Addresses and attribute
+
+%if %4 & 8000h				; If it's a character device
+		fill 8,32,db %7		;  then store name filling to 8
+%if %0 >= 8				; if 8th parameter given
+ %error "devheader: Expected no 8th parameter for character device"
+%endif
+%else					; Else it's a block device
+		db %7			;  then store supported units
+%if %0 < 8
+ %error "devheader: Missing 8th parameter. Expected name for block device"
+%endif
+%ifnidn %8,-
+		fill 7,32,db %8		; and store name filling to 7
+%endif
+%endif
+	%endmacro
+
+	%endif	; RXDOS720N
+
+
+
+		; Specify entry for list of saved interrupts
+		;
+		; %1 = Interrupt number, -1 or FFh indicates end of list
+		; %2 = Pointer of the saved interrupt (optional, default 0)
+		; %3 = Segment of the saved interrupt (optional, default 0)
+	%macro savint 1-3.nolist 0,0
+%if 1
+		dw %1			; Interrupt number
+%else
+		db %1			; Interrupt number
+		; RxDOS 7.20N:	MS-DOS saves the interrupts using one byte per number
+		;		and four bytes for the actual address. Unfortunately,
+		;		some software relies on this table layout.
+%endif
+%if %1 < 0FFh && %1 >= 0		; If it's not the end of list marker
+		dw %2,%3		;  then store the saved interrupt address
+%endif
+	%endmacro
+
+
+		; Get one parameter out of some
+		;
+		; %1 = Number of parameter to retrieve, 1 = %2, 2 = %3, etc.
+		; %2+ = Parameters
+		;
+		; %defines __oneparam to retrieved parameter
+	%imacro getoneparam 1-*.nolist
+%rotate %1
+%define __oneparam %1
+	%endmacro
+		
+
+%if 0
+		; Test some %ifidni conditions
+		;
+		; %1 = Source string
+		; %2 = One or more strings for comparison
+		;
+		; %assigns %$idni to 1 if one comparison matched, else to 0
+		; %assigns %$idnicount to the number of the matching string (starts numbering with 1)
+	%imacro ifidni 2-*.nolist
+%push ifidni
+%assign %$idni 0			; assume not found
+%assign %$idnicount 0
+%define %$source %1			; must store source elsewhere because %rotates through parameters
+	%rep %0 - 1			; compare all except initial %1
+%rotate 1				; done before the first comparison, initial %1 never compared
+%assign %$idnicount %$idnicount+1	; done before the first comparison, first string is 1
+%ifidni %$source,%1			; actual comparison
+%assign %$idni 1
+	%exitrep			; no need to try more
+%endif
+	%endrep
+	%if 1	; NASM bug
+%assign __ifidni_idnicount %$idnicount
+%assign __ifidni_idni %$idni
+%pop
+%assign %$idnicount __ifidni_idnicount
+%assign %$idni __ifidni_idni
+%undef __ifidni_idnicount
+%undef __ifidni_idni
+	%else	; NASM bug
+		; RxDOS 7.20N:	Another NASM bug. Somehow below preprocessor lines don't work.
+		; Note:		%$$ seems to be intended for labels. Possibly this is the reason
+		;		it doesn't work well to access single-line macros of the context.
+%assign %$$idnicount %$idnicount; %$$ means to use former NASM context
+%assign %$$idni %$idni		; %$$ means to use former NASM context
+%pop
+	%endif	; NASM bug
+	%endmacro
+
+%else ;0
+		; Test some %ifidni conditions
+		;
+		; %1 = Source string
+		; %2 = One or more strings for comparison
+		;
+		; %assigns __idni to 1 if one comparison matched, else to 0
+		; %assigns __idnicount to the number of the matching string (starts numbering with 1)
+	%imacro ifidni 2-*.nolist
+%push ifidni
+%assign __idni 0			; assume not found
+%assign __idnicount 0
+%define %$source %1			; must store source elsewhere because %rotates through parameters
+	%rep %0 - 1			; compare all except initial %1
+%rotate 1				; done before the first comparison, initial %1 never compared
+%assign __idnicount __idnicount+1	; done before the first comparison, first string is 1
+%ifidni %$source,%1			; actual comparison
+%assign __idni 1
+	%exitrep			; no need to try more
+%endif
+	%endrep
+%pop
+	%endmacro
+%endif ;1
+
+		; Some comparison strings for above ifidni macro
+%idefine _segregs	cs,ds,es,ss,fs,gs
+%idefine _8regs		al,ah,bl,bh,cl,ch,dl,dh
+%idefine _16regs	ax,bx,cx,dx,di,si,bp,sp
+%idefine _32regs	eax,ebx,ecx,edx,edi,esi,ebp,esp
+%idefine _16segregs	_16regs,_segregs
+%idefine _regs		_8regs,_16regs,_32regs,_segregs
+%idefine _32oregs	fd,eip
+%idefine _16oregs	f,fw,ip
+
+		; RxDOS 7.20N:	Macros translated from RxDOS 7.1.5
+
+
+		; Macros
+%iassign zero 0
+%iassign one 1
+%iassign two 2
+%iassign minusone -1
+%iassign null 0
+
+%iassign no 0
+%iassign yes 1
+
+%iassign off 0
+%iassign on 1
+
+%iassign _off 0
+%iassign _on 1
+
+%iassign false 0
+%iassign true 1
+
+%iassign __pointer 0
+%iassign __segment 2
+
+%iassign _pointer 0
+%iassign _segment 2
+
+%iassign _low 0
+%iassign _high 2
+
+%iassign _q0 0
+%iassign _q1 2
+%iassign _q2 4
+%iassign _q3 6
+
+%iassign paragraph 16
+
+%iassign quote		"'"
+%iassign singlequote	"'"
+%iassign doublequote	'"'
+%iassign openbracket	'['
+%iassign closebracket	']'
+
+%iassign comma		','
+%iassign period		'.'
+%iassign colon		':'
+%iassign semicolon	';'
+%iassign asterisk	'*'
+%iassign questionmark	'?'
+%idefine ctrl(x)	((x) - 40h)
+%iassign controlc	ctrl('C')
+%iassign controli	ctrl('I')
+%iassign controlj	ctrl('J')
+%iassign controlm	ctrl('M')
+%iassign controlq	ctrl('Q')
+%iassign controls	ctrl('S')
+%iassign controlz	ctrl('Z')
+
+%iassign bell		7
+%iassign bs		8
+%iassign tab		9
+%iassign lf		10
+%iassign cr		13
+%iassign eof		26
+%iassign esc		27
+
+
+		; Colours
+%iassign black		0
+%iassign blue		1
+%iassign green		2
+%iassign cyan		3
+%iassign magenta	5
+%iassign red		6
+%iassign gray		7		; white
+%iassign grey		gray
+
+%iassign lightblack	8		; Dark grey
+					; RxDOS 7.20N: Older releases accidently assigned lightblack to 9 as well
+%iassign darkgray	lightblack
+%iassign darkgrey	darkgray
+%iassign lightblue	9
+%iassign lightgreen	10
+%iassign lightcyan	11
+%iassign lightred	12
+%iassign lightmagenta	13
+%iassign yellow		14
+%iassign white		15		; light white
+
+%iassign foreground	black		; Default colors of the DOS prompt
+%iassign background	grey
+
+
+		; Colour Define
+	%imacro colour 1-2.nolist 0
+		db (%2 << 4) + %1
+	%endmacro
+
+%idefine color colour
+
+
+		; Get Double Argument
+	%imacro getdarg 3.nolist
+%push
+	ifidni %1,_segregs
+%if __idni
+		l%1 %2, [bp+%3]
+%else
+		mov %2, word [bp+_pointer+%3]
+		mov %1, word [bp+_segment+%3]
+%endif
+%pop
+	%endmacro
+
+
+		; Get Argument
+	%macro getarg 2.nolist
+		mov %1, word [bp+%2]
+	%endmacro
+
+
+		; Store Double Argument
+	%macro stordarg 3.nolist
+		mov word [bp+_pointer+%1], %3
+		mov word [bp+_segment+%1], %2
+	%endmacro
+
+
+		; Store Argument
+	%macro storarg 2.nolist
+		mov word [bp+%1], %2
+	%endmacro
+
+
+%idefine fl f				; DEBUG calls the flags FL instead
+
+		; Internal Push
+	%macro push 1
+%ifidni %1,-
+			; Nothing
+%elifidni %1,ip
+		o16
+		call %%next
+%%next:
+%elifidni %1,eip
+		o32
+		call %%next
+%%next:
+%elifidni %1,f
+		pushf
+%elifidni %1,fw
+		pushfw
+%elifidni %1,fd
+		pushfd
+%else
+		%? %1
+%endif
+	%endmacro
+
+		; Internal Pop
+	%macro pop 1.nolist
+%ifidni %1,-
+			; Nothing
+%elifidni %1,ip
+		o16 retn
+%elifidni %1,eip
+		o32 retn
+%elifidni %1,f
+		popf
+%elifidni %1,fw
+		popfw
+%elifidni %1,fd
+		popfd
+%else
+		%? %1
+%endif
+	%endmacro
+
+%idefine tpush push
+%idefine tpop pop
+
+
+		; Save Registers
+	%imacro  mpush 0-*.nolist
+	%rep %0
+		tpush %1
+%rotate 1
+	%endrep
+	%endmacro
+
+		; Restore Registers
+	%imacro  mpop 0-*.nolist
+	%rep %0
+		tpop %1
+%rotate 1				; Not NASM manual multipop!
+	%endrep
+	%endmacro
+	
+%idefine saveregisters mpush
+%idefine restoreregisters mpop
+
+
+		; Save All Registers
+	%imacro saveallregisters 0.nolist
+		mpush es, ds, bp, di, si, dx, cx, bx, ax
+	%endmacro
+
+
+		; Restore All Registers
+	%imacro restoreallregisters 0.nolist
+		mpop ax, bx, cx, dx, si, di, bp, ds, es
+	%endmacro
+
+
+		; Save Segments and Registers
+	%imacro savesegments 0-1+.nolist -
+		mpush ds, es, %1
+	%endmacro
+
+
+		; Restore Segments and Registers
+	%imacro restoresegments 0-1+.nolist -
+		mpop %1, es, ds
+	%endmacro
+
+
+		; Current stack segment
+	%imacro currsegment 0-*.nolist
+	%rep %0
+%rotate 1
+		push ss
+		pop %1 
+	%endrep
+	%endmacro
+
+
+		; Standard Save
+	%imacro savestandard 0-1+.nolist -
+		mpush ds, es, si, di, %1
+	%endmacro
+
+
+		; Standard Restore
+	%imacro restorestandard 0-1+.nolist -
+		mpop %1, di, si, es, ds
+	%endmacro
+
+		; Set Segment Register
+	%imacro setseg 2.nolist
+%push
+	ifidni %2,_16regs
+%if __idni
+		mov %1, %2
+%else
+		push word %2
+		pop %1
+%endif
+%pop
+	%endmacro
+
+%idefine setds setseg ds,
+%idefine setes setseg es,
+%idefine setss setseg ss,
+%idefine setfs setseg fs,
+%idefine setgs setseg gs,
+
+
+		; Adds an offset to a seg register pair
+	%imacro offsetaddr 3.nolist
+	ifidni %1,_segregs
+		add %2, %3
+		jnc %%no_overflow
+%if __idni
+		push ax
+		mov ax, %1
+		add ax, 1000h		; account for carry
+		mov %1, ax
+		pop ax
+%else
+		add %1, 1000h
+%endif
+%%no_overflow:
+	%endmacro
+
+
+		; Defines a specialised entry
+		;
+		; Doesn't alter registers and doesn't push bp
+		;
+		; Don't use return macro there's no stack frame!
+		;
+		; %1 = number of words from bp to last argument (above ip/bp)
+		; %2 = __retentry (how many words return should remove)
+		; %3 = entry type (0, 4, 6, 8)
+	%imacro _specialentry 1-3.nolist 0,0
+%assign __defentry 0
+%assign __retentry %2
+%assign __lastarg 2*%1
+; %assign __maxargs  2*__retentry
+; %assign __argentry __maxargs+(2*%1)
+%assign __argentry (2*__retentry)+(2*%1)
+%assign __returnargentry __argentry
+%assign __entrytype %3			; RxDOS 7.20N:	Added to tell return to use either retn or retf.
+	%endmacro
+
+
+		; Defines a standard entry
+		;
+		; Pushs bp and sets bp to value of sp after pushing.
+		;
+		; Use return macro to return.
+		;
+		; %1 = 2*%1 for _specialentry, __entrytype (size of return address + 2 for stacked bp)
+		; %2 = %2 for _specialentry
+	%imacro _entry 1-2.nolist 0	; %1 = # bytes for return address + 2,  %2 = # word entries
+		push bp
+		mov bp, sp
+		_specialentry %1/2,%2,%1
+%assign __callargs 4			; RxDOS 7.20N:	Possible intended to be used like __entrytype. However,
+					;		no code uses __callargs and farentry doesn't set it.
+	%endmacro
+
+
+		; %1 of specialentry is in fact %2 of _specialentry
+; %idefine specialentry _specialentry 3,	; far
+	%imacro specialentry 0-1+.nolist
+%warning specialentry used
+		_specialentry 3,%1
+	%endmacro
+
+		; %1 of entry/farentry/intentry is in fact %2 of _entry
+%idefine entry _entry 4,		; near
+%idefine farentry _entry 6,		; far
+%idefine intentry _entry 8,		; far + flags
+
+
+		; Defines a call parameter argument
+	%imacro _arg 2.nolist		; %1 = argument size in byte, %2 = argument name
+; %if __maxargs < %1
+;  %error "_arg definition does not match _entry"
+; %endif
+	; This check doesn't really make sense.
+
+%assign __argentry __argentry-%1
+%iassign _%2 __argentry
+
+%if __argentry < __lastarg
+ %error "_arg definition does not match _entry"
+%endif
+	%endmacro
+
+%idefine arg _arg 2,			; word
+%idefine darg _arg 4,			; dword
+
+
+		; Argument references (Args pushed after call, but before entry)
+	%imacro _rarg 2.nolist
+%iassign _%1 %2
+	%endmacro
+
+%idefine rarg _rarg
+%idefine rdarg _rarg
+
+
+		; Define a call parameter argument which is used to return a parameter
+	%imacro _returnarg 2.nolist	; %1 = argument size in byte, %2 = argument name
+%iassign _%2 __returnargentry
+%assign __returnargentry __returnargentry+%1
+	%endmacro
+
+%idefine returnarg _returnarg 2,	; word
+%idefine returndarg _returnarg 4,	; dword
+%idefine returnqarg _returnarg 8,	; dword
+
+
+		; Defines a word argument on stack
+	%imacro def 1-2.nolist
+%assign __defentry __defentry-2
+%iassign _%1 __defentry
+
+%push
+%assign %$pushedreg 0
+
+%ifn %0 >= 2
+		push ax
+%assign %$pushedreg 1
+
+%else ; %0 >= 2
+	ifidni %2,_16segregs,_16oregs
+%if __idni
+		push %2
+%assign %$pushedreg 1
+%endif ; __idni
+
+%endif ; %0 >= 2
+
+%ifn %$pushedreg
+		push ax
+		mov word [bp+_%1], %2		; really a value
+%endif
+%pop
+	%endmacro
+
+
+		; Defines a double word argument on stack
+	%imacro ddef 1-3.nolist
+%assign __defentry __defentry-4
+%iassign _%1 __defentry
+
+%push
+%assign %$pushedreg 0
+%assign %$pushedseg 0
+
+%if %0 >= 2
+	ifidni %2,_16segregs,_16oregs
+%if __idni
+		push %2
+%assign %$pushedseg 1
+%endif ; __idni
+
+%if %0 >= 3
+	ifidni %3,_16segregs,_16oregs
+%if __idni
+		push %3
+%assign %$pushedreg 1
+%endif ; __idni
+
+%endif ; %0 >= 3
+
+%endif ; %0 >= 2
+
+%if %$pushedreg == 0
+		push ax
+%if %0 >= 3
+		mov word [bp+_pointer+_%1], %3	; really a value
+%endif
+%endif
+
+%if %$pushedseg == 0
+		push ax
+%if %0 >= 2
+		mov word [bp+_segment+_%1], %2	; really a value
+%endif
+%endif
+%pop
+	%endmacro
+
+
+		; Defines n word arguments on stack
+	%imacro defwords 2.nolist
+%push
+%assign %$tempsize 2*%2
+%assign __defentry __defentry-%$tempsize
+%iassign _%1 __defentry
+%iassign sizeof_%1 %$tempsize
+
+%if (%$tempsize < 128)
+		sub sp,byte %$tempsize
+%else
+		sub sp,%$tempsize
+%endif
+%pop
+	%endmacro
+
+
+		; Defines n byte arguments on stack (ends on even boundry)
+	%imacro defbytes 2.nolist
+%push
+%assign %$tempsize (%2+1)/2*2
+%assign __defentry __defentry-%$tempsize
+%iassign _%1 __defentry
+%iassign sizeof_%1 %2
+
+%if (%$tempsize < 128)
+		sub sp,byte %$tempsize
+%else
+		sub sp,%$tempsize
+%endif
+%pop
+	%endmacro
+
+
+		; Creates an argument definition but you must do the push
+		;
+		; %1 = Number of bytes argument takes up (expects even number)
+		; %2 = Name of label (prefixed with underscore)
+	%imacro _temp 2.nolist
+		checkeven %1
+%assign __defentry __defentry-%1
+%iassign _%2 __defentry
+	%endmacro
+
+%idefine temp _temp 2,
+%idefine dtemp _temp 4,
+%idefine qtemp _temp 8,
+
+
+		; Returns from _entry
+		;
+		; %1 = Optional stack adjustment in bytes (done after popping bp)
+		; %2 = If false, use 12 byte stack adjustment code that won't change flags.
+		;      If true, use 4 byte add instruction that changes flags.
+		;      If %1 equals zero, %2 doesn't change anything.
+		; %3 = If false, adjust stack according to __defentry or by restoring sp from bp.
+		;      If true, don't adjust stack before popping bp.
+		;
+		; RxDOS 7.20N:	bp is moved into sp, then the stacked bp is restored.
+		; RxDOS 7.30:	bp is only moved into sp if __defentry is >2.
+	%imacro return 0-3.nolist 0,0,0
+		checkeven __defentry
+		checkeven __entrytype
+		checkeven %1
+%ifn %3
+ %ifn __defentry
+ %elif __defentry == -2	; only one word stack difference
+		pop bp				; shorter: one byte saved (bp is restored with the next instruction)
+ %else
+		mov sp, bp
+ %endif
+%endif
+		pop bp
+%if %1 < 0
+ %error "return: stack adjustment mustn't be negative"
+%elif %1
+%if %2
+		add sp, %1
+%else
+		push bp
+		mov bp, sp			; create stack frame
+		lea bp, [bp+2+%1]		; compute new sp
+		xchg bp, word [bp-2-%1]		; restore bp and store new sp
+		pop sp				; increments sp, then gets the new value
+%endif
+%endif
+
+%if __entrytype == 0		; no return (__specialentry)
+%elif __entrytype == 4		; near return
+ %if __retentry
+		retn 2 * __retentry
+ %else
+		retn
+ %endif
+%elif __entrytype == 6		; far return
+ %if __retentry
+		retf 2 * __retentry
+ %else
+		retf
+ %endif
+%elif __entrytype == 8		; far + flags return
+ %if __retentry
+  %error "return: _entry for interrupts can't adjust stack after returning"
+ %else
+		iret
+ %endif
+%else
+ %error "return: Unknown __entrytype"
+%endif
+	%endmacro
+
+
+		; seterror
+		;
+		; sets carry, loads an error value into ax,
+		; optionally jumps to an address.
+		;
+		; %1 = error value to load into ax (byte override accepted)
+		; %2 = optional unconditional jump address (short override accepted)
+	%imacro seterror 1-2.nolist
+		stc
+		mov ax, %1
+%if %0 >= 2
+		jmp %2
+%endif
+	%endmacro
+
+
+		; iferror
+		; if CY: load an error value into ax, jump to an address.
+	%macro iferror 2.nolist
+		jnc %%noerror
+		mov ax, %1
+		jmp %2
+%%noerror:
+	%endmacro
+
+
+		; Compare and Goto
+		;
+		; %1 = Value to compare to ax (> 0FFh) or al (<= 0FFh)
+		; %2 = Jump address to branch to if equal (ZR)
+	%imacro goto 2.nolist
+%if %1 > 0FFh
+		cmp ax,%1 & 0FFFFh
+%else
+		cmp al,%1 & 0FFh
+%endif
+
+		ife %2
+	%endmacro
+
+
+		; Long conditional jumps
+		;
+		; %1 = CPU condition
+		; %2 = Jump address to branch to if condition matches
+	%imacro if_ 2.nolist
+%if _386
+		j%+1 near %2
+%else
+		j%-1 %%skip
+		jmp %2
+%%skip:
+%endif
+	%endmacro
+
+		; Though this doesn't cover all conditions the CPU knows,
+		; you can add any other condition if required.
+%idefine ifc	if_ c,
+%idefine ifnc	if_ nc,
+%idefine ifb	if_ b,
+%idefine ifnb	if_ nb,
+%idefine ifz	if_ z,
+%idefine ifnz	if_ nz,
+%idefine ife	if_ e,
+%idefine ifne	if_ ne,
+%idefine ifa	if_ a,
+%idefine ifna	if_ na,
+%idefine ifae	if_ ae,
+%idefine ifnae	if_ nae,
+%idefine ifbe	if_ be,
+%idefine ifnbe	if_ nbe,
+
+
+		; Normalize segment and pointer
+		; Makes sure pointer is in range 00h-0Fh, adds higher values to segment
+		;
+		; %1 = Register that contains segment
+		; %2 = Register that contains pointer
+		; %3 = True to include work-around code that enables HMA access
+	%imacro normalizebuffer 2-3.nolist 0
+%ifidni %2,ax
+ %error "Can't use ax as pointer, write customized code"
+%endif
+		test %2, 0FFF0h
+		jz %%isnormalized		; no need to adjust -->
+		push %2				; remember low nibble value
+%ifn _186
+		shr %2, 1
+		shr %2, 1
+		shr %2, 1
+		shr %2, 1			; get value of higher three nibbles into pointer
+%else
+		shr %2, 4			; get value of higher three nibbles into pointer
+%endif
+	ifidni %1,_segregs
+%if __idni					; have to use ax because can't directly access segment register
+		push ax
+		mov ax, %1
+		add ax, %2			; add higher three nibbles to segment
+		mov %1, ax
+		pop ax
+%else
+		add %1, %2			; add higher three nibbles to segment
+%endif
+		pop %2				; restore low nibble value
+%if %3
+		pushf
+%endif
+		and %2, byte 000Fh		; mask out anything but low nibble
+%if %3
+		popf
+		jnc %%notinhma			; add did not overflow -->
+ %if __idni
+		push ax
+		mov ax, %1
+		; sub ax, 0FFFFh		; get difference between 0FFFFh and (10000h+)actual value
+		inc ax				; "sub ax, -1". wait, what? (we also don't need CF)
+  %if _186
+		shl ax, 4			; convert difference to pointer value
+  %else
+		shl ax, 1
+		shl ax, 1
+		shl ax, 1
+		shl ax, 1			; convert difference to pointer value
+  %endif
+		add %2, ax			; add difference to pointer's low nibble (can't overflow)
+		mov ax, 0FFFFh			; HMA
+		mov %1, ax
+		pop ax
+ %else
+		; sub %1, 0FFFFh
+		inc %1				; get difference between 0FFFFh and (10000h+)actual value
+  %if _186
+		shl %1, 4			; convert difference to pointer value
+  %else
+		shl %1, 1
+		shl %1, 1
+		shl %1, 1
+		shl %1, 1			; convert difference to pointer value
+  %endif
+		add %2, %1			; add difference to pointer's low nibble (can't overflow)
+		mov %1, 0FFFFh			; HMA
+ %endif
+%%notinhma:
+%endif
+%%isnormalized:
+	%endmacro
+
+
+		; Clear memory starting at es:di (actually: fill with words)
+		;
+		; %1 = Size of memory area in byte (hyphen to use value in cx)
+		; %2 = Optional word value to fill memory with (default 0) (hyphen to use value in ax)
+	%imacro clearmemory 0-2.nolist -,0
+		push di
+%ifnidn %2,-
+		push ax
+%endif
+	%if RXDOS720N
+		push cx
+%ifnidn %1,-
+		mov cx, %1
+%endif
+%ifnidn %2,-
+%if %2 == 0
+		xor ax, ax
+%else
+		mov ax, %2
+%endif
+%endif
+		shr cx, 1
+		repe stosw
+		jnc %%evencount
+		stosb
+%%evencount:
+		pop cx
+
+	%else	; RXDOS720N
+%ifnum %1					; if known number, tweak it a bit
+%ifnidn %2,-
+%if %2
+		mov ax, %2
+%else
+		xor ax, ax
+%endif ; %2 = 0
+%endif ; %2 != '-'
+
+%ifn %1
+ %warning "clearmemory: size of 0 specified"
+%elif %1 <= 14					; "push cx"\"mov cx, imm16"\"repe stosw"\"pop cx" needs 7 bytes
+						; so up to 7 times "stosw" is the same length or shorter
+		times (%1 / 2) stosw		; store all words by emitting a "stosw" for each
+		times (%1 % 2) stosb		; store the odd byte (if any) by emitting a "stosb"
+%else	; %1 > 14
+		push cx
+		mov cx, (%1 / 2)
+		repz stosw
+%if (%1 % 2)					; if odd number of bytes
+		stosb
+%endif
+		pop cx
+%endif	; %1 > 14
+%else	; num %1
+		push cx
+%ifnidn %1,-
+		mov cx, %1			; if requested, move value or register into cx
+%endif
+%ifnidn %2,-
+%if %2
+		mov ax, %2
+%else
+		xor ax, ax
+%endif
+%endif
+		shr cx, 1
+		repz stosw
+		jnc %%evencount
+		stosb
+%%evencount:
+		pop cx
+%endif	; num %1
+	%endif	; RXDOS720N
+%ifnidn %2,-
+		pop ax
+%endif
+		pop di
+	%endmacro
+
+
+		; Fast Move
+	%imacro fastmove 0-2.nolist
+ %error "Replace fastmove by repz movsb"	; RxDOS 7.30:	Size of code is more important.
+	%endmacro
+
+
+		; Define Command
+		;
+		; %1 = word to place in data part of table entry
+		; %2+ = command string
+		;
+		; Table entry layout:
+		;  wo:00	data, or 0FFFFh terminator
+		;  wo:02	size of table entry, including padding and data
+		;     04	command string, zero terminated
+		;  by:??	Padding zero byte to align to 2, if required
+	%imacro cmnd 2+.nolist
+%%start:
+		dw %1
+		dw %%end - %%start
+		asciz %2
+%if 1
+		align 2,db 0
+%endif
+%%end:
+	%endmacro
+
+
+		; Define switches
+		;
+		; %1 = byte switch letter
+		; %2, %3, %4, %5 = word data
+		;
+		; Table entry layout:
+		;  by:00	switch letter, or 0FFh terminator
+		;  wo:02	%2
+		;  wo:04	%3
+		;  wo:06	%4
+		;  wo:08	%5
+	%imacro switch 1-5.nolist 0, 0, 0, 0
+		db %1
+		dw %2,%3,%4,%5
+	%endmacro
+
+
+		; Uppercase
+	%imacro _uppercase 0-1.nolist al
+%warning uppercase used
+		cmp %1, 'a'
+		jb %%noletter
+		cmp %1, 'z'+1
+		jae %%noletter
+		and %1, ~20h
+%%noletter:
+%if 1
+		or %1, %1		; RxDOS 7.20N:	Is this useful at all?!
+%endif
+	%endmacro
+
+
+		; Lowercase
+	%imacro _lowercase 0-1.nolist al
+%warning lowercase used
+		cmp %1, 'A'
+		jb %%noletter
+		cmp %1, 'Z'+1
+		jae %%noletter
+		or %1, 20h
+%%noletter:
+%if 1
+		or %1, %1		; RxDOS 7.20N:	Is this useful at all?!
+%endif
+	%endmacro
+
+
+
+	%imacro intr 1-3.nolist
+%if %0 >= 2
+ %if %0 >= 3
+  %if (%2 > 0FFh)
+		mov ax,%2|%3
+  %else
+		mov ax,%2<<8|%3
+  %endif
+ %else
+  %if (%2 > 0FFh)
+		mov ax,%2
+  %else
+		mov ah,%2
+  %endif
+ %endif
+%endif
+		int %1
+	%endmacro
+
+%idefine int21 intr 21h,
+%idefine int2e intr 2Eh,
+
+
+		; Extended interrupt (interrupt can change bp)
+		;
+		; RxDOS 7.20N:	Hu, why is it called "Extended"?
+	%imacro exint 1.nolist
+		push bp
+		int %1
+		pop bp
+	%endmacro
+
+
+%endif ; __RXMACROS_MAC__
+
+[list +]

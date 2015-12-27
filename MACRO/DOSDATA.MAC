@@ -1,0 +1,141 @@
+[list -]
+%if 0
+
+DOSDATA - DOS data segment structures
+
+This product is distributed AS IS and contains no warranty
+whatsoever, including warranty of merchantability or
+fitness for a particular purpose.
+
+Copyright (C) 1990-1999 Mike Podanoffsky
+
+This is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, see
+the file LICENSE.TXT.
+
+%endif
+
+%if 0
+
+Some of these structures require struc macros with non-zero
+and/or negative starting offset. These are not supported by
+NASM by default but support can be added with some macros
+found in my nonzerostruc.mac file.
+
+The equates starting with "default" give the position of the
+structure in the DOS data segment in DOS versions 100% com-
+patible to MS-DOS 5.x-8.x, including FAT32 capable versions
+of MS-DOS. Note that the MS-DOS version used in Windows NT's
+NTVDM shifts structures behind the Buffer Info Record up by
+2 bytes but otherwise leaves them where they are.
+
+Fields that don't have a label are either unknown and only
+available for MS-DOS compatibility or they're used by DOS
+internally when servicing functions. (Such inreentrant data
+is avoided by RxDOS when possible.) Some of these internal
+DOS variables might be found in RBIL.
+
+Note that versions of PTS-DOS are said to (optionally) move
+the SDA to the HMA. Other structures could also be moved, so
+use the appropriate calls to get the address of structures:
+
+DOSDATA	Int2F.1203 (validate Int2F.12 supported)
+LoL	Int21.52
+BIR	lolBufferInfoRecord (validate pointer)
+SHARE	lolSFTs (validate pointer, segment DOSDATA)
+SDA	Int21.5D06 or Int21.5D0B
+ Validating pointers insures a non-zero segment and an
+ offset not equal to 0FFFFh. A segment of 0FFFFh is often
+ valid and refers to data in the HMA.
+
+You should only read or modify the DOS data segment or other
+DOS internal data if you know how this data is used. You
+should also validate all data for impossible values. Insure
+your software can handle data already modified the way your
+software would modify it.
+
+%endif
+
+%ifnnum __DOSDATA_MAC__
+%assign __DOSDATA_MAC__ 1
+
+defaultListOfLists		equ 26h
+defaultBufferInfoRecord		equ 6Dh
+defaultFirstSFTContainer	equ 0CCh
+defaultSwappableDataArea	equ 320h
+
+	struc DOSDATASEG
+dosdataEntry:	resb 4			; 00h MSDOS.SYS entry jump, don't use at runtime
+dosdataVersion:	resw 1			; 04h 0 for MS-DOS 3.x, 1 for MS-DOS 4.x-8.x
+	endstruc			; 06h List of List (as shown below) follows immediately in MS-DOS
+
+	struc LISTOFLISTS, -20h
+		; pre-Int21.52 List of Lists structure
+			resb 8		; -20h
+lolMachineNameValid:	resw 1		; -18h
+lolFCBCachingLRU:	resw 1		; -16h
+lolFCBOpenLRU:		resw 1		; -14h
+lolInt21OEMHandler:	resd 1		; -12h
+lolInt21Return:		resw 1		; -0Eh
+lolShareRetry:		resw 1		; -0Ch
+lolShareDelay:		resw 1		; -0Ah
+lolDiskBuffer:		resd 1		; -08h
+lolUnreadCON:		resw 1		; -04h
+lolFirstMCB:		resw 1		; -02h
+		; Int21.52 List of Lists structure
+lolDPBs:		resd 1		; 00h
+lolSFTs:		resd 1		; 04h
+lolCLOCKDevice:		resd 1		; 08h
+lolCONDevice:		resd 1		; 0Ch
+lolMaxBlock:		resw 1		; 10h
+lolBufferInfoRecord:	resd 1		; 12h
+lolCDS:			resd 1		; 16h
+lolFCBSFTs:		resd 1		; 1Ah
+lolNumProtectedFCBs:	resw 1		; 1Eh
+lolNumBlockDev:		resb 1		; 20h
+lolLastDrive:		resb 1		; 21h
+lolNULDevice:		resb 18		; 22h
+lolNumJoinDev:		resb 1		; 34h
+lolSpecialNameList:	resw 1		; 35h
+lolSETVERList:		resd 1		; 37h
+lolA20ExecutablePatch:	resw 1		; 3Bh
+lolA20OffPSP:		resw 1		; 3Dh
+lolNumBuffers:		resw 1		; 3Fh
+lolNumLookAheadBuffers:	resw 1		; 41h
+lolMachineType:		resw 1		; 43h
+lolExtendedMemory:	resw 1		; 45h
+	endstruc			; 47h buffer info record follows immediately in MS-DOS
+
+	struc BUFFERINFORECORD
+birBuffers:		resd 1		; 00h
+birNumDirtyBuffers:	resw 1		; 04h
+birLookAheadBuffers:	resd 1		; 06h
+birNumLookAheadBuffers:	resw 1		; 0Ah
+birWorkspaceBufferFlag:	resb 1		; 0Ch
+birWorkspaceBuffer:	resd 1		; 0Dh
+			resb 3		; 11h
+			resw 1		; 14h
+			resb 1		; 16h
+			resb 1		; 17h
+birInt21A20OffCount:	resb 1		; 18h
+birDOSFlag:		resb 1		; 19h
+			resw 1		; 1Ah
+birUMAEnabled:		resb 1		; 1Ch bit 0 clear if MCB before birFirstUMB patched to 'Z'
+			resw 1		; 1Dh
+birFirstUMB:		resw 1		; 1Fh -1 or segment of first MCB of UMA (default is 9FFFh)
+			resw 1		; 21h
+	endstruc			; 23h MS-DOS SHARE hooks follow immediately in MS-DOS
+
+		; flag bits of birDOSFlag
+dosFlagBit0		equ 1		; supposedly used by MS-DOS
+dosFlagNoWinA20		equ 2		; SWITCHES=/W in CONFIG.SYS, don't load WINA20.SYS when Win3.0 starts
+dosFlagEXEC		equ 4		; set by Int21.4B05
+dosFlagBit6		equ 40h		; RBIL documents usage by Win4.x
+dosFlagBit7		equ 80h		; set in MS-DOS 7.x
+
+	struc FIRSTSFTCONTAINER, -3Ch
+			resd 15		; -3Ch MS-DOS SHARE hooks
+	endstruc			; 00h (actual first SFT container, see struc SFTC)
+
+%endif
+[list +]

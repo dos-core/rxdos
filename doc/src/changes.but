@@ -1,0 +1,69 @@
+\C{} Changes of RxDOS version 7.20N since 7.1.5
+
+\n Only Netwide Assembler (NASM) 2.04+ used for assembling.
+
+\n Changed names of these programs:
+
+\lcont{
+\c RxDOSBIO   to RxBIO
+\c RxDOSCMD   to RxCMD
+\c RxD_BOOT   to RxD_BOOT and RxBOOT (see also below)
+\c RxDOSMBR   to RxMBR
+}
+
+\n RxD_BOOT slightly modified:
+
+\lcont{
+\n Splitted into RxBOOT (the actual boot sector) and RxD_BOOT (the boot
+     sector write program).
+
+\n RxD_BOOT is now assembled into a .COM program file. Removed unused padding
+     which made the file's size about 32 KiB.
+
+\n RxD_BOOT can use Int25/26 instead of direct DOS device driver calls which
+     makes it work in NTVDM and possible other environments that don't support
+     direct DOS device driver calls.
+}
+
+\n Format of the source files modified:
+
+\lcont{
+\n The source files now use tab characters to make editing them easier. The
+     tab characters should be expanded to up to 8 spaces for displaying.
+
+\n Removed the funny boxes drawn with ; ' - . characters. Use the MASM source
+     if you really need them.
+}
+
+\n Replaced COPYING and gpl.txt by LICENSE.TXT which is an up-to-date
+   plain-text GNU GPL Version 2 from http://www.gnu.org/
+
+\n Directory structure changed.
+
+\lcont{
+   Former:
+
+\c \         Binaries, documentation, license,
+\c            makefile, link files
+\c \sources  Actual source, include/macro files, license
+\c \objs     Object files
+\c \errors   Assembler and linker error messages
+
+   New:
+
+\c \         Make scripts
+\c \RxBIO    RxBIO source
+\c \RxDOS    RxDOS source
+\c \RxCMD    RxCMD source
+\c \RxAPP    Sources of RxMBR, RxBOOT, RxD_BOOT, RxVDISK
+\c \MACRO    Macro files
+\c \doc      Documentation, license
+\c \lst      Listings
+\c \map      Map files
+\c \obj      Object files
+\c \bin      Binaries
+}
+
+\n Some new or corrected code for RxDOS 7.30 added to source files. This
+   code is deactivated using NASM conditional assembly and it'll get actived in
+   the first release after RxDOS 7.20N (planned as RxDOS 7.30).

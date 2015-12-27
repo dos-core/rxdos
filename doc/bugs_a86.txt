@@ -1,0 +1,112 @@
+RxDOS 7.1.5  ---
+the following source code excerpts reflect bug fixes 
+
+----------------------------------------------
+MODULE    DATE      BY    DESCRIPTION
+1========+=========+====+=====================
+RDXOSCPY  01/17/00  WRI | improve forming simple directory destinations
+------------------------+
+_Copy_14:
+        storarg _sameName, TRUE             
+        storarg _wildChars, FALSE           
+
+        lea si, [ _copyFilename ][ bp ]
+        lea di, [ _destFilename ][ bp ]     
+
+        mov cl, LFNEXPAND_GETFULLPATHNAME
+        Int21 LFNGetActualFileName          
+        ifc _copyCannotCreateFile           
+
+        lea di, [ _destFilename ][ bp ]     
+        call _endofString                   
+        cmp byte ptr [ di-1 ], '\'          
+;>>here                   ^ adjust DI to correctly point to last char
+        jz _Copy_30                         
+
+        mov word ptr [ di ], '\'            
+        jmp short _Copy_30
+
+----------------------------------------------   
+MODULE    DATE      BY    DESCRIPTION
+2========+=========+====+=====================
+RDXOSCPY  01/17/00  WRI | allow all simple drive destinations
+------------------------+ basically this entire subroutine has changed
+
+        ;''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''';
+        ;  Test For Simple Drive Destination:(.) or (x:) or (:\)        ;
+        ;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -;
+        ;                                                               ;
+        ;  Inputs:                                                      ;
+        ;   di     input text string                                    ;
+        ;                                                               ;
+        ;  Outputs:                                                     ;
+        ;   zr     input text string contains simple drive destination  ;
+        ;                                                               ;
+        ;...............................................................;
+
+isitJustDriveLetter:
+
+        cmp byte ptr [ di ], 0                          ; just a null ?
+        je isitJustDriveLetter_20                       ; yes, current dir -->
+
+        ;note - 'b' and 'byte ptr' are synonimous 
+
+        cmp b [di],'.'                                  ; dot also cur dir
+        jne isitJustDriveLetter_5                       ; no -->
+        cmp b [di+1], 0                                 ; dot w/ null
+        je  isitJustDriveLetter_20                      ; yes, done -->
+
+isitJustDriveLetter_5:                                  ; looking for x:\
+        cmp b [di+1], ':'                               ; is there a ':' ?
+        jne isitJustDriveLetter_20                      ; no -->
+        cmp b [di+2], '\'                               ; and a '\' ?
+        jne isitJustDriveLetter_10                      ; no -->
+        cmp b [di+3], 0                                 ; and a null
+        je isitJustDriveLetter_20                       ; yes, done -->
+
+isitJustDriveLetter_10:
+        cmp byte ptr [ di + 2 ], 0                      ; :<null> ?
+
+isitJustDriveLetter_20:
+        ret   ;zr set if simple destination
+
+----------------------------------------------   
+MODULE    DATE      BY    DESCRIPTION
+3========+=========+====+=====================
+RDXOSCPY  01/17/00  WRI | allow large & default R/W buffer
+------------------------+ 
+;note: this works to increase buffer size but does not improve performance!
+;modify these data items
+;
+FASTREAD_BUFFERSIZE     equ 60 * 1024                   ; 60k   changed
+DEFAULT_BUFFERSIZE      equ  8 * 1024                   ;  8k   added
+
+;code change - only added DEFAUT_BUFFERSIZE
+allocateCopyBuffer:
+
+        push ax
+        push di
+        push bx
+
+        mov bx, ( FASTREAD_BUFFERSIZE ) / 16            ; try to get desired
+        Int21 AllocateMemory                            ; large buffer
+        jnc allocateCopyBuffer_12                       ; segment in ax ok -->
+
+        push ss                                         ; no, use default
+        pop es                                          ; segment to ss:
+        pop bx                                          ; use default address
+        mov cx, DEFAULT_BUFFERSIZE                      ; use default size
+        jmp short allocateCopyBuffer_20                 ; return -->
+
+allocateCopyBuffer_12:
+        pop bx                                          ; ignore default buffer
+        xor bx, bx                                      ; new buffer at es: 0000
+        mov es, ax                                      ; segment to es
+        mov cx, FASTREAD_BUFFERSIZE                     ; 
+
+allocateCopyBuffer_20:
+        pop di
+        pop ax
+        ret
+
+

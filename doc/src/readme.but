@@ -1,0 +1,104 @@
+\cfg{chapter}{Section}
+
+\cfg{text-filename}{readme.txt}
+\cfg{text-chapter-numeric}{true}
+\cfg{text-indent-preamble}{false}
+\cfg{text-quotes}{"}{"}
+
+\cfg{html-chapter-numeric}{true}
+\cfg{html-suppress-address}{true}
+\cfg{html-single-filename}{readme.htm}
+\cfg{html-leaf-level}{0}
+
+\title RxDOS version 7.20N notes
+
+\copyright This document (2008-2011 by C. Masloch) is in the Public Domain.
+
+This document has been sloppily compiled on \date{%Y-%m-%d}, release\_2011\-01\-14.
+
+\C{} RxDOS license
+
+This product is distributed AS IS and contains no warranty
+whatsoever, including warranty of merchantability or
+fitness for a particular purpose.
+
+Copyright (C) 1990-1999 Mike Podanoffsky
+
+This is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, see
+the file LICENSE.TXT.
+
+\H{} Contributions
+
+C. Masloch ported the provided source code to NASM, and packed these files
+up for the RxDOS 7.20N release. The associated work is released as-is,
+without any warranty whatsoever, and is in the
+public domain. This does not affect other copyrights as noted above.
+
+\#{
+\C{} Introduction
+
+This is the free RxDOS operating system. The main programs are a widely MS-DOS
+compatible DOS kernel (split into RxBIO and RxDOS) and a custom command line
+interpreter/\cw{COMMAND.COM} replacement (RxCMD). The RxDOS distribution includes
+some supplemental programs as well. These are a virtual file system driver for
+use in conventional memory (RxVDISK), a boot loader that loads RxBIO (RxBOOT),
+a master boot record that loads RxBOOT on partitioned disks (RxMBR) and a small
+program that installs RxBOOT on a DOS drive (RxD_BOOT).
+
+\C{} Bug reports
+
+You may send bug reports directly to my e-mail address or register a account to
+write it to the BTTR Software support forum. (I'm a member of BTTR Software,
+and even if I can't help you there are some other DOS experts.) Contact data is
+in \k{contact}.
+
+\C{} Developers
+
+RxDOS was initially written and developed for many years by the professional
+programmer Mike Podanoffsky. He also wrote a book titled "Dissecting DOS" about
+RxDOS that was first published in 1994. However he stopped his development on
+RxDOS in 1999 or so, probably because he saw both MS-DOS and its best known
+competitor DR-DOS stopping their activities. Fortunately he released RxDOS
+version 7.1.5 on 1999-08-07 under the GNU General Public License.
+
+I, C. Masloch, learned Assembly language (NASM) in 2007. I already used
+parts of FreeDOS for a long time when I thought about programming a DOS kernel.
+I didn't wanted to help with DOS-C (the FreeDOS kernel) because I can't write C
+so well and I really like Assembly more. In 2008 I heard from RxDOS and got it
+from the FreeDOS mirror servers. Later (2008-05 or so) I started porting the free
+RxDOS version 7.1.5 from the MASM source to NASM. This port eventually became
+RxDOS 7.20N.
+}
+
+\C{contact} Contact
+
+\dt BTTR Software
+
+\dd \W{http://www.bttr-software.de/}{http://www.bttr-software.de/}
+
+\dt C. Masloch
+
+\dd \W{mailto:cm -AT- bttr-software.de}{cm -AT- bttr-software.de}
+
+\C{} Advise on usage of RxDOS version 7.20N
+
+Do not use RxDOS version 7.20N. It tries to re-produce every bug of RxDOS 7.1.5
+(as found on the FreeDOS mirrors). It is not usable currently. The release of
+version 7.20N is only intended for developers.
+
+\H{} Developing RxDOS
+
+\n Do not take anything for granted.
+
+\n Read and understand all the source code that you use from this release
+ before claiming it works.
+
+\n You can read the book \q{Dissecting DOS} for some advise on RxDOS's
+internal structure, although it describes an older version. You will need
+a deeper understanding for development though.
+
+\n As described in \k{build} the build process currently uses tools
+that run and build on DOS, are considered non-free, or require non-free programs
+to build. Modifying the kernel and RxCMD to build using nothing but NASM should
+be trivial for developers.

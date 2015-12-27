@@ -1,0 +1,2500 @@
+[list -]
+%if 0
+
+RxDSTRUC - RxDOS & DOS data structures
+
+This product is distributed AS IS and contains no warranty
+whatsoever, including warranty of merchantability or
+fitness for a particular purpose.
+
+(c) Copyright 1990, 1999. Mike Podanoffsky
+
+This is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, see
+the file LICENSE.TXT.
+
+%endif
+
+%ifnnum __RXDSTRUC_MAC__
+%assign __RXDSTRUC_MAC__ 1
+
+
+%ifdef RxDOS_ROMVERSION
+ %iassign ROM_IDENTIFICATION 8			; DOS is in ROM
+%else
+ %iassign ROM_IDENTIFICATION 0			; DOS is not in ROM
+%endif
+
+numdef RXDOS720N, 1
+
+		; Default Configuration Parameters
+%assign DEFAULT_FILES		16		; MS-DOS default: 8
+%assign DEFAULT_BUFFERS_X	30		; MS-DOS default: 15
+%assign DEFAULT_BUFFERS_Y	0		; MS-DOS default: 0
+%assign DEFAULT_BUFFERS		DEFAULT_BUFFERS_X
+%assign DEFAULT_FCBS_X		4		; MS-DOS default: 4
+%assign DEFAULT_FCBS_Y		4		; MS-DOS default: 4
+%assign DEFAULT_FCBS		DEFAULT_FCBS_X
+%assign DEFAULT_LASTDRIVE	5		; MS-DOS default: 5
+%assign DEFAULT_FCBOPENMODE	2		; change only if you want read-only
+%assign DEFAULT_STACKS		9
+%define DEFAULT_CODEPAGE	CODEPAGE_UNITEDSTATES	; default code page
+%define DEFAULT_COUNTRYCODE	COUNTRY_UNITEDSTATES	; default country code
+
+%assign DEFAULT_ENVIRONMENT	2*1024		; bytes default environment space
+%assign DEFAULT_MINENVIRONMENT	160		; MS-DOS minimum
+%assign DEFAULT_MAXENVIRONMENT	32*1024		; MS-DOS maximum
+
+
+
+		; Maximal allowable configuration parameters
+%assign CONFIGMIN_BUFFERS_X	1
+%assign CONFIGMIN_BUFFERS_Y	1
+%assign CONFIGMIN_FILES		8		; technically, 5
+%assign CONFIGMIN_FCBS_X	1
+%assign CONFIGMIN_FCBS_Y	1
+%assign CONFIGMIN_STACKS_X	8
+%assign CONFIGMIN_STACKS_Y	32
+%assign CONFIGMIN_LASTDRIVE	1
+
+%assign CONFIGMAX_BUFFERS_X	99
+%assign CONFIGMAX_BUFFERS_Y	8
+%assign CONFIGMAX_BUFFERS	CONFIGMAX_BUFFERS_X
+%assign CONFIGMAX_FILES		255
+%assign CONFIGMAX_FCBS_X	255
+%assign CONFIGMAX_FCBS_Y	255
+%assign CONFIGMAX_STACKS_X	64
+%assign CONFIGMAX_STACKS_Y	512
+%assign CONFIGMAX_LASTDRIVE	32
+
+
+		; equate labels bit00-bit31 to their meaning
+	%macro temp_ 1.nolist
+%assign bit%1	1<<%1
+%assign b%1	1<<%1		; either "b{it}{0-9} equ ..." or "b{it}{10-31} equ ..."
+	%if %1 < 10
+%assign bit0%1	1<<%1
+%assign b0%1	1<<%1		; "b{it}0{0-9} equ ..." with padding zero
+	%endif
+	%endmacro
+	
+	%push
+%assign %$count 0		; start with bit00
+	%rep 32			; bit00-31
+	temp_ %$count
+%assign %$count %$count+1	; count up
+	%endrep
+	%pop
+
+%unmacro temp_ 1.nolist
+
+		; DOS capability flags
+DOSCAP_LBA28		equ b00			; supports LBA28 disk access
+DOSCAP_LBA48		equ b01			; supports LBA48 disk access
+DOSCAP_IRT0		equ b02			; provides interrupt restoration table at 70h:100h
+						; (count of entries at 70h:FFh); restored on Int19
+DOSCAP_DISKCHANGE	equ b03			; supports changing logical device for A: on
+						; single floppy system; uses the byte at 0h:504h
+DOSCAP_LPT4		equ b04			; provides LPT4 device
+DOSCAP_LONGLSEEK	equ b08			; provides long lseek (Int21.7142)
+DOSCAP_LFNAWARE		equ b09			; excludes LFN entries from SFN functions
+DOSCAP_LFNSUPPORT	equ b10			; provides LFN functions (Int21.71)
+DOSCAP_64KIBCLUSTER	equ b11			; supports FAT cluster sizes of 64 KiB
+DOSCAP_128KIBCLUSTER	equ b12			; supports FAT cluster sizes of 128 KiB
+DOSCAP_FAT32		equ b13			; supports FAT32 partitions
+
+
+		; DOS Functions
+ProgramTerminate		equ 00h		; Program Terminate
+KeyboardInput			equ 01h		; Keyboard Input
+DisplayOutput			equ 02h		; Display Output
+AuxInput			equ 03h		; Aux Input
+AuxOutput			equ 04h		; Aux Output
+PrinterOutput			equ 05h		; Printer Output
+DirectConsole			equ 06h		; Direct Console
+DirectConsoleInputNoEcho	equ 07h		; Direct Console Input NoEcho
+ConsoleInputNoEcho		equ 08h		; Console Input NoEcho
+DisplayString			equ 09h		; Display String
+BufferedKeyboardInput		equ 0Ah		; Buffered keyboard input
+GetLine				equ BufferedKeyboardInput
+CheckKeyboardInput		equ 0Bh		; Check keyboard input
+ClearBufferedKeyboardInput	equ 0Ch		; Clear Buffered keyboard input
+DiskReset			equ 0Dh		; Disk reset
+SelectDisk			equ 0Eh		; Select disk
+OpenFileFCB			equ 0Fh		; Open file FCB
+CloseFileFCB			equ 10h		; Close file FCB
+SearchFirstFileFCB		equ 11h		; Search first file FCB
+SearchNextFileFCB		equ 12h		; Search next file FCB
+DeleteFileFCB			equ 13h		; Delete file FCB
+SeqReadFileFCB			equ 14h		; Seq read file FCB
+SeqWriteFileFCB			equ 15h		; Seq write file FCB
+CreateFileFCB			equ 16h		; Create file FCB
+RenameFileFCB			equ 17h		; Rename file FCB
+CurrentDisk			equ 19h		; Current disk
+SetDiskTransferAddress		equ 1Ah		; Set disk transfer address
+SetDTA				equ SetDiskTransferAddress
+GetDefaultDriveData		equ 1Bh		; Get Default Drive Data
+GetDriveData			equ 1Ch		; Get Drive Data
+GetDefaultDriveParameterBlock	equ 1Fh		; Get Default Drive Parameter Block
+ReadFileFCB			equ 21h		; Read file FCB
+WriteFileFCB			equ 22h		; Write file FCB
+FileSizeFCB			equ 23h		; File size FCB
+SetRelativeRecordFCB		equ 24h		; Set relative record FCB
+SetIntVector			equ 25h		; Set interrupt vector
+CreateNewProgramSeg		equ 26h		; Create new program seg
+RandomBlockReadFCB		equ 27h		; Random block read FCB
+RandomBlockWriteFCB		equ 28h		; Random block write FCB
+ParseFilenameFCB		equ 29h		; Parse filename FCB
+GetDate				equ 2Ah		; Get date
+SetDate				equ 2Bh		; Set date
+GetTime				equ 2Ch		; Get time
+SetTime				equ 2Dh		; Set time
+SetVerifySwitch			equ 2Eh		; Set verify switch
+GetDiskTransferAddress		equ 2Fh		; Get disk transfer address
+GetDTA				equ GetDiskTransferAddress
+GetDOSVersion			equ 30h		; Get DOS version
+TerminateStayResident		equ 31h		; Terminate stay resident
+GetDriveParameterBlock		equ 32h		; Get Drive Parameter Block
+CtrlBreakCheck			equ 33h		; Ctrl break check
+GetINDOSFlagAddress		equ 34h		; Get INDOS Flag Address
+GetIntVector			equ 35h		; Get interrupt vector
+GetFreeDiskSpace		equ 36h		; Get free disk space
+GetSetSwitchChar		equ 37h		; Get/set switch char
+CountryDependentInfo		equ 38h		; Country dependent info
+CreateSubdirectory		equ 39h		; Create subdirectory
+RemoveSubdirectory		equ 3Ah		; Remove subdirectory
+ChangeSubdirectory		equ 3Bh		; Change subdirectory
+CreateFile			equ 3Ch		; Create file
+OpenFile			equ 3Dh		; Open file
+CloseFile			equ 3Eh		; Close file
+ReadFile			equ 3Fh		; Read file
+WriteFile			equ 40h		; Write file
+DeleteFile			equ 41h		; Delete file
+MoveFilePointer			equ 42h		; Move file pointer
+ChangeFileMode			equ 43h		; Change file mode
+IoControl			equ 44h		; Io Control
+DuplicateFileHandle		equ 45h		; Duplicate file handle
+ForceFileHandle			equ 46h		; Force file handle
+GetCurrentDirectory		equ 47h		; Get current directory
+AllocateMemory			equ 48h		; Allocate memory
+FreeAllocatedMemory		equ 49h		; Free allocated memory
+ModifyAllocatedMemory		equ 4Ah		; Modify allocated memory
+ExecuteProgram			equ 4Bh		; ExecuteProgram
+TerminateProcess		equ 4Ch		; Terminate process
+TerminateProgram		equ TerminateProcess
+GetReturnCode			equ 4Dh		; Get return code
+FindFirstFile			equ 4Eh		; Find first file
+FindNextFile			equ 4Fh		; Find next file
+SetPSPAddress			equ 50h		; Set PSP Address
+GetPSPAddress			equ 51h		; Get PSP Address
+GetDosDataTablePtr		equ 52h		; Get DOS Data Table
+GetVerify			equ 54h		; Get verify
+DuplicatePSP			equ 55h		; Duplicate PSP
+RenameFile			equ 56h		; Rename file
+SetFileDateTime			equ 57h		; Set file date time
+GetAllocationStrategy		equ 5800h	; Get allocation strategy
+SetAllocationStrategy		equ 5801h	; Set allocation strategy
+GetUMBLink			equ 5802h	; Get UMB link state
+SetUMBLink			equ 5803h	; Set UMB link state
+GetExtendedError		equ 59h		; Get extended error
+CreateUniqueFile		equ 5Ah		; Create unique file
+CreateNewFile			equ 5Bh		; Create new file
+LockFileAccess			equ 5Ch		; Lock file access
+ServerShareAndSwap		equ 5Dh		; Server Share/Swap
+SetExtendedError		equ 5D0Ah	; Set Extended Error
+GetMachineName			equ 5Eh		; Get machine name
+GetRedirectionList		equ 5Fh		; Get redirection list
+GetActualFileName		equ 60h		; Get Actual FileName
+GetProgramSegmentPrefix		equ 62h		; Get program segment prefix
+ExtCountryDependentFunctions	equ 65h		; Country Dependent Functions
+SetHandlesCount			equ 67h		; Set Handles Count
+CommitFile			equ 68h		; Commit File
+GetDiskSerialNumber		equ 69h		; Get Disk Serial Number
+ExtendedOpenCreate		equ 6Ch		; Extended Open/Create
+GetSetCountryInformation	equ 70h		; Get/set extended country information
+
+GetVolumeInformation		equ 0A0h
+FindClose			equ 0A1h
+GetFileInfoByHandle		equ 0A6h
+FileTime			equ 0A7h
+GenerateShortName		equ 0A8h
+
+
+		; 71xxh extended functions
+LFNCreateSubdirectory		equ 7139h		; Create subdirectory
+LFNRemoveSubdirectory		equ 713Ah		; Remove subdirectory
+LFNChangeSubdirectory		equ 713Bh		; Change subdirectory
+
+LFNDeleteFile			equ 7141h		; Delete file
+LFNChangeFileMode		equ 7143h		; Change file mode
+LFNGetCurrentDirectory		equ 7147h		; Get current directory
+LFNExecuteProgram		equ 714Bh		; Execute program (RxDOS extension)
+LFNFindFirstFile		equ 714Eh		; Find first file
+LFNFindNextFile			equ 714Fh		; Find next file
+LFNRenameFile			equ 7156h		; Rename file
+LFNGetActualFileName		equ 7160h		; Get actual file name
+LFNExtendedOpenCreate		equ 716Ch		; Extended open create
+
+LFNGetVolumeInformation		equ 71A0h		; Get volume information
+LFNFindClose			equ 71A1h		; Find close
+LFNGetFileInfoByHandle		equ 71A6h		; Get file info by handle
+LFNFileTime			equ 71A7h		; File time
+LFNGenerateShortName		equ 71A8h		; Generate short name
+
+LFNServerOpenFile		equ 71A9h		; Server open file
+LFNSubst			equ 71AAh		; Subst
+
+LFNGetExtDPB			equ 7302h		; get FAT32 extended DPB
+LFNGetExtFreeSpace		equ 7303h		; get FAT32 extended free space
+
+FAT32GetExtDPB			equ 7302h		; get FAT32 extended DPB
+FAT32GetExtFreeSpace		equ 7303h		; get FAT32 extended free space
+FAT32SetExtDPBFormatting	equ 7304h		; set FAT32 extended DPB for formatting
+FAT32ExtAbsDiskAccess		equ 7305h		; FAT32 extended absolute disk read/write
+
+FAT32GetExtDPB_			equ 02h			; get FAT32 extended DPB
+FAT32GetExtFreeSpace_		equ 03h			; get FAT32 extended free space
+FAT32SetExtDPBFormatting_	equ 04h			; set FAT32 extended DPB for formatting
+FAT32ExtAbsDiskAccess_		equ 05h			; FAT32 extended absolute disk read/write
+
+
+		; Network redirector (Int2F.11) functions
+IFSInstallCheck			equ 00h		; Install Check
+IFSRemoveDirectory		equ 01h		; Remove Directory
+IFSMakeDirectory		equ 03h		; Make Directory
+IFSChangeDirectory		equ 05h		; Change Directory
+IFSCloseFile			equ 06h		; Close File
+IFSCommitFile			equ 07h		; Commit File
+IFSReadFile			equ 08h		; Read File
+IFSWriteFile			equ 09h		; Write File
+IFSLockRegion			equ 0Ah		; Lock Region
+IFSUnlockRegion			equ 0Bh		; Unlock Region
+IFSGetDiskSpace			equ 0Ch		; Get Disk Space
+IFSSetFileAttributes		equ 0Eh		; Set File Attributes
+IFSGetFileAttributes		equ 0Fh		; Get File Attributes
+IFSRenameFile			equ 11h		; Rename File
+IFSDeleteFile			equ 13h		; Delete File
+IFSOpenFile			equ 16h		; Open File
+IFSCreateFile			equ 17h		; Create File
+IFSFindFirst			equ 1Bh		; Find First
+IFSFindNext			equ 1Ch		; Find Next
+IFSCloseAllFiles		equ 1Dh		; Close All Files
+IFSSetRedirection		equ 1Eh		; Set Redirection
+IFSPrinterSetup			equ 1Fh		; Printer Setup
+IFSFlushBuffers			equ 20h		; Flush Buffers
+IFSSeekFromEnd			equ 21h		; Seek from end
+IFSTerminateProcess		equ 22h		; Terminate Process
+IFSQualifyFilename		equ 23h		; Qualify Filename
+IFSPrinterMode			equ 25h		; Printer Mode
+IFSPrinterOnOff			equ 26h		; Printer on/off
+IFSCopy				equ 27h		; Copy
+IFSIOCTL			equ 2Bh		; IOCTL
+IFSExpandedOpen			equ 2Eh		; Extended open/create
+IFSGetSegment			equ 30h		; Get NFS Segment
+
+
+		; Interrupt definitions
+		; Obsolete, do not use.
+intDISK				equ 13h		; BIOS disk access
+intTERMINATE			equ 20h		; Terminate DOS program
+intDOS				equ 21h		; DOS services
+intTERMINATEAPP			equ 22h		; terminate app
+intCONTROLC			equ 23h		; control-c handler
+intCRITICALERROR		equ 24h		; critical error
+intIDLELOOP			equ 28h		; let other applications run
+
+
+		; Standard I/O definitions
+		; This are the AHT index of these default application handles.
+STDIN				equ 00h
+STDOUT				equ 01h
+STDERR				equ 02h
+STDAUX				equ 03h
+STDPRN				equ 04h
+
+
+		; Seek Definitions
+SEEK_BEG			equ 00
+SEEK_CUR			equ 01
+SEEK_END			equ 02
+
+
+		; Open Modes
+OPEN_ACCESS_READONLY		equ 00h
+OPEN_ACCESS_WRITEONLY		equ 01h
+OPEN_ACCESS_READWRITE		equ 02h
+OPEN_ACCESS_NOINHERIT		equ 80h
+
+OPEN_SHARE_COMPATABILITY	equ 00h
+OPEN_SHARE_DENYREADWRITE	equ 10h
+OPEN_SHARE_DENYREAD		equ 20h
+OPEN_SHARE_DENYWRITE		equ 30h
+OPEN_SHARE_DENYNONE		equ 40h
+
+		; File Actions
+ACTION_OPENED			equ 01
+ACTION_CREATED_OPENED		equ 02
+ACTION_REPLACED_OPENED		equ 03
+
+
+		; Extended open/create actions
+EXTENDEDACTION_CREATE		equ 0010h
+EXTENDEDACTION_OPEN		equ 0001h		; fail if exists
+EXTENDEDACTION_TRUNCATE		equ 0002h		; create or open
+
+
+		; Expand Filename options
+LFNEXPAND_GETFULLPATHNAME	equ 0			; 7160 GetFullPathName
+LFNEXPAND_GETSHORTPATHNAME	equ 1			; 7160 GetShortPathName
+LFNEXPAND_GETLONGPATHNAME	equ 2			; 7160 GetLongPathName
+
+
+		; FCB Parse
+FCBPARSE_IGNORELEADSEPARATOR		equ 01
+FCBPARSE_LEAVEDRIVEUNCHANGED		equ 02
+FCBPARSE_LEAVEFILENAMEUNCHANGED		equ 04
+FCBPARSE_LEAVEEXTENSIONUNCHANGED	equ 08
+
+
+		; Control Check Definitions
+getControlC			equ 00h			; Get ControlC Check Flag
+setControlC			equ 01h			; Set ControlC Check Flag
+getStartupDrive			equ 05h			; Get Startup Drive
+getExtDosVersion		equ 06h			; Get DOS Version
+GetControlC			equ 00h			; Get ControlC Check Flag
+SetControlC			equ 01h			; Set ControlC Check Flag
+GetStartupDrive			equ 05h			; Get Startup Drive
+GetExtDosVersion		equ 06h			; Get DOS Version
+
+
+		; Load and Exec Subfunctions
+execLoadAndExecute		equ 00h			; load and execute
+execLoadAndReturnDebug		equ 01h			; load and return to debugger
+execLoadOverlay			equ 03h			; load overlay
+execSetExecuteMode		equ 05h			; set execution mode
+
+
+		; Terminate Codes
+TERMINATE_NORMAL		equ 00h			; process terminated normal (Int20, Int21.00, Int21.4C)
+TERMINATE_CONTROLC		equ 01h			; process was cancelled (Int23 CY)
+TERMINATE_DEVICEERROR		equ 02h			; abort in device handler (Int24 fail)
+TERMINATE_TSR			equ 03h			; terminated but stayed resident (Int27, Int21.31)
+
+
+		; 65h Country Dependent Capitalization
+_CapCharacter			equ 20h			; character capitalization
+_CapLengthDefString		equ 21h			; length defined string capitalization
+_CapString			equ 22h			; ASCIZ capitalization
+_CountryDepYesNo		equ 23h			; does character represent Yes/No response
+_CapFnCharacter			equ 0A0h		; fn character capitalization
+_CapFnLengthDefString		equ 0A1h		; fn length defined capitalization
+_CapFnString			equ 0A2h		; fn ASCIZ capitalization
+
+
+		; Country Codes
+COUNTRY_UNITEDSTATES		equ 001			; United States
+COUNTRY_CANADIANFRENCH		equ 002			; Canadian-French
+COUNTRY_LATINAMERICA		equ 003			; Latin America
+COUNTRY_RUSSIA			equ 007			; Russia
+COUNTRY_NETHERLANDS		equ 031			; Netherlans
+COUNTRY_BELGIUM			equ 032			; Belgium
+COUNTRY_FRANCE			equ 033			; France
+COUNTRY_SPAIN			equ 034			; Spain
+COUNTRY_HUNGARY			equ 036			; Hungary
+COUNTRY_CROATIA			equ 038			; Croatia
+COUNTRY_SERBIA_YUGOSLAVIA	equ 038			; Serbia/Yugoslavia
+COUNTRY_SLOVENIA		equ 038			; Slovenia
+COUNTRY_ITALY			equ 039			; Italy
+COUNTRY_SWITZERLAND		equ 041			; Switzerland
+COUNTRY_SLOVAKIA		equ 042			; Slovakia
+COUNTRY_CZECHREPUBLIC		equ 042			; The Czech Republic
+COUNTRY_AUSTRIA			equ 043			; Austria
+COUNTRY_UNITEDKINGDOM		equ 044			; United Kingdom
+COUNTRY_DENMARK			equ 045			; Denmark
+COUNTRY_SWEDEN			equ 046			; Sweden
+COUNTRY_NORWAY			equ 047			; Norway
+COUNTRY_POLAND			equ 048			; Poland
+COUNTRY_GERMANY			equ 049			; Germany
+COUNTRY_BRAZIL			equ 055			; Brazil
+COUNTRY_INTERNATIONAL_ENGLISH	equ 061			; International English
+COUNTRY_PORTUGAL		equ 351			; Portugal
+COUNTRY_ICELAND			equ 354			; Iceland
+COUNTRY_FINLAND			equ 358			; Finland
+
+COUNTRY_JAPAN			equ 081			; Japan
+COUNTRY_KOREA			equ 082			; Korea
+COUNTRY_CHINA			equ 086			; China
+COUNTRY_TAIWAN			equ 088			; Taiwan
+COUNTRY_TURKEY			equ 090			; Turkey
+COUNTRY_MIDDLEEAST		equ 785			; Middle East/ Saudi Arabia
+COUNTRY_SAUIARABIA		equ 785			; Middle East/ Saudi Arabia
+COUNTRY_ISRAEL			equ 972			; Israel
+
+
+		; Code Pages
+CODEPAGE_UNITEDSTATES		equ 437			; United States
+CODEPAGE_MULTILINGUAL		equ 850			; Multilingual
+CODEPAGE_SLAVIC			equ 852			; Slavic
+CODEPAGE_SLAVIC_II		equ 855			; Slavic II
+CODEPAGE_MULTILINGUAL_EURO	equ 858			; Multilingual with Euro currency
+CODEPAGE_TURKEY			equ 859			; Turkey
+CODEPAGE_PORTUGAL		equ 860			; Portuguese
+CODEPAGE_ICELAND		equ 861			; Iceland
+CODEPAGE_CANADIANFRENCH		equ 863			; Canadian-French
+CODEPAGE_MIDDLEEAST		equ 864			; Arabic
+CODEPAGE_NORDIC			equ 865			; Nordic
+CODEPAGE_CYRILLIC		equ 866			; Cyrillic
+
+CODEPAGE_JAPAN			equ 932			; Japan
+CODEPAGE_KOREA			equ 934			; Korea
+CODEPAGE_CHINA			equ 936			; China
+CODEPAGE_TAIWAN			equ 938			; Taiwan
+
+CODEPAGE_LATIN_I		equ CODEPAGE_MULTILINGUAL
+CODEPAGE_LATIN_II		equ CODEPAGE_SLAVIC
+
+
+		; Date/Time
+DATE_USA			equ 00h			; month/day/year
+DATE_EUROPE			equ 01h			; day/month/year
+DATE_JAPAN			equ 02h			; year/month/day
+DATE_OTHER			equ 03h			; 0ther
+
+DATE_MMDDYY			equ DATE_USA
+DATE_DDMMYY			equ DATE_EUROPE
+DATE_YYMMDD			equ DATE_JAPAN
+
+TIME_12HOUR			equ 00h			; 12-hour time
+TIME_24HOUR			equ 01h			; 24-hour time
+
+CURRENCY_BEFORE			equ 00h
+CURRENCY_AFTER			equ 01h
+
+CURRENCY_NOSPACEBETWEEN		equ 00h
+CURRENCY_SPACEBETWEEN		equ 02h
+
+
+		; Swappable Data Area Styles
+DOS3_SDASTYLE			equ 0
+DOS4_SDASTYLE			equ 1
+DOS5_SDASTYLE			equ 1
+DOS6_SDASTYLE			equ 1
+
+
+		; Define Structure Sizes
+sizedevName		equ 8
+sizefnName		equ 8
+sizeFnName		equ 8
+sizefnExtension		equ 3
+sizeFILENAME		equ sizefnName + sizefnExtension
+sizeFilename		equ sizeFILENAME
+%if 1
+sizeShortZFILENAME	equ sizeFILENAME + 1
+%else
+		; RxDOS 7.20N:	What about the dot?
+sizeShortZFILENAME	equ sizeFILENAME + 2
+%endif
+
+
+
+		; Structure Definitions
+
+
+		; Country Info
+	struc COUNTRYINFO
+intlDateFormat		resw 1				; date format
+intlCurrency		resb 5				; currency symbol (asciz)
+intlThousands		resb 2				; thousands
+intlDecimal		resb 2				; decimal
+intlDateSep		resb 2				; date
+intlTimeSep		resb 2				; time
+intlBitField		resb 1				; currency format (before or after)
+intlCurrencyPlaces	resb 1				; places after decimal point
+intlTimeFormat		resb 1				; 12-hour or 24-hour format
+intlCaseMap		resd 1				; address of case-mapping routine
+intlDataSep		resb 2				; data-list ...
+	endstruc
+
+intlCurrency_MASK	equ 0001h
+intlCurrencyPreceeds	equ 0
+intlCurrencyFollows	equ 1
+
+intlSpace_MASK		equ 0002h
+intlNoSpaceinAmount	equ 0
+intlSpaceinAmount	equ 1
+
+
+		; File Name
+	struc FILENAME
+fnName			resb 8
+fnExtension		resb 3
+	endstruc
+
+
+		; Directory entries
+		;
+		; See Functions:
+		; _SearchFirstFileFCB	11h
+		; _SearchNextFileFCB	12h
+	struc DIRENTRY
+deName			resb 8
+deExtension		resb 3
+deAttributes		resb 1
+deExtAttributes		resb 1				; FAT+ size bits/NT pseudo-LFN flags
+deReserved1		resb 1
+deReserved2		resw 1
+deReserved3		resw 1
+deReserved4		resw 1
+deStartClusterExt	resw 1				; upper 16 bits of FAT32 cluster
+deTime			resw 1				; Time Format
+							;	0 - 4	Two second intervals
+							;	5 - 10	Minutes (0 - 59)
+							;	11 - 15	Hours (0 - 23)
+deDate			resw 1				; Date Format
+							;	0 - 4	Day (1 - 31)
+							;	5 - 8	Month (1 - 12)
+							;	9 -15	Year since 1980
+deStartCluster		resw 1
+deFileSize		resd 1
+	endstruc
+
+
+		; Attribute bits
+ATTR_NORMAL		equ 00h
+ATTR_READONLY		equ 01h
+ATTR_HIDDEN		equ 02h
+ATTR_SYSTEM		equ 04h
+ATTR_LABEL		equ 08h
+ATTR_VOLUME		equ ATTR_LABEL
+ATTR_DIRECTORY		equ 10h
+ATTR_ARCHIVE		equ 20h
+ATTR_DEVICE		equ 40h
+ATTR_TEMP		equ 80h
+
+ATTR_FINDFIRST		equ (ATTR_DIRECTORY| ATTR_LABEL| ATTR_SYSTEM| ATTR_HIDDEN)
+ATTR_SETTABLE		equ (ATTR_ARCHIVE| ATTR_SYSTEM| ATTR_HIDDEN| ATTR_READONLY)
+ATTR_LONGFILENAME	equ (ATTR_LABEL| ATTR_SYSTEM| ATTR_HIDDEN| ATTR_READONLY)
+ATTR_MASK		equ (ATTR_DIRECTORY| ATTR_LABEL| ATTR_SYSTEM| ATTR_HIDDEN| ATTR_READONLY)
+
+
+		; Special Characters
+DIRENTRY_NEVERUSED	equ 00h
+SPECIAL_CHAR		equ 05h
+DIRENTRY_SPECIALCHAR	equ 05h
+DIRENTRY_DELETED	equ 0E5h
+
+
+		; Find First/Find Next
+		;
+		; See Functions:
+		; _FindFirstFile	4Eh
+		; _FindNextFile		4Fh
+	struc FINDENTRY
+findSrchDrive		resb 1
+findSrchName		resb 8				; name to search
+findSrchExtension	resb 3
+findSrchAttributes	resb 1
+findDirEntry		resw 1				; Dir entry
+findDirBegCluster	resd 1				; Dir beg cluster
+findCCBPointer		resw 1				; CCB pointer
+
+findFileAttribute	resb 1
+findFileTime		resw 1
+findFileDate		resw 1
+findFileSize		resd 1
+findFileName		resb 13				; null terminated name
+	endstruc
+
+
+		; Long Filename Find First/Find Next
+		;
+		; See Functions:
+		; _FindFirstFile	714Eh
+		; _FindNextFile		714Fh
+	struc FINDDATA
+findDataAttributes	resd 1
+findDataCreateTime	resq 1				; create time (in extended form)
+findDataLastAccessTime	resq 1				; last accessed time (in extended form)
+findDataLastModifTime	resq 1				; last modified time (in extended form)
+findDataFileSizeHigh	resd 1				; file size high 32 bits
+findDataFileSizeLow	resd 1				; file size low	32 bits
+findDataUnused		resb 8				; unused
+findDataLongFilename	resb 260			; long filename
+findDataShortFilename	resb 14				; short filename
+	endstruc
+
+finddataTime		equ _low			; word
+finddataDate		equ _high			; word
+
+
+		; Flags
+FINDDATA_EXTENDEDDATEFORMAT	equ 0000h		; use 64-bit extended date time format
+FINDDATA_MSDOSDATEFORMAT	equ 0001h		; use MSDOS date time format
+
+
+
+		; SFN Find First/Find Next buffer
+	struc SFNFINDDATA
+sfdSearchDrive		resb 1
+sfdSearchName		resb 8				; name to search
+sfdSearchExtension	resb 3
+sfdSearchAttributes	resb 1
+sfdDirEntry		resw 1				; Directory entry number in referenced cluster
+sfdDirBegCluster	resd 1				; Directory cluster
+sfdCCBPointer		resw 1				; CCB pointer
+sfdAttribute		resb 1
+sfdTime			resw 1
+sfdDate			resw 1
+sfdSize			resd 1
+sfdName			resb 13				; ASCIZ name
+	endstruc
+
+		; LFN Find First/Find Next buffer
+	struc LFNFINDDATA
+lfdAttributes		resd 1
+lfdCreateTime		resq 1				; create time
+lfdLastAccessTime	resq 1				; last accessed time
+lfdLastModifTime	resq 1				; last modified time
+lfdFileSizeHigh		resd 1				; file size high 32 bits
+lfdFileSizeLow		resd 1				; file size low	32 bits
+lfdUnused		resb 8				; unused
+lfdLongname		resb 260			; ASCIZ LFN if it exists, else ASCIZ SFN
+lfdShortname		resb 14				; ASCIZ SFN if LFN exists, else nul string
+	endstruc
+
+%if 0
+		; LFN/SFN combined Find First/Find Next buffer
+		;
+		; Move into RXCSTRUC
+	struc COMBINEDFINDDATA
+cfdname:		resb 8+1			; SFN name (without extension)
+cfdextension:		resb 3+1			; SFN extension
+cfdsfn:			resb 13
+cfdsfnfinddata:
+cfdattribute	equ $+sfdAttribute			; attribute
+cfdsfn		equ $+sfdName				; SFN
+			resb SFNFINDDATA_size
+cfdlfnfinddata:
+cfdlfn		equ $+lfdLongname			; LFN if available
+cfdhaslfn	equ $+lfdShortname			; =0 no LFN available, <>0 LFN available
+			resb LFNFINDDATA_size
+	endstruc
+%endif
+
+		; File Tables
+	struc FT
+nextFTPointer		resd 1
+numberSFTEntries	resw 1
+	endstruc
+
+
+		; SFT container
+	struc SFTC
+sftcNext:		resd 1				; -> next SFT container unless pointer is -1
+sftcEntries:		resw 1				; number of SFTs in this SFT container
+	endstruc
+
+
+		; System File Tables
+	struc SFT
+sftRefCount:		resw 1				; 00
+sftMode:		resw 1				; 02
+sftFileAttrib:		resb 1				; 04
+sftDevInfo:		resw 1				; 05 device info
+sftDevice:
+sftDPB			resd 1				; 07 DPB address if file, else device address
+
+%if _RXDOS720N
+		; RxDOS 7.20N:	MS-DOS/DOS-C/DR-DOS store only a word here.
+sftBegCluster		resd 1				; start address of file
+%else
+sftBegCluster16		resw 1				; 0B first cluster of file
+		; MS-DOS 7.10 doesn't set this. Only on FAT32 drives or never? Sloppy RBIL
+%endif
+
+sftTime:		resw 1				; 0D time stamp
+sftDate:		resw 1				; 0F date stamp
+sftFileSize:		resd 1				; 11 file size
+sftFilePosition:	resd 1				; 15 current offset into file
+sftRelCluster:		resw 1				; 19 relative cluster
+sftDirSector:		resd 1				; 1B absolute sector of directory entry
+sftDirSectorOffset:	resb 1				; 1F Offset in dir Sector /32
+sftFileName:		resb 8				; 20 FCB file name
+sftFileExtension:	resb 3				; 28 FCB file extension
+sftShareSftPointer:	resd 1				; 2B -> next SFT sharing same file
+sftMachine:		resw 1				; 2F virtual/network machine number
+sftPSP			resw 1				; 31 PSP (unused)
+%ifn _RXDOS720N
+sftShareRecordPtr:	resw 1				; 33 share record pointer
+sftCurCluster:		resw 1				; 35 current cluster, zero if never accessed
+sftIFSDriverPtr:	resd 1				; 37 IFS driver pointer
+%else
+sftShareRecordPtr:					; share record pointer
+		; used for current cluster instead
+sftCurCluster		resd 1				; zero if never read/written
+sftIFSDriverPtr		resd 1				; IFS driver pointer
+
+; RxDOS specific:
+sftVolumeId		resd 1				; 3B RxDOS extended information
+%endif
+
+		; RxDOS 7.20N:	SFT entry 6 byte larger than in MS-DOS 6.22/7.10
+		; RxDOS 7.30:	SFT entry 4 byte larger than in MS-DOS 7.10.
+	endstruc
+
+sftOwnerPSP	equ sftPSP
+sftOwnerMachine	equ sftMachine
+
+sftCount	equ sftRefCount
+sftAttrib	equ sftFileAttrib
+sftFN		equ sftFileName
+sftExt		equ sftFileExtension
+sftDHD		equ sftDPB
+sftDCB		equ sftDPB
+
+
+		; sftMode bits
+sftmode_ISFCB		equ 8000h			; RxDOS specific: SFT entry used for FCB operations
+							; RxDOS utilises SFTs instead of FCB tables
+sftmode_SHAREMASK	equ 0070h			; Mask to get sharing mode
+sftmode_WRITE		equ 0001h			; 1 write mode, 0 read mode
+
+%if 1
+sftENTRY_ISFCB		equ 8000h			; RxDOS specific
+sftDENY_NONE		equ 0040h
+sftDENY_READ		equ 0030h
+sftDENY_WRITE		equ 0020h
+sftEXCLUSIVE		equ 0010h
+sftNET_FCB		equ 0070h
+sftWRITE		equ 0001h			; set if write mode, clear else
+sftREAD			equ 0000h
+%endif
+
+		; Sharing modes
+SHARE_MASK	equ 0070h			; Seperates sharing mode from other data
+SHARE_NETFCB	equ 0070h			; Network FCB
+SHARE_DENYNONE	equ 0040h			; Allow other process to write/read
+SHARE_DENYREAD	equ 0030h			; Allow other process to write only (very useful?)
+SHARE_DENYWRITE	equ 0020h			; Allow other process to read only
+SHARE_DENYALL	equ 0010h			; Allow other process nothing
+SHARE_COMPAT	equ 0000h			; Compatibility sharing mode
+
+
+		; sftDevInfo bits
+sftinfo_Shared		equ 8000h			; File: Remote file
+sftinfo_RemoteDevice	equ 8000h			; Device: Remote device
+sftinfo_SetDate		equ 4000h			; File: Update last access/written date
+sftinfo_Ioctl		equ 4000h			; Device: IOCTL supported
+sftinfo_Pipe		equ 2000h			; Device: Piped
+sftinfo_NoInherit	equ 1000h			; SFT entry isn't inherited by children
+sftinfo_NetworkSpooler	equ 0800h			; Device: Network spooler
+sftinfo_Protected	equ 0100h			; SFT entry can't be deleted
+sftinfo_Device		equ 0080h			; SFT entry is a character device if 1, file if 0
+sftinfo_Written		equ 0040h			; File: File data updated since opening
+sftinfo_Eof		equ 0040h			; Device: At EOF
+sftinfo_Drivemask	equ 003Fh			; File: Drive number
+sftinfo_Binary		equ 0020h			; Device: 1 binary, 0 ASCII
+sftinfo_Special		equ 0010h			; Device: Fast I/O, CON that supports Int29
+sftinfo_Clock		equ 0008h			; Device: CLOCK$ device
+sftinfo_Nul		equ 0004h			; Device: NUL device
+sftinfo_Stdout		equ 0002h			; Device: StdOut, CON device
+sftinfo_Stdin		equ 0001h			; Device: StdIn, CON device
+
+%if 1
+sftShared		equ 8000h
+sftDateset		equ 4000h
+sftNoInherit		equ 1000h
+sftProtected		equ 0100h			; protected (can't delete)
+sftIsDevice		equ 0080h			; set if character device
+sftWritten		equ 0040h			; valid only if NOT device
+sftDrivemask		equ 003Fh			; valid only if NOT device
+		; --- all of the following have meaning when IsDevice is SET ---
+sftDeviceIsRemote	equ 8000h			; Device is remote
+sftIoctl		equ 4000h			; ioctl also supported
+sftPipe			equ 2000h			; is pipe
+sftNetworkSpooler	equ 0800h			; network spooler
+sftEof			equ 0040h			; these flags valid only IF IsDevice
+sftBinary		equ 0020h			; 0 means ASCII
+sftSpecial		equ 0010h
+sftIsclock		equ 0008h
+sftIsnul		equ 0004h
+sftIsstdout		equ 0002h
+sftIsstdin		equ 0001h
+%endif
+
+		; File Control Blocks
+	struc FCB
+fcbDrive		resb 1
+fcbName			resb 8
+fcbExtension		resb 3
+fcbCurrBlockNo		resw 1
+fcbRecordSize		resw 1
+fcbFileSize		resd 1
+fcbDate			resw 1
+fcbTime			resw 1
+fcbSFN:
+fcbSFT			resb 1				; handle to SFT system
+fcbFlags		resb 1				; modified flags
+fcbDCB:
+fcbDPB:
+fcbDHD			resd 1				; device header/DPB
+fcbBegClusterNo		resw 1				; start of file cluster number
+fcbCurrRecNo		resb 1
+fcbRandomRecNo		resd 1
+	endstruc
+
+
+		; Extended FCB Header
+	struc ExtendedFCBHdr
+extSignature		resb 1
+			resb 5
+extAttribute		resb 1
+	endstruc
+
+
+		; Disk I/O Structure
+	struc DISKIO
+diskioStartSector	resd 1				; sector number
+diskioSectors		resw 1				; # sectors
+diskioBuffer		resd 1				; buffer pointer
+	endstruc
+
+
+		; Disk Access Block
+	struc DISKACCESS
+diskAcDrive		resw 1				;*
+diskAcBegCluster	resd 1				;* (cluster number)
+diskAcFileSize		resd 1				;* file size in bytes
+diskAcPosition		resd 1				;* read request (access position)
+diskAcCurCluster	resd 1				;* (cluster number)
+diskAcCurSector		resd 1				;  (LSN)
+diskAcOffAtBegCluster	resd 1				;* (file offset)
+diskAcOffAtBegBuffer	resd 1				;  (file offset)
+diskAcBufferPtr		resd 1				;  dynamically assigned
+diskAcOptions		resw 1				;  optimize options
+diskAcBytesToRead	resw 1				;  fast read
+	endstruc
+
+
+		; Options (options contains ccb_ defines in lower byte)
+DISKAC_OPTIMIZEDWRITE			equ 8000h
+DISKAC_READBUFFER_ASSIGNED		equ 4000h
+DISKAC_READ_MULTIPLESECTORS		equ 2000h
+DISKAC_RESULT_READMULTIPLESECTORS	equ 1000h
+
+
+		; Directory Access Block
+	struc DIRACCESS
+fileAcDrive		resw 1				; which drive file is located
+fileAcCluster		resd 1				; which cluster file is located
+fileAcDirCluster	resd 1				; which dir cluster
+fileAcDirSector		resd 1				; which dir sector
+fileAcDirOffset		resw 1				; offset in directory sector
+fileAcBufferPtr		resd 1				; pointer to directory buffer
+fileAcDevice:
+fileAcDevicePtr		resd 1				; if device, device driver address
+fileAcNameOffset	resw 1				; offset in Expanded Name
+fileAcName:
+fileAcShortName		resb 14				; short name
+sizeDIRACCESSdevice:
+fileAcExpandedName	resb 1024			; fully expanded name
+	endstruc
+
+sizeDIRACCESS		equ DIRACCESS_size
+
+
+		; Flags for file parsing
+FILE_MUSTEXIST		equ 0000h			; artificial. set neither NOTEXIST nor MAYEXIST
+FILE_FCB		equ 0001h			; passed filename is in FCB format
+FILE_NODEVICE		equ 0002h			; filename mustn't be a device
+FILE_WILDCHARS		equ 0004h			; Wild characters in file name allowed
+FILE_NOFILE		equ 0008h			; filename mustn't be a file
+FILE_NOTEXIST		equ 0010h			; filename mustn't exist at all
+FILE_NODIRECTORY	equ 0020h			; filename mustn't be a directory
+FILE_MAYEXIST		equ 0040h			; filename already exists allowed
+FILE_LFN		equ 0080h			; filter attributes for LFN search
+FILE_NOSUBST		equ 0100h			; do not solve SUBST
+
+FILE_ORDEVICE		equ 0000h			; file or device must exist
+FILEIS_FCB		equ 0001h			; file passed is an FCB
+FILE_NODEVICENAME	equ 0002h			; path may not contain a device name
+FILEHAS_WILDCHARS	equ 0004h			; path may contain wild characters
+FILEHAS_NOFILENAME	equ 0008h			; path may not contain filename
+FILECANNOT_BEDEFINED	equ 0010h			; filename must not exist
+FILECANNOT_BEDIRECTORY	equ 0020h			; filename cannot be directory
+FILEMAY_EXIST		equ 0040h			; file may exist (cluster not -1)
+FILTER_ONATTRIBUTES	equ 0080h			; LFN, must filter on search attributes
+
+
+%if 1	; RxDOS 7.20N
+		; Std Character I/O Redirection Table
+	struc _STDREDIREC
+stdDriverName		resb 8				; driver name
+stdIOHandle		resw 1				; handle assigned, if any
+stdDevInfo		resw 1				; device assign bits
+	endstruc
+
+	%macro STDREDIREC 1-3.nolist
+%if %0 <= 1
+	dw %1
+%else
+	istruc _STDREDIREC
+at stdDriverName,	fill 7,32,db %1
+			db 32				; checkForDeviceName requires a terminator!
+at stdIOHandle,		dw %2
+at stdDevInfo,		dw %3
+	iend
+%endif
+	%endmacro
+
+stdRedirec_Con		equ 0
+stdRedirec_Aux		equ 1
+stdRedirec_Prn		equ 2
+
+%else	; RxDOS 7.20N
+
+	struc STDHANDLE
+shName:		resw 1
+	endstruc
+
+%endif
+
+
+		; Drive Parameter Block
+	struc DPB
+_dpbDrive:			resb 1			; 00 logical drive
+_dpbUnit:			resb 1			; 01 logical unit of block device
+_dpbBytesPerSector:		resw 1			; 02 bytes per sector
+_dpbClusterSizeMask:		resb 1			; 04 1 + cluster mask = actual cluster size
+_dpbClusterSizeShift:		resb 1			; 05 1 << cluster shift = actual cluster size
+_dpbFirstFAT:			resw 1			; 06
+_dpbNumCopiesFAT:		resb 1			; 08
+_dpbMaxAllocRootDir:		resw 1			; 09 FAT32: 0 (RxDOS 7.30: checked to determine if FAT32)
+_dpbFirstDataSector:		resw 1			; 0B FAT32: 0
+_dpbMaxClusterNumber:		resw 1			; 0D FAT32: 0
+_dpbSectorsPerFat:		resw 1			; 0F FAT32: 0 (RxDOS 7.20N: checked to determine if FAT32)
+_dpbFirstDirSector:		resw 1			; 11 FAT32: 0
+_dpbDevice:			resd 1			; 13
+_dpbMediaDescriptor:		resb 1			; 17
+_dpbAccessFlag:			resb 1			; 18 -1 if must be rebuild (not yet accessed)
+_dpbNext:			resd 1			; 19
+_dpbNextFree:			resw 1			; 1D cluster where to search for next free
+_dpbFreeCount:			resd 1			; 1F number of free clusters remaining (in normal DPBs word)
+sizeOLDDPB		equ $-2				; Does not include the high word of _dpbFreeCount
+
+		; FAT32 extended info (starts 2 bytes before this)
+_dpbxFlags:			resw 1			; 23 see flags below
+_dpbxFSINFOSector:		resw 1			; 25 FSINFO sector (-1 if none)*
+_dpbxBackUpBootSector:		resw 1			; 27 backup boot sector (-1 if none)*
+_dpbxFirstSector:		resd 1			; 29 sector address of first cluster
+_dpbxMaxCluster:		resd 1			; 2D max clusters in drive plus one
+_dpbxSectorsPerFat:		resd 1			; 31 number of sectors in FAT
+_dpbxRootCluster:		resd 1			; 35 cluster number of root directory
+_dpbxNextFreeCluster:
+_dpbxNextFree:			resd 1			; 39 most recently allocated cluster
+		; * value must be non-zero and less than the reserved sector count.
+
+		; RxDOS extended info (non-standard usage)
+%if 1
+		; RxDOS 7.20N:	This seems like a bug. DOS should use the dword at _dpbFreeCount on FAT32.
+		;		It doesn't need to allocate another field for this, it extends the word.
+_dpbxFreeClusterCount:		resd 1			; free clusters on drive
+%else
+_dpbxFreeClusterCount:	equ _dpbFreeCount
+%endif
+
+%if 1
+		; RxDOS 7.30:	Never set to active FAT; was always same as small value.
+_dpbxReserveSectors:		resd 1			; 3D sector of Active FAT
+%endif
+_dpbVolumeId:			resd 1			; 41 RxDOS extended information
+	endstruc
+
+sizeDPB			equ DPB_size
+sizeEXTDPB		equ DPB_size
+_dpbptrDeviceDriver	equ _dpbDevice
+_dpbNextDPB		equ _dpbNext
+
+
+
+		; FAT32 flags (bits 4-6 and 8-15 are reserved)
+BPB_ACTIVEFATMASK		equ 000Fh		; active FAT
+BPB_NOFATMIRROR			equ 0080h		; No FAT Mirror
+BPB_FREESPACEALTERED		equ 0040h		; free space requires update (RxDOS)
+BPB_FATPLUS			equ 0020h		; expect FAT+ files (RxDOS 7.30)
+
+
+		; BIOS Parameter Block
+	struc BPB
+_bpbBytesPerSector:		resw 1
+_bpbSectorsPerCluster:		resb 1
+_bpbResSectors:			resw 1
+_bpbNumCopiesFAT:		resb 1
+_bpbMaxAllocRootDir:		resw 1			; FAT32: 0
+_bpbMaxSectors:			resw 1			; if zero, see huge sectors
+_bpbMediaDescriptor:		resb 1			; device media id
+_bpbSectorsPerFat:		resw 1			; FAT32: 0
+_bpbSectorsPerTrack:		resw 1
+_bpbHeads:			resw 1
+_bpbHiddenSectors:		resd 1
+_bpbHugeSectors:		resd 1			; total num/sectors on big drives
+
+		; FAT32 extended info
+_bpbxBigSectorsPerFat:
+_bpbxSectorsPerFat:		resd 1			; num/sectors per FAT on the FAT32 drive
+_bpbxExtendedFlags:
+_bpbxFlags:			resw 1
+_bpbxFileSysVersion:		resw 1			; file system version number
+					; (high byte = major version/ low byte = minor version)
+_bpbxRootDirStartCluster:	resd 1			; first cluster of FAT32 root directory
+_bpbxFSINFOSector:		resw 1			; if no FSINFO structure == 0FFFFh
+_bpbxBackUpBootSector:		resw 1
+		; RxDOS 7.20N:	The following fields are normally reserved. It seems former releases
+		;		used them to track the FSINFO values inside the same sector.
+
+%if 1
+_bpbxFreeClusters:		resd 1			; free clusters
+_bpbxNextFreeCluster:		resd 1			; next free cluster
+_bpbxReserved:			resd 1
+%else
+_bpbxReserved:			resb 12			; again ignored/never used in RxDOS 7.30
+%endif
+	endstruc
+
+sizeBPB			equ BPB_size
+
+
+		; FAT32 Boot File System Structure
+	struc BIGFATBOOTFSINFO
+_bfFSInfoSignature:		resd 1			; must be 0x61417272
+_bfFSInfoFreeClusterCnt:	resd 1			; free clusters on system
+_bfFSInfoNextFreeCluster:	resd 1			; next free cluster
+_bfFSInfoReserved:		resd 3			; reserved
+	endstruc
+
+
+		; Extended Free Space
+	struc EXTENDEDFREESPACE
+_extFreeSize			resw 1			; sizeEXTENDEDFREESPACE
+_extFreeLevel			resw 1			; 0
+_extFreeSectorsPerCluster	resd 1			; num sectors per cluster
+_extFreeBytesPerSector		resd 1			; num bytes per sector
+_extFreeAvailableClusters	resd 1			; num available clusters
+_extFreeTotalClusters		resd 1			; total num clusters for drive
+_extFreeAvailablePhysSectors	resd 1			; num free physical sectors, w/o compression
+_extFreeTotalPhysSectors	resd 1			; num total physical sectors, w/o compression
+_extFreeAvailableAllocationUnits resd 1			; num free allocation units, w/o compression
+_extFreeTotalAllocationUnits	resd 1			; num total allocation units, w/o compression
+_extFreeReserved		resd 2
+	endstruc
+
+
+%if 0	; code remains here for comment purposes
+
+		; Drive Parameter Block
+	struc DPB
+_dpbDrive			resb 1			; logical drive
+_dpbUnit			resb 1			; logical unit
+_dpbBytesPerSector		resw 1
+_dpbClusterSizeMask		resb 1
+_dpbClusterSizeShift		resb 1
+_dpbFirstFAT			resw 1
+_dpbNumCopiesFAT		resb 1
+_dpbMaxAllocRootDir		resw 1
+_dpbFirstDataSector		resw 1
+_dpbMaxClusterNumber		resw 1
+
+_dpbSectorsPerFat		resw 1
+_dpbFirstDirSector		resw 1
+_dpbptrDeviceDriver		resd 1
+_dpbMediaDescriptor		resb 1
+_dpbAccessFlag			resb 1			; -1 if must be rebuilt
+_dpbNextDPB			resd 1
+_dpbNextFree			resw 1			; cluster where to search for next free
+_dpbFreeCount			resd 1			; number of free clusters remaining
+_dpbVolumeId			resd 1			; RxDOS extended information
+	endstruc
+
+
+		; BIOS Parameter Block
+	struc BPB
+_bpbBytesPerSector		resw 1
+_bpbSectorsPerCluster		resb 1
+_bpbResSectors			resw 1
+_bpbNumCopiesFAT		resb 1
+_bpbMaxAllocRootDir		resw 1
+_bpbMaxSectors			resw 1			; if zero, see huge sectors
+_bpbMediaDescriptor		resb 1			; device media id
+_bpbSectorsPerFat		resw 1
+_bpbSectorsPerTrack		resw 1
+_bpbHeads			resw 1
+_bpbHiddenSectors		resd 1
+_bpbHugeSectors			resd 1			; total num/sectors on big drives
+	endstruc
+
+%endif
+
+
+		; Boot Sector Parameter Block (FAT12, FAT16)
+	struc BOOTSECTOR
+_bsJump				resb 3
+_bsOemName			resb 8
+_bsBytesPerSector		resw 1			; (start of BPB)
+_bsSectorsPerCluster		resb 1
+_bsResSectors			resw 1			; 32 for FAT32, else 1.
+_bsNumCopiesFAT			resb 1
+_bsMaxAllocRootDir		resw 1
+_bsMaxSectors			resw 1			; if zero, see huge sectors
+_bsMediaDescriptor		resb 1
+_bsSectorsPerFat		resw 1
+_bsSectorsPerTrack		resw 1			; if zero, Fat32
+_bsHeads			resw 1
+_bsHiddenSectors		resd 1
+_bsHugeSectors			resd 1			; (end of BPB)
+
+; ---- FAT16, FAT12 ----------------------------------
+_bsDriveNumber			resb 1
+				resb 1
+_bsBootSignature		resb 1			; 29h if extended boot sector
+_bsVolumeId			resd 1
+_bsVolumeLabel			resb 11			; not same as DOS Volume Id
+_bsFileSystemType		resb 8			; 'FAT12   ', 'FAT16   '
+	endstruc
+
+
+		; Boot Sector Parameter Block (FAT32)
+	struc BOOTSECTOR32
+_bsxJump			resb 3
+_bsxOemName			resb 8
+_bsxBytesPerSector		resw 1			; (start of BPB)
+_bsxSectorsPerCluster		resb 1
+_bsxResSectors			resw 1			; 32 for FAT32, else 1.
+_bsxNumCopiesFAT		resb 1
+_bsxMaxAllocRootDir		resw 1
+_bsxMaxSectors			resw 1			; if zero, see huge sectors
+_bsxMediaDescriptor		resb 1
+_bsxSectorsPerFat		resw 1			; if 0, FAT32 drive
+_bsxSectorsPerTrack		resw 1
+_bsxHeads			resw 1
+_bsxHiddenSectors		resd 1
+_bsxHugeSectors			resd 1			; (end of BPB)
+
+; ---- FAT32 -----------------------------------------
+_bsxBigSectorsPerFat		resd 1			; number of sectors in FAT
+_bsxExtendedFlags		resw 1			; extended flags (unknown use)
+_bsxFileSysVersion		resw 1			; file system version number
+					; (high byte = major version/low byte = minor version)
+_bsxRootCluster			resd 1			; cluster number of root directory
+_bsxFSINFOSector		resw 1			; FSINFO sector (-1 if none)
+_bsxBackUpBootSector		resw 1			; backup boot sector (-1 if none)
+_bsxReserved			resd 3
+
+; ---- FAT32 -----------------------------------------
+_bsxDriveNumber			resw 1
+_bsxBootSignature		resb 1			; 29h if extended boot sector
+_bsxVolumeId			resd 1
+_bsxVolumeLabel			resb 11			; not same as DOS Volume Id
+_bsxFileSystemType		resb 8			; 'FAT32   '
+	endstruc
+
+
+		; Partition Table Record
+	struc PARTITION
+_ptBootable		resb 1				; 80h = bootable, 00h = nonbootable
+_ptBeginHead		resb 1				; begin head address
+_ptBeginSector		resb 1				; begin sector address
+_ptBeginCylinder	resb 1				; begin cylinder address
+_ptFileSystemName	resb 1				; file system identifier (see below)
+_ptEndHead		resb 1				; end head address
+_ptEndSector		resb 1				; end sector address
+_ptEndCylinder		resb 1				; end cylinder address
+_ptStartSector		resd 1				; start sector
+					; (relative to beg of disk or extended partition)
+_ptSectors		resd 1				; number of sectors in partition
+	endstruc
+
+
+		; File System ID Codes
+FILESYSID_UNKNOWN	equ 00h				; unknown
+FILESYSID_FAT12		equ 01h				; FAT12
+FILESYSID_FAT16MAX32	equ 04h				; FAT16 < 32 MiB
+FILESYSID_EXTENDED	equ 05h				; Extended DOS partition
+FILESYSID_FAT16		equ 06h				; FAT16
+FILESYSID_FAT32		equ 0Bh				; FAT32
+FILESYSID_FAT32LBA	equ 0Ch				; FAT32 using LBA (0Bh)
+FILESYSID_FAT12LBA	equ 0Dh				; FAT12 using LBA (01h)
+					; (intended for internal RxDOS use, but can appear on disk)
+FILESYSID_FAT16LBA	equ 0Eh				; FAT16 using LBA (06h)
+FILESYSID_EXTENDEDLBA	equ 0Fh				; Extended DOS partition using LBA (05h)
+
+
+FILESYSID_12FAT		equ 01h
+FILESYSID_16FAT		equ 04h
+FILESYSID_LARGE16FAT	equ 06h
+FILESYSID_32FAT		equ 0Bh
+FILESYSID_32XFAT	equ 0Ch
+FILESYSID_16XFAT	equ 0Eh
+FILESYSID_XEXTENDED	equ 0Fh
+FILESYSID_16EXTENDEDX	equ FILESYSID_XEXTENDED
+
+FILESYSID_EXTENDEDLINUX	equ 85h				; Like Extended DOS partition (0Fh)
+FILESYSID_HIDDENDOS	equ 10h				; 11h-1Fh: DOS hidden types 01h-0Fh
+FILESYSID_HIDDENFFDISK	equ 140				; 8Dh-9Bh: Old FFDISK hidden types 01h-0Fh
+
+
+RxDOS_PARTITIONSIGNATURE	equ 0AA55h
+
+
+		; Device Parameter Block
+	struc DEVPB
+_dpSpecialFunc		resb 1
+_dpDevType		resb 1				; device type
+_dpDevAttr		resw 1				; device attributes
+_dpCylinders		resw 1				; number of cylinders
+_dpMediaType		resb 1				; media type
+	endstruc
+		; always followed by a BPB
+
+
+		; Current Directory Structure entry
+		;
+		; The CDS is an array of as many entries as possible logical
+		; drives (set by LASTDRIVE= in RXCONFIG.SYS). Any logical
+		; drive, even if redirected (over Int2F.11), has a CDS entry.
+	struc CDS
+_cdsActualDirectory:
+_cdsDirectory:
+_cdsPath:		resb 67				; 00h ASCIZ current path
+_cdsFlags:		resw 1				; 43h Flags
+_cdsDPB:
+_cdsPtrToDPB:		resd 1				; 45h file system specific (-> DPB)
+_cdsCluster:
+_cdsStartClusterDir:	resd 1				; 49h cluster of current path, 0 = root, -1 = not yet accessed
+_cdsNetwParameter:	resw 1				; 4Dh Int21.5F03 signature
+_cdsNonSubstOffset:	resw 1				; 4Fh offset to path separator of root directory
+			resb 1				; 51h unused (MS-DOS 4.x device type)
+_cdsPtrtoIFSDriver:	resd 1				; 52h -> redirector block, else 0:0
+			resw 1				; 56h available for redirector
+	endstruc
+
+
+		; Redirection for IFS
+_cdsRedirectIFSPtr	equ _cdsStartClusterDir		; "pointer to redirector or REDIRIFS record", else -1:-1
+
+
+		; Flags
+_CDS_NETWORKEDDRIVE	equ 8000h
+_CDS_PHYSICALDRIVE	equ 4000h
+_CDS_JOINEDDRIVE	equ 2000h
+_CDS_SUBSTDRIVE		equ 1000h
+
+_CDS_REDIRECTOR		equ 8000h			; accessed through Int2F.11
+_CDS_PHYSICAL		equ 4000h
+_CDS_JOIN		equ 2000h
+_CDS_SUBST		equ 1000h
+_CDS_NONETLISTING	equ 0080h			; set by MSCDEX and SHSUCDX
+_CDS_VALID		equ _CDS_REDIRECTOR|_CDS_PHYSICAL	; both clear means invalid
+_CDS_LOCALIFS		equ _CDS_REDIRECTOR|_CDS_PHYSICAL	; both set means installable file system
+
+_cdsPath_size		equ 67				; includes zero terminator!
+
+
+%if 1
+		; LFN Current Directory Structure entry
+		;
+		; RxDOS 7.20N:	The LFN CDS is an RxDOSLFN extension to the usual CDS.
+		;		It's currently accessed the same way.
+		; RxDOS 7.30:	The LFN CDSes are arranged as linked list. Each LFN CDS contains
+		;		its currently associated drive and index into the standard CDS or
+		;		0FFh if it's currently unassociated.
+	struc LFNCDS
+_lfncdsLongDirectory	resb 1024			; path with long filenames
+_lfncdsLength		resw 1				; string length
+%if 0
+_lfncdsNonSubstOffset	resw 1
+		; RxDOS 7.30: This addition is required to provide the fixed SUBST
+		; path as LFN on Int21.71AA, bh=02h (query LFN/SFN subst).
+%endif
+_lfnPtrToCDS		resd 1				; pointer to SFN CDS
+	endstruc
+%else
+	struc LFNCDS
+_lfncdsNext:		resd 1				; -> next LFN CDS
+_lfncdsDrive:		resb 1				; associated drive (CDS index) or 0FFh
+_lfncdsReserved:	resb 1				; currently always zero
+_lfncdsNonSubst:	resw 1				; offset to user-visible root directory
+_lfncdsPath:		resb 1024			; LFN current directory and SUBST root, or JOIN directory
+	endstruc
+%endif
+
+		; Memory Control Block (MCB)
+	struc MEMBLOCK
+_memSignature		resb 1				; always 4Dh or 5Ah
+_memParent		resw 1				; seg address of owner
+_memAlloc		resw 1				; allocated size
+_memReserved		resb 3
+_memPgmName		resb 8				; program name or null
+	endstruc
+
+_RxDOS_MEMSIGNATURE	equ 4Dh
+_RxDOS_ENDSIGNATURE	equ 5Ah
+_RxDOS_PARENT_SIGNATURE	equ 0008h			; mem parent signature
+_RxDOS_FREE_MEMBLOCK	equ 0000h			; mem block is free
+_RxDOS_HIGHMEMBLOCK	equ 0A000h -1			; start mem block for high mem
+_MIN_RxDOS_ALLOC_PARAS	equ 2
+
+_MEM_FIRSTFIT_MASK	equ 0003h			; if ZR, first fit
+_MEM_BESTFIT_MASK	equ 0001h			; if NZ, best fit
+_MEM_LASTFIT_MASK	equ 0002h			; if NZ, last fit
+			; These masks and their usage have to be adjusted here
+			; and in the code if a new strategy is defined!
+
+_MEM_FIRSTFIT_LOW	equ 0000h
+_MEM_BESTFIT_LOW	equ 0001h
+_MEM_LASTFIT_LOW	equ 0002h
+_MEM_FIRSTFIT_LOWTHENHIGH	equ 0000h
+_MEM_BESTFIT_LOWTHENHIGH	equ 0001h
+_MEM_LASTFIT_LOWTHENHIGH	equ 0002h
+
+_MEM_FIRSTFIT_HIGHONLY	equ 0040h
+_MEM_BESTFIT_HIGHONLY	equ 0041h
+_MEM_LASTFIT_HIGHONLY	equ 0042h
+
+_MEM_FIRSTFIT_HIGH	equ 0080h
+_MEM_BESTFIT_HIGH	equ 0081h
+_MEM_LASTFIT_HIGH	equ 0082h
+_MEM_FIRSTFIT_HIGHTHENLOW	equ 0080h
+_MEM_BESTFIT_HIGHTHENLOW	equ 0081h
+_MEM_LASTFIT_HIGHTHENLOW	equ 0082h
+
+
+		; Memory Control Block
+	struc MCB
+_mcbSignature:		resb 1				; indicates link ('M') or last ('Z')
+_mcbOwner:		resw 1				; PSP of owner or system (1-4Fh) or free (0)
+_mcbSize:		resw 1				; allocated size in paragraphs
+_mcbReserved:		resb 3
+_mcbName:		resb 8				; program name or zero or S MCB additional data
+	endstruc
+
+	struc SMCB
+_smcbSignature:		resb 1				; must be 'M' (link) or 'Z' (last)
+_smcbOwner:		resw 1				; must be 0008h
+_smcbSize:		resw 1
+_smcbReserved:		resb 3
+_smcbName:		resb 2				; must be 0053h (ASCIZ "S")
+_smcbType:		resb 1				; type of system data
+			resb 1				; reserved, 0
+_smcbLink:		resw 1				; 0 or associated MCB/PSP
+			resw 1				; reserved, 0
+	endstruc
+
+		; Values for _smcbType
+S_OTHER		equ 00h					; Other/Undefined
+						; DOS internal
+S_DOSENTRY	equ 01h					; DOSENTRY section
+S_DOSCODE	equ 02h					; DOSCODE section
+S_DOSDATA	equ 03h					; DOSDATA section
+S_IRQSCODE	equ 04h					; IRQ stack code
+S_IRQSDATA	equ 05h					; IRQ stack data
+S_CDS		equ 06h					; CDS
+S_LFNCDS	equ 07h					; LFN CDSes
+S_DPB		equ 08h					; DPBs
+S_UPB		equ 09h					; UPBs
+S_SFT		equ 0Ah					; SFTs
+S_FCBSFT	equ 0Bh					; FCB SFTs
+S_CCB		equ 0Ch					; CCBs
+S_IRT		equ 0Dh					; IRTs
+S_SECTOR	equ 0Eh					; Single sector buffer
+S_NLS		equ 0Fh					; NLS related
+S_EBDA		equ 10h					; EBDA
+						; System initialization
+S_INITPSP	equ 1Dh					; Initialization PSP
+S_ENVIRONMENT	equ 1Eh					; Master environment
+S_INITIALIZE	equ 1Fh					; DOSINITIALIZE, data
+						; Device drivers
+S_DEVICE	equ 20h					; Device
+S_DEVICEMEMORY	equ 21h					; Allocated by device
+						; Memory management
+S_EXCLDUMA	equ 30h					; Excluded UMA
+S_EXCLDUMASUB	equ 31h					; Excluded UMA with sub-chain of used MCBs
+S_EXCLDLH	equ 32h					; Excluded by LH
+S_EXCLDDOS	equ 33h					; Excluded by DOS (usually 21.4B or 21.714B)
+						; Values F0h-FFh are defined by other software.
+						; _smcbLink then contains an address of either a
+						; valid MCB or PSP. Other software mustn't
+						; recognize an S MCB with _smcbType solely using
+						; this value, it must also insure that _smcbLink
+						; points to an owner known to the software.
+						; Undefined or other allocations not associated
+						; or accessed by other software shouldn't use
+						; F0h-FFh but S_OTHER.
+
+_MCB_LINK		equ 'M'
+_MCB_LAST		equ 'Z'
+_MCB_DOSBLOCK		equ 0008h
+_MCB_FREEBLOCK		equ 0000h
+_MCB_HIGHSTART		equ 0A000h -1
+
+_ALLOC_MINSIZE		equ 2
+
+_ALLOC_FIRSTFIT_MASK	equ 0003h			; if ZR, first fit
+_ALLOC_BESTFIT_MASK	equ 0001h			; if NZ, best fit
+_ALLOC_LASTFIT_MASK	equ 0002h			; if NZ, last fit
+			; These masks and their usage have to be adjusted here
+			; and in the code if a new strategy is defined!
+
+_ALLOC_LOWTHENHIGH	equ 0000h
+_ALLOC_HIGHONLY		equ 0040h
+_ALLOC_HIGHTHENLOW	equ 0080h
+
+_ALLOC_FIRSTFIT		equ 0000h
+_ALLOC_BESTFIT		equ 0001h
+_ALLOC_LASTFIT		equ 0002h
+
+_ALLOC_FIRSTFIT_LOWTHENHIGH	equ 0000h
+_ALLOC_BESTFIT_LOWTHENHIGH	equ 0001h
+_ALLOC_LASTFIT_LOWTHENHIGH	equ 0002h
+
+_ALLOC_FIRSTFIT_HIGHONLY	equ 0040h
+_ALLOC_BESTFIT_HIGHONLY		equ 0041h
+_ALLOC_LASTFIT_HIGHONLY		equ 0042h
+
+_ALLOC_FIRSTFIT_HIGHTHENLOW	equ 0080h
+_ALLOC_BESTFIT_HIGHTHENLOW	equ 0081h
+_ALLOC_LASTFIT_HIGHTHENLOW	equ 0082h
+
+_UMBLINK_DISABLED	equ 0000h			; UMB link states
+_UMBLINK_ENABLED	equ 0001h
+
+
+		; Bits of _RxDOS_ErrorFlags
+EF_ALLOCSTRATEGYMULTIPLE	equ 1
+EF_ALLOCSTRATEGYINVALID		equ 2
+
+
+		; Buffers (Cache) Block
+		;
+		; Compatability note:
+		; This buffer's Definition is slightly different from MSDOS
+		; but appears to function in exactly the same way.
+	struc CCB
+ccbNext			resw 1				; next cache control block
+ccbPrev			resw 1				; prev cache control block
+ccbDrive		resb 1				; drive
+ccbStatus		resb 1				; status flags
+ccbLBN			resd 1				; block number (sector)
+ccbNumCopies		resb 1				; number of FAT copies (*)
+ccbSectorOffsets	resw 1				; offset between FAT sectors (*)
+ccbDPB			resd 1				; pointer to drive parameter block
+ccbCount		resw 1				; count if remote
+ccbSFTIdent		resb 1				; system sft Handle (*)
+ccbData			resb 512			; data
+							; (*) unused by RxDOS
+	endstruc
+
+ccbChecksum		equ ccbSectorOffsets		; checksum protection
+
+
+		; Flags
+ccb_isONHOLD		equ 01h				; used internally
+ccb_isFAT		equ 02h
+ccb_isDIR		equ 04h
+ccb_isDATA		equ 08h
+ccb_isVALID		equ 20h				; contains valid data
+ccb_isDIRTY		equ 40h
+ccb_isREMOTE		equ 80h
+
+
+		; Program Segment Prefix (PSP)
+		; Note that data at offset 0050h+ is re-used by various TSRs.
+	struc PSP
+pspCALL0:		resw 1				; 0000h "int 20h" instruction (to terminate on "call 0")
+pspNextParagraph:	resw 1				; 0002h address of next memory block
+pspReserved1:		resb 1				; 0004h unused
+pspCALL5:		resb 5				; 0005h calls a special Int21 dispatcher (on "call 5")
+pspInt22:		resd 1				; 000Ah Address to return to after terminate
+pspInt23:		resd 1				; 000Eh Control-C vector to restore when terminating
+pspInt24:		resd 1				; 0012h Critical error vector to restore when terminating
+pspParent:		resw 1				; 0016h PSP of parent
+pspAHT:			resb 20				; 0018h default Application Handle Table
+ endarea pspAHT
+pspEnvironment:		resw 1				; 002Ch address of environment block
+pspUserStack:		resd 1				; 002Eh address of user stack frame on Int21 entry
+pspAHTsize:		resw 1				; 0032h number of Application Handles (default: 20)
+pspAHTaddress:		resd 1				; 0034h address of AHT (default: PSP:pspAHT)
+pspShareChain:		resd 1				; 0038h Share chain pointer (next PSP)
+pspSaveDTA:						; 003Ch DOS-C <= 2027: saved DTA to avoid DTABUG
+pspReserved2:		resb 4				; 003Ch unused (DBCS flag, APPEND)
+pspVersion:		resw 1				; 0040h Major, minor version (returned from Int21.30)
+pspReserved3:		resb 14				; 0042h unused (Windows 3.x)
+pspDosCall:		resb 3				; 0050h "int 21h"\"retf" instructions (Int21 on "call PSP:50")
+pspReserved4:		resb 9				; 0053h unused
+pspFCB_1:		resb 16				; 005Ch First default FCB
+pspFCB_2:		resb 16				; 006Ch Second default FCB
+pspReserved5:		resb 4				; 007Ch unused
+pspDTA:							; 0080h default DTA and
+pspCommandTail:		resb 128			; 0080h command tail (one byte length, cr-terminated command line)
+	endstruc 1
+
+
+pspPHT			equ pspAHT
+pspPHTsize		equ pspAHTsize
+pspPHTaddress		equ pspAHTaddress
+		; Labels from RxDOS <= 7.20N
+pspInt20		equ pspCALL0
+pspDispatcher		equ pspCALL5
+pspTerminateVect	equ pspInt22
+pspControlCVect		equ pspInt23
+pspCritErrorVect	equ pspInt24
+pspParentId		equ pspParent
+pspHandleTable		equ pspAHT
+pspFileHandleCount	equ pspAHTsize
+pspFileHandlePtr	equ pspAHTaddress
+
+
+		; .EXE file header
+	struc EXEHEADER
+exeSignature		resw 1				; .EXE file signature
+exeExtraBytes		resw 1				; number of bytes in last partial page
+exePages		resw 1				; number of whole and partial pages
+exeRelocItems		resw 1				; number of pointers in reloc table
+exeHeaderSize		resw 1				; size of header, in paragraphs
+exeMinAlloc		resw 1				; minimum allocation (parag)
+exeMaxAlloc		resw 1				; maximum allocation (parag)
+exeInitSS		resw 1				; initial ss value
+exeInitSP		resw 1				; initial sp value
+exeChecksum		resw 1				; complemented checksum
+exeInitIP		resw 1				; initial ip value
+exeInitCS		resw 1				; initial cs value
+exeRelocTable		resw 1				; byte offset to reloc table
+exeOverlay		resw 1				; overlay number
+			resw 16				; reserved (unused)
+exeNewExe		resd 1				; pointer to new EXE header
+	endstruc
+
+EXE_SIGNATURE		equ 5A4DH			; 'MZ'
+
+
+		; Execution State
+	struc EXECSTATE
+			resw 1
+execFlags		resw 1
+execProgName		resd 1
+execPSP			resw 1
+execStartAddr		resd 1
+execProgSize		resd 1
+	endstruc
+
+
+		; Load and Execute
+	struc EXEC
+lexecEnvironment	resw 1
+lexecCommandTail	resd 1
+lexecFCB_1		resd 1
+lexecFCB_2		resd 1
+	endstruc
+
+
+		; Load Program
+	struc LOADPROG
+lprogEnvironment	resw 1
+lprogCommandTail	resd 1
+lprogFCB_1		resd 1
+lprogFCB_2		resd 1
+lprogSSSP		resd 1				; starting stack address
+lprogCSIP		resd 1				; starting code address
+	endstruc
+
+
+		; Load Overlay
+	struc LOADOVERLAY
+loverSegLoadAddress	resw 1
+loverRelocFactor	resw 1				; .EXE files only
+	endstruc
+
+
+		; Get Buffered Input Line Structure
+	struc BUFLINE
+bufMaxLength		resb 1				; max bytes
+bufActualLength		resb 1				; actual bytes read
+bufData			resb 128			; actual bytes (any length)
+	endstruc
+
+
+		; Line Editor Structure
+	struc LINEEDITOR
+editCursor		resw 1				; cursor offset
+editMaxAvail		resw 1				; max characters in buffer
+editMaxBuffer		resw 1				; max characters allowed
+editFlags		resw 1				; flags
+editPhysCursorRow	resb 1				; beg of edit phys cursor pos
+editPhysCursorCol	resb 1				; beg of edit phys cursor pos
+editBufPointer		resd 1				; pointer to client buffer
+editTemplateCharsAvailable	resw 1			; characters available
+	endstruc
+
+
+editInsertFlag		equ 8000h			; insert mode
+editSearchFlag		equ 4000h			; search mode
+editControlFlag		equ 2000h			; next character a control character
+
+
+		; Clock data
+	struc CLOCKDATA
+cl_daysSince1980	resw 1				; since 1980-01-01
+cl_minutes		resb 1
+cl_hours		resb 1
+cl_hseconds		resb 1
+cl_seconds		resb 1
+
+cl_day			resb 1
+cl_month		resb 1
+cl_year			resw 1
+	endstruc
+
+
+		; DOSERROR Structure
+	struc DOSERROR
+errAX			resw 1				; AX
+errBX			resw 1				; BX
+errCX			resw 1				; CX
+errDX			resw 1				; DX
+errSI			resw 1				; SI
+errDI			resw 1				; DI
+errDS			resw 1				; DS
+errES			resw 1				; ES
+errReserved		resw 1				; Reserved
+errUID			resw 1				; user (computer) ID
+errPID			resw 1				; program ID (PSP)
+	endstruc
+
+
+		; DOS Error Messages
+		;
+		; All error messages are defined here.
+errInvalidFunction	equ 0001h
+errFileNotFound		equ 0002h
+errPathNotFound		equ 0003h
+errIllegalName		equ errPathNotFound
+
+errNoHandlesAvailable	equ 0004h
+errAccessDenied		equ 0005h
+errInvalidHandle	equ 0006h
+errMCBCorrupted		equ 0007h
+errArenaTrashed		equ errMCBCorrupted		; obsolete symbol
+errNotEnoughMemory	equ 0008h
+errInvalidBlock		equ 0009h
+
+errInvalidAccess	equ 000Ch
+errInvalidDrive		equ 000Fh
+errCurrentDirectory	equ 0010h
+errNoMoreFiles		equ 0012h
+errWriteProtect		equ 0013h			; RxDOS 7.20N
+errBadReqStruc		equ 0018h			; RxDOS 7.20N
+errFileExists		equ 0050h
+
+errFCBSizeTooLarge	equ 0002h
+
+
+		; Critical error (Int24) flags
+CRITERROR_ABORT		equ 02h
+CRITERROR_TERMINATE	equ CRITERROR_ABORT		; obsolete symbol, use "Abort"
+CRITERROR_RETRY		equ 01h
+CRITERROR_IGNORE	equ 00h
+CRITERROR_FAIL		equ 03h
+
+CRITERROR_RETRYALLOWED	equ 0010h
+CRITERROR_IGNOREALLOWED	equ 0008h
+CRITERROR_FAILALLOWED	equ 0020h
+
+CRITERROR_STDRETRIES	equ 03				; retry three times.
+
+
+		; Extended Errors Class Codes
+ERRCLASS_OUTRES		equ 01h				; out of resources
+ERRCLASS_TEMPSIT	equ 02h				; not an error, temporary situation
+ERRCLASS_AUTH		equ 03h				; authorization problem
+ERRCLASS_INTRN		equ 04h				; internal error
+ERRCLASS_HRDFAIL	equ 05h				; hardware failure
+ERRCLASS_SYSFAIL	equ 06h				; system failure
+ERRCLASS_APPERR		equ 07h				; application error (inv param or buff ptr)
+ERRCLASS_NOTFND		equ 08h				; item not found
+ERRCLASS_BADFMT		equ 09h				; bad format
+ERRCLASS_LOCKED		equ 0Ah				; interlocked item or file
+ERRCLASS_MEDIA		equ 0Bh				; media error
+ERRCLASS_ALREADY	equ 0Ch				; item already exists
+ERRCLASS_UNK		equ 0Dh				; unknown
+
+
+		; Extended Errors Suggested Action Codes
+ERRACT_RETRY		equ 01h				; retry immediately
+ERRACT_DLYRET		equ 02h				; delay and retry
+ERRACT_USER		equ 03h				; bad user input
+ERRACT_ABORT		equ 04h				; terminate in orderly manner
+ERRACT_PANIC		equ 05h				; terminate immediately
+ERRACT_IGNORE		equ 06h				; ignore error
+ERRACT_INTRET		equ 07h				; prompt user (chg disk, etc... )
+
+
+		; Extended Errors Location Codes
+ERRLOC_UNK		equ 01h				; unknown
+ERRLOC_DISK		equ 02h				; random-access device
+ERRLOC_NET		equ 03h				; network
+ERRLOC_SERDEV		equ 04h				; serial device
+ERRLOC_MEM		equ 05h				; memory
+
+
+		; Device Parameters Block
+		; RxDOS 7.20N:	Former also in RxDOSIOC.ASM
+	struc DEVICEPARAMETERS
+devparmSpecialFcts	resb 1				; special functions
+devparmDeviceType	resb 1				; device type
+devparmDeviceAttribs	resw 1				; device attributes
+devparmNumCylinders	resw 1				; # cylinders (size)
+devparmMediaType	resb 1				; media type (00h all except 360k disk)
+devparmBPB		resb 25				; bpb (first 25 bytes)
+	endstruc
+
+
+		; Device Type Codes
+		; RxDOS 7.20N:	Former also in RxDOSIOC.ASM
+DEVICETYPE_360K		equ 00h
+DEVICETYPE_720K		equ 02h
+DEVICETYPE_FLOPPY	equ 01h				; 1.2M floppy
+DEVICETYPE_8_SD		equ 03h				; 8 inch single density
+DEVICETYPE_8_DD		equ 04h				; 8 inch double density
+DEVICETYPE_FIXEDDISK	equ 05h				; fixed disk
+DEVICETYPE_TAPEDRIVE	equ 06h				; tape drive
+DEVICETYPE_144FLOPPY	equ 07h				; 1.44M floppy
+DEVICETYPE_RWOPTICAL	equ 08h				; read/write optical disk
+DEVICETYPE_288FLOPPY	equ 09h				; 2.88M floppy
+
+
+		; BIOS Parameters
+		;
+		; These Definitions are part of the common BIOS access area
+		; at seg 40:xxxx
+_BIOS_Memory		equ 0013h
+_BIOS_KeyboardFlags	equ 0017h
+_BIOS_BreakFlag		equ 0071h
+_BIOS_NumFixedDrives	equ 0075h
+
+_BIOS_KB_NumLock	equ 20h				; used to set/alter numlock in init
+_BIOS_BREAK_STATE	equ 80h				; used to detect Break state
+
+		; BIO data in segment 50h
+_BIO_activeDJdrive	equ 0004h			; byte: logical drive associated with the single floppy drive
+
+
+		; SYSINIT Parameters
+		;
+		; These parameters are passed between RxBIO and RxDOS
+		; at startup.
+		;
+		; Obsolete. RxDOS 7.30 doesn't have a separate RxBIO.
+	struc SYSINIT
+initBootDrive		resb 1				; unit code
+initTotalDrives		resb 1				; detected by RxBIO
+initLowMemSegment	resw 1				; low memory segment
+initMemParagraphs	resw 1				; memory size
+initDeviceChain		resd 1				; start of device chain (CON)
+initRelocHighBeg:
+initRelocHighBegAddress	resd 1
+initRelocHighSize	resw 1				; bytes to relocate
+initRelocHighNotify	resw 1				; call back function address
+initRelocLowBeg:
+initRelocLowBegAddress	resd 1				; only used if RxBIO reloc to HMA
+initRelocLowSize	resw 1				; bytes to relocate
+initRelocLowNotify	resw 1				; call back function address
+	endstruc
+
+
+		; Disk Parameter Block
+	struc DISKPARAM
+_dptControlTimers	resw 1				; see below for Definition
+_dptMotorOffDelay	resb 1				; clock ticks
+_dptBytesPerSector	resb 1				; 00 = 128, 01 = 256, ...
+_dptSectorsPerTrack	resb 1				;
+_dptGapLength		resb 1				; gap between sectors
+							;	2Ah = 5.25"
+							;	1Bh = 3.5"
+_dptDataLength		resb 1				;
+_dptFormatGapLength	resb 1				; gap length when formatting
+_dptFormatFillerByte	resb 1				; default F6h.
+_dptHeadSettleTime	resb 1				; in milliseconds.
+_dptMotorStartTime	resb 1				; in 1/8 seconds.
+	endstruc
+
+
+		; Control Timers
+DPT_STEPRATEMASK	equ 0F000h			; bits 15-12
+DPT_HEADUNLOADTIME	equ 00F00h			; bits 11-08 (0fh = 240 ms)
+
+DPT_HEADLOADTIME	equ 000FEh			; bits 07-01 (01h = 4 ms)
+DPT_NONDMA_MODE		equ 00001h			; bit 0 (always 0)
+
+
+		; Device request structures		; which request header structure:
+DEVICEINIT		equ 00h				; ir
+MEDIAREQUEST		equ 01h				; mr
+BUILDBPB		equ 02h				; bbr
+IOCTLREAD		equ 03h
+DEVICEREAD		equ 04h				; rwr
+NONDESTRREAD		equ 05h
+INPUTSTATUS		equ 06h
+INPUTFLUSH		equ 07h
+DEVICEWRITE		equ 08h				; rwr
+DEVICEWRITEVERIFY	equ 09h				; rwr
+OUTPUTSTATUS		equ 0Ah
+OUTPUTFLUSH		equ 0Bh
+IOCTLWRITE		equ 0Ch
+OPENDEVICE		equ 0Dh
+CLOSEDEVICE		equ 0Eh
+REMOVABLEMEDIA		equ 0Fh
+OUTPUTTILLBUSY		equ 10h
+GENERICIOCTL		equ 13h
+GETLOGICALDEVICE	equ 17h
+SETLOGICALDEVICE	equ 18h
+IOCTLQUERY		equ 19h
+
+
+		; Internal Device Service Table
+	 struc DEVSERVICETABLE
+devsrvEntries		resb 1
+devsrvBranches		resw 1
+	endstruc
+
+
+		; Common part of the device request header
+		; The description consists of an offset, the usage and whether this field is set by the device
+	struc DEVReqHeader
+rhLength:		resb 1				; 00h size of passed structure in bytes
+rhUnit:			resb 1				; 01h block device unit
+rhFunction:		resb 1				; 02h request function number
+rhStatus:		resw 1				; 03h status flags (device)
+rhReserved:		resb 8				; 05h unused
+	endstruc					; 0Dh rhFunction specific extensions
+
+
+		; Device initialization request header
+	struc INITReqHeader
+irLength:		resb 1
+irUnit:			resb 1
+irFunction:		resb 1
+irStatus:		resw 1
+irReserved:		resb 8
+irUnits:		resb 1				; 0Dh number of block device units (device)
+irEndAddress:		resd 1				; 0Eh behind available memory
+							; 0Eh behind memory to hold resident (device)
+irParamAddress:		resd 1				; 12h -> command line, behind "DEVICE=" (13-, 10- or 0-terminated)
+							; 12h -> block device BPB pointer array (device)
+irDriveNumber:		resb 1				; 16h first assigned drive
+irMessageFlag:		resw 1				; 17h error message flag (device)
+	endstruc
+
+
+		; Media check request header
+	struc MEDIAReqHeader
+mrLength:		resb 1
+mrUnit:			resb 1
+mrFunction:		resb 1
+mrStatus:		resw 1
+mrReserved:		resb 8
+mrMediaID:		resb 1				; 0Dh media type identifier
+mrReturn:		resb 1				; 0Eh media changed status (device)
+mrVolumeID:		resd 1				; 0Fh volume identifier
+	endstruc
+
+		; Values for mrReturn
+MEDIA_HASCHANGED	equ 0FFh			; DPB and open SFTs invalid
+MEDIA_UNCHANGED		equ 1				; DPB and open SFTs valid (always for fixed disks)
+MEDIA_UNKNOWN		equ 0				; check whether DPB still valid
+
+
+		; Build BPB request header
+	struc BUILDBPBReqHeader
+bbrLength:		resb 1
+bbrUnit:		resb 1
+bbrFunction:		resb 1
+bbrStatus:		resw 1
+bbrReserved:		resb 8
+
+bbrMediaID:		resb 1				; 0Dh media type identifier
+bbrFATSector:		resd 1				; 0Eh -> buffer with first FAT sector
+bbrBPBAddress:		resd 1				; 12h -> BPB (device)
+	endstruc
+
+
+		; Read/Write request header
+	struc READReqHeader
+rwrLength:		resb 1
+rwrUnit:		resb 1
+rwrFunction:		resb 1
+rwrStatus:		resw 1
+rwrReserved:		resb 8
+
+rwrMediaID:		resb 1				; 0Dh media type identifier
+rwrBuffer:		resd 1				; 0Eh -> transfer buffer
+rwrBytesReq:		resw 1				; 12h requested number of sectors or characters
+							; 12h number of sectors or characters actually read (device)
+rwrStartSec:		resw 1				; 14h block device sector address (or 0FFFFh)
+rwrVolumeID:		resd 1				; 16h block device volume identifier
+rwrHugeStartSec:	resd 1				; 1Ah block device 32-bit sector address (if rwrStartSec 0FFFFh)
+	endstruc
+
+
+		; Non-destructive look-ahead read request header
+	struc NONDESTREADReqHeader
+ndrLength:		resb 1
+ndrUnit:		resb 1
+ndrFunction:		resb 1
+ndrStatus:		resw 1
+ndrReserved:		resb 8
+ndrCharRead:		resb 1				; 0Dh available character if any (device)
+	endstruc
+
+
+		; Device header
+	struc DEVICEHEADER
+devLink:
+devNext:		resd 1				; 00h -> next device header (unless pointer 0FFFFh)
+devAttributes:		resw 1				; 04h device attributes
+devStrategy:		resw 1				; 06h -> device strategy far entry, same segment
+devInterrupt:		resw 1				; 08h -> device interrupt far entry, same segment
+devUnit:
+devUnits:						; 0Ah number of block device units
+devNameChar:						; 0Ah name of character device (8 byte)
+devName:		resb 1				;
+devNameBlock:		resb 7				; 0Bh name of block device (7 byte, optional)
+%if 1
+		; extended definition, for RxBIO devices (non-standard)
+		;
+		; RxDOS 7.30:	Vanished, now stored at device strategies.
+devTablePtr:		resw 1
+devLogicalUnit:		resw 1
+%endif
+	endstruc
+
+
+		; Device Definition Flags
+
+		; valid regardless of DEV_CHAR/DEV_BLOCK:
+DEV_GENERICIOCTL	equ 0040h			; supports generic IOCTL (command 19h) (DEV_LOGICALMAPPING)
+DEV_IOCTL		equ 0080h			; supports IOCTL (command 13h; if DEV_BLOCK also 17h and 18h)
+DEV_REMOVABLEMEDIA	equ 0800h			; supports removable media calls
+DEV_IOCTL_RW		equ 4000h			; supports IOCTL read/write
+DEV_CHAR		equ 8000h			; character device
+DEV_BLOCK		equ 0				; opposed to DEV_CHAR
+
+
+		; valid if DEV_CHAR:
+DEV_CHARRESERVED	equ 1000h|0400h|0200h|0100h|0020h
+DEV_STDINPUT		equ 0001h			; CON input device
+DEV_STDOUTPUT		equ 0002h			; CON output device
+DEV_NULL		equ 0004h			; NUL device
+DEV_CLOCK		equ 0008h			; CLOCK$ device
+DEV_FASTCHARIO		equ 0010h			; CON output device: supports Int29
+DEV_OUTPUTTILLBUSY	equ 2000h			; supports output till busy
+
+		; valid if DEV_BLOCK:
+DEV_BLOCKRESERVED	equ 0400h|0020h|0010h|0008h|0004h|0001h
+DEV_BLOCKUNKNOWN	equ 0200h|0100h			; Used by Microsoft software
+DEV_DENYACCESS		equ 0200h			; seems to be set to deny access
+DEV_BLOCKEXTNADDRESS	equ 0002h			; supports 32-bit sector address
+DEV_LOGICALMAPPING	equ 0040h			; supports logical device mapping (DEV_GENERICIOCTL)
+DEV_NETWORKDEVICE	equ 1000h			; remote device
+DEV_REQUIRESFATSECTOR	equ 2000h			; doesn't require first FAT sector to build BPB ("non-IBM")
+
+
+		; rhStatus flags (set by device unless indicated otherwise)
+OP_RESERVED		equ 4000h|2000h|1000h|0800h
+OP_WAIT			equ 0400h			; set by caller to enable waiting for something ??
+OP_ERROR		equ 8000h			; error occured (most will cause Int24 if called by DOS)
+OP_BUSY			equ 0200h			; device is busy
+OP_DONE			equ 0100h			; operation done (always set)
+OP_EXITERROR		equ OP_ERROR|OP_DONE
+OP_NODATA		equ OP_BUSY|OP_DONE
+OP_ERRORCODE		equ 00FFh			; mask to get error code if OP_ERROR
+
+		; rhStatus&OP_ERRORCODE values
+devErrWriteProtectViol	equ 00h
+devErrUnknownUnit	equ 01h
+devErrDeviceNotReady	equ 02h
+devErrUnknownCommand	equ 03h
+devErrCRCerr		equ 04h
+devErrBadDriveReq	equ 05h
+devErrSeekError		equ 06h
+devErrUnknownMedia	equ 07h
+devErrSectorNotFound	equ 08h
+devErrPrinterOutOfPaper	equ 09h
+devErrPrinterOutPaper	equ devErrPrinterOutOfPaper
+devErrWriteFault	equ 0Ah	; 10
+devErrReadFault		equ 0Bh	; 11
+devErrGeneralFailure	equ 0Ch	; 12
+devErrSharingViolation	equ 0Dh	; 13
+devErrLockViolation	equ 0Eh	; 14
+devErrInvalidDiskChange	equ 0Fh	; 15
+
+
+		; Unit Parameter Block (UPB) [called Drive Data Table (DDT) in RBIL 61, Unit DeSCriptor (UDSC) in DR-DOS]
+		; Contains a BPB which is used by DOS to create the DPB. Exists for each FAT partition of a disk.
+		; This structure is accessed by the internal block device driver only.
+	struc DISKBLOCK
+_dskNextPointer			resd 1			; pointer to next
+_dskPhysDriveNumber		resb 1			; BIOS unit 00h-03h, 80h-FFh
+_dskDOSLogicalDiskUnit		resb 1			; Device unit
+_dskBPB				resb sizeBPB		;
+_dskFATSystemType		resb 1			; FAT32 disk type (non-std usage)
+							; b06: FAT16 (else FAT12)
+							; b07: Not formatted, don't access
+_dskDevOpenCount		resw 1			; Count of open files on drive
+_dskDeviceType			resb 1			; -1 means DPB not init
+_dskStatusFlag			resw 1			; disk change detected status
+_dskCylinders			resw 1			; 25 Number of cylinders of partition
+_dskDefaultBPB			resb sizeBPB		; 27 (not used) BPB for highest capacity
+
+_dskPartitionBeginHead		resb 1
+_dskPartitionBeginSector	resb 1
+_dskPartitionBeginCylinder	resb 1			; begin CHS address
+_dskPartitionEndHead		resb 1
+_dskPartitionEndSector		resb 1
+_dskPartitionEndCylinder	resb 1			; end CHS address
+
+_dskCylinderAtLastOp		resb 1			; 46 last accessed cylinder
+_dskClockAtLastOp:					; (dword, removable) tick of last access
+_dskPartitionType		resw 1			; 47 -1=Pri, 1=Ext (MS-DOS 5+: always 1)
+_dskAbsoluteBeginCylinder	resw 1			; 49 absolute begin cylinder
+_dskVolumeName			resb (sizeFILENAME + 1)	; Label from extended BPB
+_dskSerialNumber		resd 1			; 57 Serial number from extended BPB
+_dskFATSystemID			resb 8			; 5B 'FAT32   ', 'FAT16   ', 'FAT12   '
+
+%if 0
+				resb 1			; ASCIZ
+%endif
+		; Following is RxDOS & DOS-C specific
+_dskExtHiddenSectors		resd 1			; extended hidden sectors (begin LBA)
+
+		; Following is RxDOS specific
+_dskExtReadWrite		resb 1			; extended read/write supported
+_dskExtReadFct			resw 1			; extended read function
+_dskExtWriteFct			resw 1			; extended write function
+
+		; FATSystemID and following like EDR-DOS:
+; _dskFATSystemID		resb 9			; as above but ASCIZ
+; _dskInt13Ext			resw 1			; Int13 LBA services version
+; _dskInt13Bits			resw 1			; Int13 LBA services support bitmap
+	endstruc
+
+sizeDISKBLOCK			equ DISKBLOCK_size
+
+
+		; Status flags for DISKBLOCK status word (most from DOS-C header)
+_dskflagFixed		equ 0001h		; fixed disk, else removable
+_dskflagChangeline	equ 0002h		; change line supported
+_dskflagCurBPBLock	equ 0004h		; drive just formatted
+_dskflagSamesize	equ 0008h		; ??
+_dskflagMultLog		equ 0010h		; ?? EDR-DOS: "VFLOPPY"
+_dskflagCurLog		equ 0020h		; ??
+_dskflagChange		equ 0040h		; ??
+_dskflagChanged		equ 0080h		; ??
+_dskflagReformat	equ 0100h		; ??, EDR-DOS: Media id from BPB
+_dskflagNoAccess	equ 0200h		; Unformatted, don't access
+
+		; DOS-C specific
+_dskflagLBA		equ 0400h		; Int13 LBA read/write supported
+_dskflagVerify		equ 0800h		; Write with verify
+
+
+
+%if 0
+		; Unit Parameter Block
+	struc UPB
+_upbNext:		resd 1
+_upbBIOSUnit:		resb 1
+_upbDeviceUnit:		resb 1
+_upbBPB:		resb BPB_size
+_upbFlags1:		resb 1
+_upbDeviceOpen:		resw 1
+
+
+%endif
+
+		; Media Descriptor Table
+		; RxDOS 7.20N:	Former in RxBIO.ASM
+	struc MEDIADESCRIPT
+_mdtSpecifyByte			resw 1
+_mdtTimerTillMotorOff		resb 1
+_mdtBytesPerSector		resb 1			; 0=128, 1=256, 2=512, 3=1024
+_mdtSectorsPerTrack		resb 1
+_mdtGapLengthinBytes		resb 1
+_mdtDataLengthinBytes		resb 1
+_mdtGapLengthForFormat		resb 1
+_mdtFillByteForFormat		resb 1
+_mdtHeadSettleTime		resb 1			; in ms
+_mdtMotorStartupTime		resb 1			; in 1/8 seconds
+%if 0
+_mdtMore:			resb 3			; RBIL 61: Used by IBM SurePath BIOS
+%endif
+	endstruc 1
+
+sizeMEDIADESCRIPT		equ MEDIADESCRIPT_size
+
+
+		; Extended Disk IO Request Packet
+		; RxDOS 7.20N:	Former in RxBIO.ASM
+	struc EXTENDEDREQUESTPACKET
+_lbaSize			resb 1			; size (10h)
+_lbaReserved			resb 1			; 00
+_lbaNumBlocks			resw 1			; num blocks
+_lbaTransferAddress		resd 1			; transfer location
+_lbaAbsBlockNumber		resq 1			; Zero-based block number
+			; Formula to calculate the block from a CHS address:
+			; Block		= ((Cylinder * NumHeads) + Head) * NumSectors + Sector - 1
+			;
+			; Opposite direction:
+			; Cylinder	= ((Block - Sector + 1) / NumSectors - Head) / NumHeads
+			; Head		= ((Block - Sector + 1) / NumSectors) - (Cylinder * NumHeads)
+			; Sector	= Block + 1 - (((Cylinder * NumHeads) + Head) * NumSectors)
+	endstruc
+
+sizeEXTENDEDREQUESTPACKET	equ EXTENDEDREQUESTPACKET_size
+
+
+		; Load Program Envelope
+		; RxDOS 7.20N:	Former in RxDOSEXE.ASM
+	struc LOADENVELOPE
+loadEnvOperationMode		resw 1
+loadEnvStartSegment		resw 1
+loadEnvRelocFactor		resw 1
+loadEnvExecBlock		resd 1			; exec block
+
+loadEnvExtraEnvSizeParas	resw 1			; additional environment size required (paras)
+loadEnvProgramPSP		resw 1
+loadEnvEnvBlock			resw 1
+	endstruc
+
+sizeloadEnvelope		equ LOADENVELOPE_size
+
+
+		; Device Parameters Block
+		; RxDOS 7.20N:	Former in RxDOSIOC.ASM
+	struc MEDIAPARAMETERS
+mediaparamSpecialFcts	resb 1				; always 0
+mediaparamDiskHeads	resw 1				; disk heads
+mediaparamDiskCyl	resw 1				; disk cylinders
+mediaparamFirstSector	resw 1				; first sector
+mediaparamDiskSectors	resw 1				; disk sectors
+mediaparamXferAddress	resd 1				; xfer address (not used)
+	endstruc
+
+
+		; Scan Directory Entry
+		; RxDOS 7.20N:	Former in RxDOSLFN.ASM
+	struc SCANDIR
+_scandirStringLength	resw 1				; string length
+_scandirStringPointer	resd 1				; string pointer
+
+_scandirDrive		resw 1				; drive
+_scandirCluster		resd 1				; parent directory cluster
+_scandirFileOffset	resd 1				; where to start searching in directory
+
+_scandirFileAcLongEntry	resd 1				; file offset, long dir entry
+_scandirFileAcShortEntry resd 1				; file offset, short dir entry
+
+_scandirLongFilenameStr	resw 1				; pointer to LFN storage (ss:)
+_scandirShortFilenameStr resw 1				; pointer to SFN storage (ss:)
+	endstruc
+
+sizeSCANDIR		equ SCANDIR_size
+
+
+		; Compare Wild Characters
+		; RxDOS 7.20N:	Former in RxDOSLFN.ASM
+maxEntriesCOMPARELIST	equ 32
+_csStringLength		equ _segment
+
+	struc COMPARESTRUCT
+_csFlags		resw 1				; flags
+_cspStartStringSegment	resw 1				; string base segment
+_cspStartString		resd 1				; must start with (ptr / count)
+_cspEndString		resd 1				; must end with (ptr / count)
+
+_csCountEntries		resw 1				; entries in compare list
+_csCompareList		resd maxEntriesCOMPARELIST	; compare list (ptr / count)
+	endstruc
+
+sizeCompareListItem	equ (4*maxEntriesCOMPARELIST) / maxEntriesCOMPARELIST
+sizeCompareListStruct	equ COMPARESTRUCT_size
+
+CSMATCHES_ALL		equ 8000h			; is "*.*"
+CSNOWILD_CHARS		equ 4000h			; no * or ? (must match exact)
+
+
+		; Canonical Pointer Entry
+		; RxDOS 7.20N:	Former in RxDOSLFN.ASM
+	struc CANONICALPOINTER
+_canpFlags		resw 1				; flags
+_canpStringLength	resw 1				; string length
+_canpStringPointer	resd 1				; string pointer
+	endstruc
+
+maxEntriesCANONICALLIST	equ 64
+CANONICALENTRY_WILDCHARS equ 0001h			; entry contains ? or *
+sizeCANONICALPOINTER	equ CANONICALPOINTER_size
+
+
+		; Canonical Pointer List
+		; RxDOS 7.20N:	Former in RxDOSLFN.ASM
+	struc CANONICALPOINTERLIST
+_canpNumEntries		resw 1				; number of entries
+_canpOptSearchEntry	resw 1				; opt search entry
+_canpDrive		resw 1				; drive
+_canpCluster		resd 1				; cluster
+_canpArray		resb (maxEntriesCANONICALLIST * sizeCANONICALPOINTER)
+	endstruc
+
+sizeCANONICALPOINTERLIST equ CANONICALPOINTERLIST_size
+
+
+		; LFN Directory Entries
+		; RxDOS 7.20N:	Former in RxDOSLFN.ASM
+	struc LFNDIRENTRY
+LFN_SequenceByte	resb 1
+LFN_Part1		resw 5				; Name, part 1 (5 UTF-16 characters)
+LFN_Attributes		resb 1				; ATTR_LONGFILENAME
+LFN_EntryType		resb 1				; Type
+LFN_Checksum		resb 1				; Checksum
+LFN_Part2		resw 6				; Name, part 2 (6 UTF-16 characters)
+LFN_Unknown		resw 1				; Starting cluster number, always 0
+LFN_Part3		resw 2				; Name, part 3 (2 UTF-16 characters)
+	endstruc
+
+LFN_NAMECHARPERENTRY	equ 5 + 6 + 2			; How many UTF-16 characters per entry
+
+		; content of LFN_SequenceByte
+LFN_START_LFNENTRY	equ 40h
+LFN_SEQUENCEMASK	equ (LFN_START_LFNENTRY-1)	; 3Fh. However only up to 20 LFN entries may be linked
+							; together so any number >20 is invalid.
+LFN_FIRSTENTRY		equ 40h
+LFN_DELETEDENTRY	equ 80h				; if set, entry treated like E5h SFN
+
+
+
+
+		; Long Filename Structure
+		; RxDOS 7.20N:	Former in RxDOSLFN.ASM
+	struc STRUCTLONGFILENAME
+_lfnFlags		resw 1				; flags
+_lfnOptions		resw 1				; options
+
+_lfnDrive		resw 1				; drive
+_lfnCluster		resd 1				; cluster
+_lfnFileSize		resd 1				; file size
+
+_lfnDirCluster		resd 1				; directory cluster
+_lfnOffsetLongEntry	resd 1				; offset in dir to start of long entry
+_lfnOffsetShortEntry	resd 1				; offset in dir to start of short entry
+
+_lfnSearchAttribs	resb 1				; search attributes
+_lfnMustMatchAttribs	resb 1				; must match attributes
+
+_lfnDirEntriesReqd	resw 1				; required dir entries
+_lfnNameRemainder	resw 1				; name remainder
+_lfnChecksum		resw 1				; checksum
+_lfnSearchStringLength	resw 1				; length of provided long filename
+_lfnSearchLongNameText	resd 1				; pointer to provided long filename
+_lfnShortFCBName	resb (sizeFILENAME + 1)		; short filename
+_lfnCanonicalList	resb sizeCANONICALPOINTERLIST
+	endstruc
+
+		; Flags
+_lfnFlag_IsShortName	equ 8000h			; long name entry points to short name
+sizeSTRUCTLONGFILENAME	equ STRUCTLONGFILENAME_size
+
+sizeLFNPATH		equ 1024
+sizeLFN			equ 260
+
+		; LFN Temp Store
+		; RxDOS 7.20N:	Former in RxDOSLFN.ASM
+	struc LFNTEMPSTORE
+_lfnfindstoreOwner	resw 1				; PSP value of owner
+_lfnfindstoreFindText	resb sizeLFNPATH		; search text
+_lfnfindstoreLFNStruc	resb sizeSTRUCTLONGFILENAME	; LFN struct
+_lfnfindstoreDirAccess	resb sizeDIRACCESS		; dir access
+	endstruc
+
+sizeLFNTEMPSTORE	 equ LFNTEMPSTORE_size
+
+
+		; Type Codes
+DSKFILESYSTYPE_12Bits		equ 00h
+DSKFILESYSTYPE_16Bits		equ 40h
+DSKFILESYSTYPE_Invalid		equ 80h
+DSKFILESYSTYPE_IsValid		equ 40h			; only bits 7, 6 are assignable
+
+
+		; BIOS disk Services Error Codes
+dskErrNoError		equ	0
+dskErrInvalidParameter	equ	1
+dskErrAddrMarkNotFound	equ	2
+dskErrWriteProtected	equ	3
+dskErrSectorNotFound	equ	4
+dskErrResetFailed	equ	5
+dskErrDisketteRemoved	equ	6
+dskErrBadParameterTable	equ	7
+dskErrDMAOverrun	equ	8
+dskErrCross64kBoundary	equ	9
+dskErrBadSector		equ	10
+dskErrBadCylinder	equ	11
+dskErrMediaTypeNotFound	equ	12
+dskErrInvalidNumSectors	equ	13
+dskErrControlAddrMark	equ	14
+dskErrDMAArbOutOfRange	equ	15
+dskErrCRCerror		equ	16
+dskErrECCCorrectedErr	equ	17
+dskErrControllerFailed	equ	20h
+dskErrSeekFailed	equ	40h
+dskErrDriveTimeOut	equ	80h
+dskErrDriveNotReady	equ	0AAh
+dskErrUndefinedError	equ	0BBh
+dskErrWriteFault	equ	0CCh
+dskErrStatusOpFailed	equ	0DDh
+
+
+		; Con definitions
+BIOS_ConRead		equ 00h
+BIOS_ConStatus		equ 01h
+BIOS_ConReadFlags	equ 02h
+
+
+		; Comm definitions
+BIOS_ComInit		equ 00h				; returns line status/ modem status
+BIOS_ComWrite		equ 01h				; returns line status/ modem status
+BIOS_ComRead		equ 02h				; returns line status/ modem status
+BIOS_ComStatus		equ 03h				; returns line status/ modem status
+
+
+		; Comm Line Status Register
+CommLS_TimeOut		equ 8000h
+CommLS_ShiftRegEmpty	equ 4000h
+CommLS_HoldRegEmpty	equ 2000h
+CommLS_BreakDetect	equ 1000h
+
+CommLS_FE		equ 0800h
+CommLS_PE		equ 0400h
+CommLS_OE		equ 0200h
+CommLS_DataAvail	equ 0100h
+
+
+		; Comm Modem Status Register
+CommMS_RLSD		equ 0080h
+CommMS_RING		equ 0040h
+CommMS_DSR		equ 0020h
+CommMS_CTS		equ 0010h
+
+CommMS_ChgRLSD		equ 0008h
+CommMS_ChgRING		equ 0004h
+CommMS_ChgDSR		equ 0002h
+CommMS_ChgCTS		equ 0001h
+
+
+		; Prn definitions
+BIOS_PrnWrite		equ 00h				; returns status
+BIOS_PrnInit		equ 01h
+BIOS_PrnStatus		equ 02h
+
+Prn_RetryCount		equ 03h
+
+
+		; Print Status
+Prn_NotBusy		equ 8000h
+Prn_Ack			equ 4000h
+Prn_OutOfPaper		equ 2000h
+Prn_Selected		equ 1000h
+
+Prn_IOError		equ 0800h
+Prn_TimeOut		equ 0100h
+
+
+		; Define Structure Sizes
+sizeCCB			equ CCB_size
+sizeCCBData		equ 512
+sizeDIRENTRY		equ DIRENTRY_size
+maskDIRINDEX		equ (sizeCCBData / sizeDIRENTRY) - 1
+
+sizeFT			equ FT_size
+sizeSFT			equ SFT_size
+sizeFCB			equ FCB_size
+sizeExtendedFCBHdr	equ ExtendedFCBHdr_size
+sizeCLOCKDATA		equ CLOCKDATA_size
+sizeDOSERROR		equ DOSERROR_size
+
+sizeCDS			equ CDS_size
+sizeLFNCDS		equ LFNCDS_size
+sizeBOOTSECTOR32	equ BOOTSECTOR32_size
+sizeBIGFATBOOTFSINFO	equ BIGFATBOOTFSINFO_size
+sizeEXTENDEDFREESPACE	equ EXTENDEDFREESPACE_size
+
+_dpbVolumeId_size	equ 4
+sizeVolumeID		equ _dpbVolumeId_size
+
+sizeDISKACCESS		equ DISKACCESS_size
+sizeFINDENTRY		equ FINDENTRY_size
+sizeFINDDATA		equ FINDDATA_size
+sizeFindData		equ FINDDATA_size
+sizeFINDDATA_MIN	equ (FINDDATA_size) - 274
+
+sizeMEMBLOCK		equ MEMBLOCK_size
+sizePSP			equ PSP_size
+sizePSPHandleTable	equ pspAHT_size
+sizepspHandleTable	equ sizePSPHandleTable
+
+
+sizeSector		equ 512
+sizeSECTOR		equ sizeSector
+SIZESECTOR		equ sizeSector
+sizePage		equ 512
+sizeParagraph		equ 16
+sizePARAGRAPH		equ sizeParagraph
+sizeParasPerPage	equ (sizePage / sizeParagraph )
+sizeCOUNTRYINFO		equ COUNTRYINFO_size
+sizeDISKPARAM		equ DISKPARAM_size
+
+sizeVolumeLabel		equ 11
+sizevolumeLabel		equ sizeVolumeLabel
+sizePARTITION		equ PARTITION_size
+sizePARTITIONTABLE	equ (4 * sizePARTITION)
+
+sizeEXPANDNAME		equ 128
+sizeCmdLine		equ 128
+sizeCmdLineStruct	equ (sizeCmdLine + 3)
+sizeLINEEDITOR		equ LINEEDITOR_size
+sizeStdRedirec		equ _STDREDIREC_size
+
+sizeEXECSTATE		equ EXECSTATE_size
+sizeEXEHEADER		equ EXEHEADER_size
+sizeEXEC		equ EXEC_size
+sizeLOADPROG		equ LOADPROG_size
+sizeLOADOVERLAY		equ LOADOVERLAY_size
+sizeSYSINIT		equ SYSINIT_size
+
+
+		; Device Headers
+sizeINITReqHeader	equ INITReqHeader_size
+sizeDEVReqHeader	equ DEVReqHeader_size
+sizeREADReqHeader	equ READReqHeader_size
+sizeMEDIAReqHeader	equ MEDIAReqHeader_size
+sizeBUILDBPBReqHeader	equ BUILDBPBReqHeader_size
+sizeDEVICEHEADER	equ DEVICEHEADER_size
+sizeMaxReqHeader	equ sizeREADReqHeader
+
+
+		; Stack Space INCREMENT To Reserve
+RXDOS_PERCALL_STACKRESERVE	equ ( 4 * 1024)
+RXDOS_STACKSIZE			equ ( 3 * RXDOS_PERCALL_STACKRESERVE)
+
+
+%endif ; __RXDSTRUC_MAC__
+
+[list +]

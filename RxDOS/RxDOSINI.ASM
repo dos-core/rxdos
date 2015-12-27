@@ -1,0 +1,2793 @@
+
+%if 0
+
+RxDOSINI - RxDOS initialize
+
+This product is distributed AS IS and contains no warranty
+whatsoever, including warranty of merchantability or
+fitness for a particular purpose.
+
+(c) Copyright 1990, 1999. Mike Podanoffsky
+
+This is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, see
+the file LICENSE.TXT.
+
+%endif
+
+	cpu 8086
+
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
+
+%include "RXDMACRO.MAC"
+%include "RXDSTRUC.MAC"
+
+	global RxDOS_initialize
+	global RxDOS_Heap
+
+	extern _RxDOS_bNumBlockDev
+	extern _RxDOS_BufferList
+	extern _RxDOS_CurrentDrive
+	extern _RxDOS_BootDrive
+
+	extern _RxDOS_CommandShell
+	extern _RxDOS_bLastDrive
+	extern _RxDOS_bSwitchChar
+	extern _RxDOS_bCtrlBreakCheck
+	extern _RxDOS_MaxMemory
+	extern _RxDOS_NULLDev
+	extern _RxDOS_pCDS
+	extern _RxDOS_pLFNCDS
+	extern _RxDOS_Buffers
+
+	extern _RxDOS_pDPB
+	extern _RxDOS_pFT
+	extern _RxDOS_pStartMemBlock
+
+	extern _RxDOS_CurrentSeg
+	extern _RxDOS_CurrentStackTop
+
+	extern _RxDOS_SharedBuffer
+	extern _RxDOS_pDTA
+	extern _RxDOS_CurrentPSP
+	extern _RxDOS_pCONdriver
+	extern _RxDOS_pCLOCKdriver
+
+	extern _RxDOS_UserCodePage
+	extern _RxDOS_SystemCodePage
+	extern _RxDOS_CurrCountryInfo
+	extern _RxDOS_UserCountryCode
+	extern _RxDOS_SysCountryCode
+	extern FindCountryInfo
+
+	extern _RetCallersStackFrame
+	extern RxDOS_start
+
+	extern _CallDOS
+	extern _Interrupt_20
+	extern _Interrupt_21
+	extern _Interrupt_23
+	extern _Interrupt_24
+	extern _Interrupt_25
+	extern _Interrupt_26
+	extern _Interrupt_27
+	extern _Interrupt_28
+	extern _Interrupt_2a
+	extern _Interrupt_2f
+	extern _IRet
+
+	extern maxBlockDevices
+	extern FindAvailableSFTHandle
+	extern FindSFTbyHandle
+	extern checkforDeviceType
+	extern checkforDeviceName
+	extern stdDeviceAssignTable
+
+	extern scanDirectory
+	extern initdiskAccess
+	extern CopyStringArgs
+	extern readLine
+	extern _initializeMemoryBlock
+	extern SDAExtendedSwapArea
+	extern initReqBlock
+
+	extern RxDOS_USA_DefaultUpperCaseFunction
+
+
+		; Allocatable Heap
+		;
+		; Reuses RxDOS INIT code
+RxDOS_Heap		equ $
+
+
+		; CONFIG statement types
+		;
+		; WARNING: These values cannot be changed without also
+		; changing the dispatch table.
+CONFIGTYPE_ENDOFARGS	equ 0000h			; last entry
+CONFIGTYPE_DOS		equ 0001h			; DOS=UMB,HIGH
+CONFIGTYPE_NUMLOCK	equ 0002h			; NUMLOCK=ON|OFF
+CONFIGTYPE_BREAK	equ 0003h			; BREAK=ON|OFF
+CONFIGTYPE_SET		equ 0004h			; SET variable=value
+
+CONFIGTYPE_COUNTRY	equ 0005h			; COUNTRY=countrynumber,codepage,filename
+CONFIGTYPE_DEVICE	equ 0006h			; DEVICE=devicename [options]
+CONFIGTYPE_DEVICEHIGH	equ 0007h			; DEVICEHIGH=devicename [options]
+CONFIGTYPE_DRIVPARAM	equ 0008h			; DRIVEPARAM=
+CONFIGTYPE_MULTITRACK	equ 0009h			; MULTITRACK=ON|OFF
+CONFIGTYPE_SWITCHES	equ 0010h			; SWITCHES=/switch[/switch[...]]
+
+CONFIGTYPE_BUFFERS	equ 0011h			; BUFFERS=number[,numreadahead]
+CONFIGTYPE_FILES	equ 0012h			; FILES=x
+CONFIGTYPE_FCBS		equ 0013h			; FCBS=number[,numprotected]
+CONFIGTYPE_LASTDRIVE	equ 0014h			; LASTDRIVE=x
+CONFIGTYPE_SHELL	equ 0015h			; SHELL=progname [options]
+CONFIGTYPE_STACKS	equ 0016h			; STACKS=number[,size]
+
+CONFIGTYPE_INSTALL	equ 0017h			; INSTALL=progname [options]
+CONFIGTYPE_INSTALLHIGH	equ 0018h			; INSTALLHIGH=progname [options]
+
+CONFIGTYPE_MENUDEFAULT	equ 0019h			; MENUDEFAULT=blockname[,timeout]
+CONFIGTYPE_MENUITEM	equ 001Ah			; MENUITEM=blockname[,text]
+CONFIGTYPE_MENUCOLOR	equ 001Bh			; MENUCOLOR=foreground[,background]
+CONFIGTYPE_SUBMENU	equ 001Ch			; SUBMENU=blockname[,text]
+CONFIGTYPE_INCLUDE	equ 001Dh			; INCLUDE=blockname
+CONFIGTYPE_MENUBLOCK	equ 001Eh			; [blockname]
+
+CONFIGTYPE_SWITCHCHAR	equ 0020h			; SWITCHAR=character
+CONFIGTYPE_COMMENTS	equ 0021h			; ;comment
+CONFIGTYPE_REM		equ 0022h			; REM=remark
+
+
+		; CONFIG flags and options
+CONFIGFLAG_ENABLED	equ 0001h
+CONFIGFLAG_PROCESSED	equ 0002h
+
+
+		; CONFIGSTMT structure
+	struc CONFIGSTMT
+cStmtType		resw 1			; CONFIG statement type
+cStmtName		resb 1			; statement starts here
+	endstruc
+
+		; CONFIGLINE Buffer
+	struc CONFIGLINE
+configType		resw 1			; CONFIG statement type
+configLength		resw 1			; CONFIG line length
+configFlags		resw 1			; CONFIG statement flags
+configLineNumber	resw 1			; CONFIG statement line number
+configStmtText		resw 1			; CONFIG statement pointer to actual name
+configStatement		resb 1			; statement starts here
+	endstruc
+
+
+		; RXCONFIG.SYS file processing
+		;
+		; This module reads the entire RXCONFIG.SYS file from a
+		; partially initialized system. It expects minimally buffers,
+		; CDS, and other DOS data structures. CONFIG processing
+		; happens in two phases: pass one gathers facts and pass two
+		; reconfigures data structures and loads drivers.
+		;
+		; Returns:
+		; ds = es = ss
+		; ax = current drive
+configProcessing:
+
+	Entry
+	ddef	configStatements, es, di
+	ddef	configNextLine, es, di
+
+	def	comment	, ';'				; default comment character
+	def	charsread
+	def	linenumber , 0000
+	def	dosFlags, 0000
+
+	defbytes	diskAccess, sizeDISKACCESS
+	defbytes	linebuffer, 255
+
+		; find/open RXCONFIG.SYS
+	setDS cs
+	setES cs
+	xor dx, dx
+	mov al, byte [ ss:_RxDOS_CurrentDrive ]		; startup drive
+%if 0
+	mov di, _RxDOS_RXCONFIGSYS			; RXCONFIG.SYS filename
+	call scanDirectory				; search RXCONFIG.SYS
+	ifnc configProcessing_08			; RXCONFIG.SYS found -->
+							; open CONFIG.SYS instead if no RXCONFIG.SYS
+%endif
+	mov di, _RxDOS_ConfigFile			; CONFIG.SYS filename
+	call scanDirectory				; search CONFIG.SYS
+	ifc configProcessing_Return			; if none found -->
+
+configProcessing_08:
+	push word [ es:si + deFileSize + _low ]
+	push word [ es:si + deFileSize + _high ]
+
+	setES ss
+	lea bx, [ _diskAccess + bp ]			; build access control block
+	call initdiskAccess				; ax is drive, cx:dx is cluster
+
+	pop word [ ss:bx + diskAcFileSize + _high ]
+	pop word [ ss:bx + diskAcFileSize + _low ]
+
+configProcessing_12:
+	getdarg es, di, _configNextLine
+	mov word [ es:di + configType ], CONFIGTYPE_ENDOFARGS
+	mov word [ es:di + configLength ], 0000
+
+	setES ss
+	mov cx, 254
+	lea di, [ _linebuffer + bp ]
+	lea bx, [ _diskAccess + bp ]			; build access control block
+	call readLine					; read a line
+	ifz configProcessing_36				; at end, reconfigure system -->
+
+	inc word [ _linenumber + bp ]			; lines read
+
+		; strip trailing newline
+configProcessing_14:
+	lea di, [ _linebuffer + bp ]
+
+	getarg ax, _comment				; parse out comments
+	call configRemoveComments			; remove comments
+	jz configProcessing_12				; if nothing left on line -->
+	mov word [ _charsread + bp ], cx		; characters read
+
+	setES ss
+	cmp byte [ ss:di ], ':'				; comment line ?
+	jz configProcessing_12				; yes, ignore -->
+	cmp byte [ ss:di ], '['				; block item specifier ?
+	jz configProcessing_16				; yes -->
+
+	mov si, _RxDOS_ConfigKeywords
+	call _findCommand
+	jnc configProcessing_20
+
+	; typeout msgUnknownCommandinConfig
+	jmp short short configProcessing_12
+
+		; [ blockitem_name ]
+configProcessing_16:
+	inc di
+	call _skipSpaces				; skip any leading spaces
+
+	push di
+	call _scanToEndofName				; find terminating space
+	mov byte [ ss:di ], 0				; set a terminator
+
+	pop di
+	mov dx, CONFIGTYPE_MENUBLOCK			; menu block
+
+		; go save statement
+configProcessing_20:
+	cmp dx, byte CONFIGTYPE_REM			; remark statement ?
+	jz configProcessing_12				; ignore -->
+
+	cmp dx, byte CONFIGTYPE_COMMENTS		; if comment, go process
+	jz configProcessing_26				; process comment -->
+
+	push di
+	lea bx, [ _linebuffer + bp ]
+	getarg cx, _charsread
+	sub cx, di
+	add cx, bx					; length difference to remember
+
+	getdarg es, di, _configNextLine
+	mov word [ es:di + configType ], dx		; save type
+	mov word [ es:di + configStmtText ], si		; pointer to command name
+
+	mov ax, word [ _linenumber + bp ]		; get line number
+	mov word [ es:di + configLineNumber ], ax
+	mov word [ es:di + configFlags ], 0
+
+	mov word [ es:di + configLength ], cx
+
+		; RxDOS 7.20N:	I think here's a bug for you.
+	add word [ es:di + configLength ], (CONFIGLINE_size)
+
+		; copy statement
+	pop si
+	lea di, [ configStatement + di ]		; offset to statement
+	repe movsb
+
+	xor ax, ax
+	stosb						; null terminate
+
+	mov di, word [ _configNextLine + bp ]
+	add di, word [ es:di + configLength ]		; advance beyond type
+	mov word [ _configNextLine + bp ], di
+	jmp configProcessing_12
+
+		; process menu
+configProcessing_26:
+	call _skipSpaces				; skip any leading spaces
+
+	mov ax, word [ es:di ]				; get comment character
+	cmp ah, ' ' + 1					; space or other control ?
+	jnc configProcessing_28				; no -->
+	mov ah, 0
+
+configProcessing_28:
+	storarg _comment, ax				; save comment character(s)
+	jmp configProcessing_12				; continue
+
+		; process menu
+configProcessing_36:
+	getdarg es, di, _configStatements
+	call configMenu
+
+	getdarg es, di, _configStatements
+	call removeUnusedBlocks
+
+		; reconfigure system
+	getdarg es, di, _configStatements
+
+	call processSwitchChar
+	call processNumLock
+	call processDOS
+	storarg _dosFlags, ax				; save flags
+	call RxDOSini_MemorySubSystem			; re-initialize memory subsystem
+
+	call processBuffers
+	call processFCBS
+	call processFiles
+	call processStack
+
+	call processLastDrive
+	call processDrivParam
+	call processMultiTrack
+
+	call processBreak
+	call processCountry
+	call processSwitches
+	call processShell
+
+	getdarg es, di, _configStatements
+	call processDevice
+
+	getarg ax, _dosFlags				; option flags
+	call RxDOSini_LinkUpperMemory			; attempt to link upper memory
+
+	getdarg es, di, _configStatements
+	call processDeviceHigh
+
+		; Return
+configProcessing_Return:
+	Return
+
+
+		; Process Unsupported Commands
+RxDOSini_LinkUpperMemory:
+
+processDrivParam:
+processMultiTrack:
+processSwitches:
+
+	retn						; ignores entire line
+
+
+		; Process COUNTRY statement
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processCountry:
+
+	Entry
+	def	country, DEFAULT_COUNTRYCODE
+	def	codepage, -1
+
+processCountry_08:
+	mov ax, CONFIGTYPE_COUNTRY
+	call _findStatementType				; find statement type
+	jc processCountry_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processCountry_24				; ignore statement -->
+
+		; get country code, optional code page
+	mov cx, 1
+	mov dx, 7FFFh
+	call _getNumber					; get argument
+	jc processCountry_24				; if beyond range -->
+	storarg _country, ax
+
+	mov cx, 1
+	mov dx, 7FFFh
+	call _getNumber					; get argument
+	jc processCountry_12				; if no argument or is invalid
+	storarg _codepage, ax
+
+		; find country info
+processCountry_12:
+	call FindCountryInfo
+	jc processCountry_24				; if country not found -->
+
+	setES cs
+	mov word [ _RxDOS_UserCountryCode ], ax		; country
+	mov word [ _RxDOS_SysCountryCode ], ax		; country
+
+	cmp word [ _codepage + bp ], byte -1		; user code page defined ?
+	jz processCountry_18				; no, use country defaults -->
+	mov dx, word [ _codepage + bp ]			; get user defined code page
+
+processCountry_18:
+	mov word [ _RxDOS_UserCodePage ], dx		; code page
+	mov word [ _RxDOS_SystemCodePage ], dx		; code page
+
+	mov di, _RxDOS_CurrCountryInfo
+	mov cx, sizeCOUNTRYINFO /2
+	repe movsw
+
+		; see if other COUNTRY statement
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processCountry_08
+
+processCountry_24:
+	Return
+
+
+		; Process BREAK statement
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processBreak:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	def	break, _ON				; 0 is off; 1 is on
+
+processBreak_08:
+	mov ax, CONFIGTYPE_BREAK
+	call _findStatementType				; find statement type
+	jc processBreak_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processBreak_12				; ignore statement -->
+
+	mov si, _RxDOS_ConfigOnOff
+	call _findCommand				; locate on or off
+	jc processBreak_12				; if none of the above -->
+	storarg _break, dx				; else ok to save
+
+processBreak_12:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processBreak_08
+
+		; return
+processBreak_24:
+	getarg ax, _break				; get break
+	mov byte [ _RxDOS_bCtrlBreakCheck ], al
+
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process BUFFERS statements
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processBuffers:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	ddef	buffers, 0, DEFAULT_BUFFERS
+
+processBuffers_08:
+	mov ax, CONFIGTYPE_BUFFERS
+	call _findStatementType				; find statement type
+	jc processBuffers_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processBuffers_16				; ignore statement -->
+
+	mov cx, 1
+	mov dx, CONFIGMAX_BUFFERS
+	call _getNumber
+	jc processBuffers_16				; if beyond range -->
+	mov word [ _buffers + _low + bp ], ax		; else ok to save
+
+	mov cx, 0
+	mov dx, ax					; highest cannot exceed first number
+	call _getNumber
+	jc processBuffers_16				; if beyond range -->
+	mov word [ _buffers + _high + bp ], ax		; else ok to save
+
+processBuffers_16:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processBuffers_08
+
+		; return
+processBuffers_24:
+	getdarg dx, ax, _buffers
+	mov word [ _RxDOS_Buffers + _low ], ax
+	mov word [ _RxDOS_Buffers + _high ], dx
+	call RxDOSini_CCBSubSystem			; reconfigure
+
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process DEVICE statements
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processDevice:
+	mov ax, CONFIGTYPE_DEVICE
+	jmp processAnyDevice
+
+
+		; Process DEVICEHIGH statements
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processDeviceHigh:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	def	memorystrategy
+%if 0
+	def	umblink
+%endif
+
+%if 0
+	Int21 GetUMBLink				; get current UMB link
+	storarg _umblink, ax
+
+	mov bx, _UMBLINK_ENABLED
+	Int21 SetUMBLink				; link in UMBs
+%endif
+
+	Int21 GetAllocationStrategy			; get current allocation strategy
+	storarg _memorystrategy, ax
+
+	mov bx, _MEM_FIRSTFIT_HIGH
+	Int21 SetAllocationStrategy			; include UMBs in memory allocation strategy
+
+
+	mov ax, CONFIGTYPE_DEVICEHIGH
+	getdarg es, di, _ConfigStatements
+	call processAnyDevice
+
+
+	getarg bx, _memorystrategy
+	Int21 SetAllocationStrategy			; restore allocation strategy
+
+%if 0
+	getarg bx, _umblink
+	Int21 SetUMBLink				; restore UMB link
+%endif
+
+	Return
+
+
+		; Common Device Load
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processAnyDevice:
+
+	Entry
+	def	type, ax
+	def	SegAddress
+	def	SegSize, -1
+
+	ddef	ptrInitCommandLine
+	ddef	ConfigStatements
+	ddef	CurrentStatement
+	ddef	ExecBlock
+	ddef	strategy
+	ddef	interrupt
+	ddef	loadSize
+
+	defbytes	reqBlock, sizeINITReqHeader
+	defbytes	devicename, 128
+	defbytes	arguments, 128
+
+processAnyDevice_08:
+	getarg ax, _type
+	call _findStatementType				; find statement type
+	ifc processAnyDevice_24				; if no more -->
+
+	push es
+	push di
+	stordarg _CurrentStatement, es, di		; current statement at '='
+	call ConfigPrompt				; check for ?= or F8 case
+	ifc processAnyDevice_66				; if ignore -->
+
+		; allocate memory, load device and initialize
+	mov ax, DEVICEINIT * 256			; ah = DEVICEINIT, al = 0
+	lea di, [ word _reqBlock + bp ]
+	call initReqBlock				; initialize request block
+
+	mov bx, 0FFFFh
+	Int21 AllocateMemory				; get largest available memory block
+	storarg _SegSize, bx				; store size of segment
+	Int21 AllocateMemory				; else allocate largest available
+	ifc processAnyDevice_66				; if can't, should display an error message -->
+
+	mov word [ _ExecBlock + loverSegLoadAddress + bp ], ax
+	mov word [ _ExecBlock + loverRelocFactor + bp ], ax
+	storarg _SegAddress, ax				; store address of segment
+
+	add ax, word [ _SegSize + bp ]			; add alloc size to segment (max size)
+	dec ax						; protection
+	mov word [ _reqBlock + irEndAddress + _segment + bp ], ax
+	mov word [ _reqBlock + irEndAddress + _pointer + bp ], 0000
+
+		; scan command line parsing out extra characters at the start of name
+	push ds
+	push es
+	getdarg ds, si, _CurrentStatement		; current statement at '='
+	lea si, [ word configStatement + si ]
+
+processAnyDevice_16:
+	lodsb
+	or al, al
+	ifz processAnyDevice_64				; if no name, can't load
+	cmp al, '='
+	jz processAnyDevice_16				; skip = -->
+	cmp al, '?'
+	jz processAnyDevice_16				; skip ? -->
+	cmp al, ' '
+	jz processAnyDevice_16				; skip space -->
+
+		; copy device name and path
+	lea bx, [ word _devicename + bp ]
+	dec si
+	push si
+
+processAnyDevice_20:
+	lodsb
+	or al, al
+	jz processAnyDevice_22
+	cmp al, ' '
+	jz processAnyDevice_22
+
+	mov byte [ ss:bx ], al
+	inc bx
+	jmp short processAnyDevice_20
+
+processAnyDevice_22:
+	mov byte [ ss:bx ], 00
+
+		; copy entire line to arguments
+	pop si
+	lea bx, [ _arguments + bp ]
+	mov word [ _reqBlock + irParamAddress + _segment + bp ], ss
+	mov word [ _reqBlock + irParamAddress + _pointer + bp ], bx
+
+processAnyDevice_26:
+	lodsb
+	or al, al
+	jz processAnyDevice_28				; if end of filename -->
+
+	mov byte [ ss:bx ], al
+	inc bx
+	jmp short processAnyDevice_26
+
+processAnyDevice_28:
+%if 1
+	mov byte [ ss:bx ], ControlM
+	mov byte [ ss:bx + 1 ], ControlM
+%else
+	mov word [ ss:bx ], ControlM*256 + ControlM
+%endif
+
+		; load program
+	mov ax, ss
+	mov es, ax
+	mov ds, ax
+	lea bx, [ word _ExecBlock + bp ]		; address of exec block
+	lea dx, [ word _devicename + bp ]		; address of device name
+	Int21 ExecuteProgram, 03h			; load overlay
+	stordarg _loadSize, bx, cx			; load size
+	jnc processAnyDevice_32				; if succesful -->
+
+	mov si, RxDOSmsg_CouldNotLoadDriver
+	call RxDOSIni_TypeMessage			; say couldn't load ...
+
+	lea si, [ word _devicename + bp ]		; address of device name
+	call RxDOSIni_TypeMessage			; ... say which driver
+	jmp processAnyDevice_60				; go release memory when load failed -->
+
+		; call device init
+processAnyDevice_32:
+	xor bx, bx
+	getarg es, _SegAddress
+	mov ax, word [ es:bx + devStrategy ]
+	stordarg _strategy, es, ax
+
+	mov ax, word [ es:bx + devInterrupt ]
+	stordarg _interrupt, es, ax
+
+	setES ss
+	lea bx, [ word _reqBlock + bp ]
+	mov word [ _reqBlock + rhStatus + bp ], OP_DONE
+
+	mov al, byte [ _RxDOS_bNumBlockDev ]
+	mov byte [ _reqBlock + irDriveNumber + bp ], al
+	mov byte [ _reqBlock + irUnits + bp ], 00
+
+	push bp
+	mov ds, word [ _strategy + _segment + bp ]
+	call far [ _strategy + bp ]		; strategy
+
+	pop bp
+	push bp
+	lea bx, [ word _reqBlock + bp ]
+	mov ds, word [ _strategy + _segment + bp ]
+	call far [ _interrupt + bp ]		; interrupt
+	pop bp
+
+		; free up any extra memory
+	setDS ss
+	getarg es, _SegAddress
+	test word [ _reqBlock + rhStatus + bp ], OP_ERROR
+	jnz processAnyDevice_60				; if error -->
+
+		; compute actual size (in bx:cx)
+	mov bx, word [ _reqBlock + irEndAddress + _pointer + bp ]
+	add bx, byte (sizePARAGRAPH - 1)		; round up to nearest paragraph boundary
+
+	shr bx, 1
+	shr bx, 1
+	shr bx, 1
+	shr bx, 1					; end para
+	add bx, word [ _reqBlock + irEndAddress + _segment + bp ]
+	sub bx, word [ _SegAddress + bp ]		; paragraph size
+%if 1
+	jc processAnyDevice_60				; no size, go free-up -->
+	jz processAnyDevice_60				; no size, go free-up -->
+%else
+	jna processAnyDevice_60				; no size, go free-up -->
+%endif
+
+	Int21 ModifyAllocatedMemory			; free memory to given size
+
+		; is driver a file system or blocked device ?
+	test word [ es:devAttributes ], DEV_CHAR	; is it a character device ?
+	jnz processAnyDevice_56				; yes -->
+
+	mov dx, es					; driver address (segment)
+	mov cl, byte [ _reqBlock + irUnits + bp ]	; get number of device units
+	call InitializeAttachedFileSystem
+
+	mov cl, byte [ _reqBlock + irUnits + bp ]
+	add byte [ _RxDOS_bNumBlockDev ], cl
+
+		; Link device into device chain
+processAnyDevice_56:
+	mov bx, word [ _RxDOS_NULLDev + _segment ]
+	mov ax, word [ _RxDOS_NULLDev + _pointer ]
+	mov word [ es:devLink + _segment ], bx
+	mov word [ es:devLink + _pointer ], ax		; Move address that former was at NUL device to loaded driver
+
+	mov word [ _RxDOS_NULLDev + _segment ], es
+	mov word [ _RxDOS_NULLDev + _pointer ], 0	; Move address of loaded driver into NUL device
+	jmp short processAnyDevice_64
+
+processAnyDevice_60:
+	getarg es, _SegAddress
+	Int21 FreeAllocatedMemory			; if error while loading
+
+processAnyDevice_64:
+	pop es
+	pop ds
+
+processAnyDevice_66:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp processAnyDevice_08
+
+		; return
+processAnyDevice_24:
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process DOS statement
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processDOS:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	def	DOS, 0000				; no UMB, no HMA
+
+processDOS_08:
+	mov ax, CONFIGTYPE_DOS
+	call _findStatementType				; find statement type
+	jc processDOS_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processDOS_12				; ignore statement -->
+
+processDOS_10:
+	mov si, _RxDOS_ConfigDOSOptions
+	call _findCommand				; locate options like high and umb
+	jc processDOS_12				; if none of the above -->
+%if 0
+	or dx, dx
+	jns processDOS_or
+	neg dx
+	not dx
+
+processDOS_and:
+	and word [ _DOS + bp ], dx			; and option if it says off
+	jmp short processDOS_11
+%endif
+
+processDOS_or:
+	or word [ _DOS + bp ], dx			; or option if it says on
+
+processDOS_11:
+	call _nextArgument				; point to next argument
+	jnc processDOS_10				; go porcess -->
+
+processDOS_12:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processDOS_08
+
+		; return
+processDOS_24:
+	getarg ax, _DOS					; get DOS
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process FCBS statement
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processFCBS:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	ddef	FCBS, 0, DEFAULT_FCBS
+
+processFCBS_08:
+	mov ax, CONFIGTYPE_FCBS
+	call _findStatementType				; find statement type
+	jc processFCBS_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processFCBS_16				; if ignore -->
+
+	mov cx, 1
+	mov dx, CONFIGMAX_FCBS_X
+	call _getNumber
+	jc processFCBS_16				; if beyond range -->
+	mov word [ _FCBS + _low + bp ], ax		; else ok to save
+
+	mov cx, 0
+	mov dx, CONFIGMAX_FCBS_Y
+	call _getNumber
+	jc processFCBS_16				; if beyond range -->
+	mov word [ _FCBS + _high + bp ], ax		; else ok to save
+
+processFCBS_16:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processFCBS_08
+
+		; return
+processFCBS_24:
+	getdarg dx, ax, _FCBS				; return FCBS
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process FILES statements
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processFiles:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	def	files, DEFAULT_FILES
+	def	fcbs, ax
+
+processFiles_08:
+	mov ax, CONFIGTYPE_FILES
+	call _findStatementType				; find statement type
+	jc processFiles_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processFiles_12				; if ignore -->
+
+	mov cx, 1
+	mov dx, CONFIGMAX_FILES
+	call _getNumber
+	jc processFiles_12				; if beyond range -->
+	storarg _files, ax				; else ok to save
+
+processFiles_12:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processFiles_08
+
+		; return
+processFiles_24:
+	getarg ax, _files				; return files
+	add ax, word [ _fcbs + bp ]
+	call RxDOSini_SFTSubSystem			; init SFTs
+
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process LASTDRIVE statement
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processLastDrive:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	def	LastDrive, DEFAULT_LASTDRIVE
+
+processLastDrive_08:
+	mov ax, CONFIGTYPE_LASTDRIVE
+	call _findStatementType				; find statement type
+	jc processLastDrive_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processLastDrive_12				; if ignore -->
+
+	xor ax, ax
+	mov al, byte [ es:di ]
+	_upperCase al					; upper case
+	cmp al, 'A'
+	jc processLastDrive_12
+	cmp al, 'Z'+1
+	jnc processLastDrive_12
+%if 0
+	sub al, 'A'
+%endif
+	storarg _LastDrive, ax
+
+processLastDrive_12:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processLastDrive_08
+
+		; return
+processLastDrive_24:
+	getarg ax, _LastDrive				; get last drive info, if any
+%if 1
+	and ax, 1Fh
+%endif
+	mov byte [ _RxDOS_bLastDrive ], al		; save in DOS
+
+	call RxDOSini_DPBSubSystem			; (order important)
+	call RxDOSini_CDSSubSystem			; init drives/CDS
+
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process NUMLOCK Statement
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processNumLock:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	def	numlock, -1				; 0 = off, 1 = on, -1 = leave unchanged
+
+processNumLock_08:
+	mov ax, CONFIGTYPE_NUMLOCK
+	call _findStatementType				; find statement type
+	jc processNumLock_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processNumLock_12				; if ignore -->
+
+	mov si, _RxDOS_ConfigOnOff
+	call _findCommand				; locate on or off
+	jc processNumLock_12				; if none of the above -->
+	storarg _numlock, dx				; else ok to save
+
+processNumLock_12:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processNumLock_08
+
+		; return
+processNumLock_24:
+	push es
+	getarg ax, _numlock				; get numlock
+	cmp ax, -1					; any change ?
+	jz processNumLock_46				; if no change -->
+
+	mov bx, 40h
+	mov es, bx					; BIOS communications area
+	mov bx, _BIOS_KeyboardFlags			; keyboard status flags
+	or ax, ax					; set num lock ?
+	jnz processNumLock_32				; if set -->
+
+	and byte [ es:bx ], ~ _BIOS_KB_NumLock		; else clear num lock
+	jmp short processNumLock_46
+
+processNumLock_32:
+	or byte [ es:bx ], _BIOS_KB_NumLock		; set num lock
+
+processNumLock_46:
+	pop es
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process SHELL statement
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processShell:
+
+	Entry
+	ddef	ConfigStatements, es, di
+
+processShell_08:
+	mov ax, CONFIGTYPE_SHELL
+	call _findStatementType				; find statement type
+	jc processShell_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processShell_12				; if ignore -->
+
+	push es
+	push di						; source args
+	push ds
+	mov bx, _RxDOSini_CommandShell
+	push bx						; destination args
+	call CopyStringArgs				; copy string
+
+processShell_12:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processShell_08
+
+		; return
+processShell_24:
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process STACKS statement
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processStack:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	ddef	stacks, 0, DEFAULT_STACKS
+
+processStack_08:
+	mov ax, CONFIGTYPE_STACKS
+	call _findStatementType				; find statement type
+	jc processStack_24				; if no more -->
+
+	push es
+	push di
+	call ConfigPrompt				; check for ?= or F8 case
+	jc processStack_16				; if ignore -->
+
+	mov cx, CONFIGMIN_STACKS_X
+	mov dx, CONFIGMAX_STACKS_X
+	call _getNumber
+	jc processStack_16				; if beyond range -->
+	mov word [ _stacks + _low + bp ], ax		; else ok to save
+
+	mov cx, CONFIGMIN_STACKS_Y
+	mov dx, CONFIGMAX_STACKS_Y
+	call _getNumber
+	jc processStack_16				; if beyond range -->
+	mov word [ _stacks + _high + bp ], ax		; else ok to save
+
+processStack_16:
+	pop di
+	pop es
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processStack_08
+
+		; return
+processStack_24:
+	getdarg dx, ax, _stacks				; return stacks
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Process Switch Char
+		;
+		; es:di-> start of statement in saved CONFIG buffer
+processSwitchChar:
+
+	Entry
+	ddef	ConfigStatements, es, di
+	def	SwitchChar, '/'
+
+processSwitchChar_08:
+	mov ax, CONFIGTYPE_SWITCHCHAR
+	call _findStatementType				; find statement type
+	jc processSwitchChar_24				; if no more -->
+
+	xor ax, ax
+	mov al, byte [ es:di + configStatement ]
+	storarg _SwitchChar, ax				; save last switch character
+
+	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
+	add di, word [ es:di + configLength ]
+	jmp short processSwitchChar_08
+
+		; return
+processSwitchChar_24:
+	getarg ax, _SwitchChar				; get last switch character or use default
+	mov byte [ _RxDOS_bSwitchChar ], al
+
+	getdarg es, di, _ConfigStatements
+	Return
+
+
+		; Remove comments, leading blanks, blank lines
+		;
+		; ax = comment character
+		; cx = current line count
+		; ss:di-> line read from disk
+		;
+		; This reads through blocks and changes each block to a REM
+		; block that was not selected as a menu option.
+configRemoveComments:
+
+	call _skipSpaces
+
+	push di						; save buffer pointer
+	cmp ah, 0					; double character comments ?
+	jnz configRemoveComments_12			; yes -->
+
+configRemoveComments_06:
+	cmp al, byte [ ss:di ]				; is it comment character ?
+	jz configRemoveComments_20			; yes -->
+	inc di
+	loop configRemoveComments_06
+	jmp short configRemoveComments_20
+
+configRemoveComments_12:
+	cmp ax, word [ ss:di ]				; is it comment character ?
+	jz configRemoveComments_20			; yes -->
+	inc di
+	loop configRemoveComments_12
+
+configRemoveComments_20:
+	mov cx, di
+	pop di
+	sub cx, di					; new length
+	retn
+
+
+		; Find Statement Type
+		;
+		; ax = searched CONFIG item type
+		; es:di-> CONFIGLINE structure
+_findStatementType:
+	cmp word [ es:di + configType ], byte CONFIGTYPE_ENDOFARGS
+	jnz _findStatementType_08
+	stc						; not found if at end
+	retn
+
+_findStatementType_08:
+	cmp ax, word [ es:di + configType ]		; is it the searched type ?
+	jnz _findStatementType_12			; if not, goto next -->
+%if 1
+	or di, di
+%else
+	clc						; found type
+%endif
+	retn
+
+_findStatementType_12:
+	add di, word [ es:di + configLength ]
+	jmp short _findStatementType
+
+
+		; CONFIG statement prompt
+		;
+		; ax = statement type
+		; es:di-> first non-space after keyword
+		;
+		; OUT:	NC if statement parsing should proceed
+		;	CY if F8 pressed or 'N' answered to prompt, abort parsing of this line
+ConfigPrompt:
+
+	Entry
+	ddef	configTextPtr
+	ddef	configStmt, es, di
+
+	lea di, [ word configStatement + di ]
+	stordarg _configTextPtr, es, di			; save pointer
+
+	cmp word [ es:di ], '?='			; is it ?=
+	jz ConfigPrompt_12				; yes, go prompt -->
+	call checkforF8					; detect F8 during boot time
+	jz ConfigPrompt_24				; no, go skip = if set -->
+
+		; prompt statement
+ConfigPrompt_12:
+	push ds
+	setDS cs
+	getdarg es, di, _configStmt
+	mov si, word [ es:di + configStmtText ]
+	call RxDOSIni_TypeMessage			; show statement type
+
+	getdarg ds, si, _configTextPtr
+	call RxDOSIni_TypeMessage			; show user text
+
+	setDS cs
+	mov si, msgProcessCommandYesNo
+	call RxDOSIni_TypeMessage
+
+ConfigPrompt_16:
+	xor ax, ax
+	int 16h
+
+	_upperCase al					; upper case
+	cmp al, 'Y'					; check for Yes
+	jz ConfigPrompt_20
+	cmp al, 'N'					; check for No
+	jnz ConfigPrompt_16				; Get next character if invalid
+
+ConfigPrompt_20:
+	int 29h						; echo character
+	call RxDOSIni_TypeCR
+
+	pop ds
+	getdarg es, di, _configTextPtr
+	cmp al, 'N'					; if No
+	stc						; set carry if No
+	jz ConfigPrompt_36				; exit -->
+
+		; Skip ? and ?= and any spaces which follow
+ConfigPrompt_24:
+	cmp word [ es:di ], '?='			; '?=' in prompt ?
+	jnz ConfigPrompt_26				; no -->
+	inc di						; skip over question mark
+
+ConfigPrompt_26:
+	cmp byte [ es:di ], '='				; '=' in prompt ?
+	jnz ConfigPrompt_28				; no -->
+	inc di						; skip over equal sign
+
+ConfigPrompt_28:
+%if 1
+	cmp byte [ es:di ], ' ' + 1			; space follows ?
+%else
+		; RxDOS 7.20N:	BUG. Didn't skipped but '!'.
+	cmp byte [ es:di ], ' '				; space follows ?
+%endif
+	jnz ConfigPrompt_32				; no, return -->
+	inc di						; skip over space
+	jmp short ConfigPrompt_28			; loop through all spaces -->
+
+ConfigPrompt_32:
+	clc						; clear carry
+
+ConfigPrompt_36:
+	Return
+
+
+		; Skip to next argument
+		;
+		; Usage:
+		; es:di-> line buffer
+_nextArgument:
+
+	cmp byte [ es:di ], ' '			; ignore spaces
+	jz _nextArgument_06
+	cmp byte [ es:di ], '='			; ignore equal signs
+	jz _nextArgument_06
+	cmp byte [ es:di ], ','			; ignore commas
+	jnz _nextArgument_08
+
+_nextArgument_06:
+	inc di
+	jmp short _nextArgument
+
+_nextArgument_08:
+	cmp byte [ es:di ], ' '			; CY means end of line
+	retn
+
+
+		; Process Menus
+configMenu:
+	Entry
+	ddef	ConfigStatements, es, di
+
+		; identify all common components as enabled
+configMenu_04:
+	mov ax, CONFIGTYPE_MENUBLOCK
+	mov bx, Config_CommonSelector
+	call _findConfigMenuStatement			; identify common components
+	jc configMenu_08				; if none left -->
+
+	or word [ es:di + configFlags ], byte CONFIGFLAG_ENABLED
+	add di, word [ es:di + configLength ]
+	jmp short configMenu_04
+
+		; search for menu starter
+configMenu_08:
+	mov ax, CONFIGTYPE_MENUBLOCK
+	mov bx, Config_MenuSelector
+	getdarg es, di, _ConfigStatements
+	call _findConfigMenuStatement
+	jc configMenu_68
+
+	; ...
+
+configMenu_68:
+	Return
+
+
+		; Remove unused blocks
+		;
+		; es:di-> CONFIG table
+		;
+		; This reads through blocks and changes each block to a REM
+		; block that was not selected as a menu option.
+removeUnusedBlocks:
+	mov ax, CONFIGTYPE_MENUBLOCK
+	call _findStatementType				; find start of block
+	jc removeUnusedBlocks_32			; if none left -->
+
+removeUnusedBlocks_08:
+	test word [ es:di + configFlags ], CONFIGFLAG_ENABLED
+	jz removeUnusedBlocks_12			; if disabled, delete -->
+	add di, word [ es:di + configLength ]
+	jmp short removeUnusedBlocks			; if enabled, we'll keep ->
+
+		; remove disabled blocks
+removeUnusedBlocks_12:
+	mov word [ es:di + configType ], CONFIGTYPE_REM
+	add di, word [ es:di + configLength ]
+
+	cmp word [ es:di + configType ], byte CONFIGTYPE_ENDOFARGS
+	jz removeUnusedBlocks_32			; if none left -->
+	cmp word [ es:di + configType ], byte CONFIGTYPE_MENUBLOCK
+	jz removeUnusedBlocks_08			; if next block -->
+	jmp short removeUnusedBlocks_12			; go remove -->
+
+		; return
+removeUnusedBlocks_32:
+	retn
+
+
+		; Find Menu statement
+		;
+		; ax = config item type
+		; ds:bx-> menu name
+		; es:di-> CONFIG table
+_findConfigMenuStatement:
+
+	cmp word [ es:configType + di ], byte CONFIGTYPE_ENDOFARGS
+	jnz _findConfigMenuStatement_08
+	stc
+	retn
+
+_findConfigMenuStatement_08:
+	cmp ax, word [ es:configType + di ]		; is it menu type ?
+	jnz _findConfigMenuStatement_32			; if not, goto next -->
+
+	push di
+	push bx
+	push ax
+	lea di, [ word configStatement + di ]		; point to actual statement
+
+_findConfigMenuStatement_12:
+	mov ah, byte [ bx ]				; get character from searched menu block name
+	_upperCase ah					; upper case
+
+	mov al, byte [ es:di ]				; get character from actual statement
+	_upperCase al					; upper case
+
+	inc bx
+	inc di
+	cmp ah, al					; compare strings
+	jnz _findConfigMenuStatement_28			; if not equal -->
+
+	or al, al					; both null terminators ?
+	jnz _findConfigMenuStatement_12			; not yet -->
+
+	pop ax
+	pop bx
+	pop di
+%if 1
+	or di, di
+%else
+	clc
+%endif
+	retn
+
+_findConfigMenuStatement_28:
+	pop ax
+	pop bx
+	pop di
+
+_findConfigMenuStatement_32:
+	add di, word [ es:di + configLength ]		; search in next CONFIGLINE structure
+	jmp short _findConfigMenuStatement
+
+
+		; Get Number
+		;
+		; Input:
+		; cx	minimal acceptable number
+		; dx	maximal acceptable number
+		; es:di-> line buffer
+		;
+		; Returns:
+		; ax = number, if any
+		; di = pointer to argument past command
+		; CY if not a number
+_getNumber:
+	push cx
+	xor ax, ax
+
+_getNumber_08:
+	cmp byte [ es:di ], '0'				; valid digit ?
+	jc _getNumber_26				; no longer -->
+	cmp byte [ es:di ], '9' + 1			; valid digit ?
+	jnc _getNumber_26				; no longer -->
+
+	mov cx, ax
+	add ax, ax					; *2
+	add ax, ax					; *4
+	add ax, cx					; *5
+	add ax, ax					; *10
+
+	mov cl, byte [ es:di ]				; get digit
+	and cx, byte 15					; ch = 0, and remove the 30h ('0' = 30h, '1' = 31h, ...)
+	add ax, cx
+%if 0
+	jc _getNumber_16				; overflow -->
+%endif
+	inc di
+	jmp short _getNumber_08
+
+%if 0
+		; overflow
+_getNumber_16:
+	pop cx
+		; message for number overflow here
+	xor ax, ax
+	dec ax						; NZ
+	pushf
+	jmp short _getNumber_32				; sets CY
+%endif	
+
+		; check for error
+_getNumber_26:
+	pop cx
+	or ax, ax
+		; RxDOS 7.20N:	Do not change above line to clc. It'll also set ZF
+		;		according to the result.
+	pushf						; save current status
+	cmp ax, cx					; is it at least as large as ...
+	jc _getNumber_32				; no -->
+	cmp ax, dx					; is it greater than ...
+%if 1
+	jle _getNumber_36				; if within range -->
+%else
+	jbe _getNumber_36				; if within range -->
+%endif
+
+_getNumber_32:
+	popf
+	stc
+	pushf						; change status
+
+		; skip to next argument
+_getNumber_36:
+	cmp byte [ es:di ], ' '
+	jb _getNumber_48				; if control character
+	je _getNumber_38				; if space -->
+	cmp byte [ es:di ], ':'
+	je _getNumber_38				; if colon -->
+	cmp byte [ es:di ], '='
+	je _getNumber_38				; if equal sign -->
+	cmp byte [ es:di ], ','
+	jne _getNumber_48				; if not comma -->
+
+_getNumber_38:
+	inc di
+	jmp short _getNumber_36
+
+		; return
+_getNumber_48:
+	popf
+	retn
+
+
+		; Find Command
+		;
+		; Input:
+		; es:di-> line buffer
+		; cs:si-> table to search
+		;
+		; Returns:
+		; dx	command type
+		; di	pointer to argument past command
+		; cy	command not found
+_findCommand:
+	cmp word [ cs:si ], byte -1
+	jnz _findCommand_12				; if not end of table ->
+	cmp word [ cs:si + 2 ], byte 0
+	jz _findCommand_Error				; if end -->
+
+_findCommand_12:
+	push word [ cs:si + cStmtType ]			; if item matches
+	lea si, [ word cStmtName + si ]			; skip to name
+
+	xor bx, bx
+
+_findCommand_18:
+	mov al, byte [ es:di + bx ]			; get character
+	_lowerCase al					; lower case character
+	cmp al, byte [ cs:si + bx ]			; this command ?
+	jnz _findCommand_32				; not this command -->
+
+	inc bx
+	cmp byte [ cs:si + bx ], 0			; end of string ?
+	jnz _findCommand_18				; not yet -->
+
+		; if command match is made, skip to next argument
+	add di, bx					; offset
+
+_findCommand_22:
+	cmp byte [ es:di ], 0
+	jz _findCommand_26
+	cmp byte [ es:di ], ' ' + 1			; skip spaces
+	jnb _findCommand_26
+
+	inc di
+	jmp short _findCommand_22
+
+_findCommand_26:
+	pop dx						; statement type
+	or dx, dx
+	retn
+
+		; if not a match, try next command in table
+_findCommand_32:
+	inc si						; increment past
+	cmp byte [ cs:si - 1 ], 0			; end of string ?
+	jnz _findCommand_32				; loop -->
+
+	pop ax						; ignore saved stmt type
+	jmp short _findCommand				; continue -->
+
+_findCommand_Error:
+	stc
+	retn
+
+
+		; Skip leading spaces and control characters
+		;
+		; Usage:
+		; ss:di-> line buffer
+_skipSpaces:
+	cmp byte [ ss:di ], 0
+	jz _skipSpaces_08
+	cmp byte [ ss:di ], ' ' + 1
+	jnb _skipSpaces_08
+
+	inc di
+	jmp short _skipSpaces
+
+_skipSpaces_08:
+	retn
+
+
+		; Skip to next space
+		;
+		; Usage:
+		; ss:di-> line buffer
+_scanToEndofName:
+	cmp byte [ ss:di ], 0
+	jz _scanToEndofName_08
+
+	mov al, byte [ ss:di ]
+	cmp al, ' ' + 1
+	jb _scanToEndofName_08
+	_upperCase al					; upper case
+		; RxDOS 7.20N:	Below sequence is a bit weird. Shouldn't it also
+		;		check if the character is above-equal 'A'?
+	cmp al, 'Z' + 1
+	jnb _scanToEndofName_08
+
+	inc di
+	jmp short _scanToEndofName
+
+_scanToEndofName_08:
+	cmp byte [ ss:di ], 0
+	retn
+
+
+		; RxDOS memory subsystem initialize
+		;
+		; No Parameters Required.
+		;
+		; The memory subsystem used by RxDOS is initialized. All
+		; previous memory allocations are lost.
+RxDOSini_MemorySubSystem:
+
+	saveSegments
+	mov ax, 40h
+	mov es, ax					; BIOS communications area
+
+	xor bx, bx
+%if 1
+	mov ax, word [ es:bx + _BIOS_Memory ]
+%else
+	mov ax, word [ es:_BIOS_Memory ]
+%endif
+	shl ax, 1					; multiply * 64 KiB
+	shl ax, 1
+	shl ax, 1
+	shl ax, 1
+	shl ax, 1
+	shl ax, 1					; max segment
+	sub ax, word [ _RxDOS_pStartMemBlock ]		; available memory
+	dec ax						; adjust for memory header
+	push ax
+
+	mov bx, _RxDOS_PARENT_SIGNATURE			; system block (0008)
+	mov es, word [ _RxDOS_pStartMemBlock ]		; available memory
+	call _initializeMemoryBlock			; initialize memory block.
+
+	mov ax, word [ es:_memAlloc ]
+	mov word [ es:_memAlloc ], 0			; original now is allocate 1 block
+	mov byte [ es:_memSignature ], _RxDOS_MEMSIGNATURE
+
+	dec ax
+	mov dx, es
+	inc dx
+	mov es, dx					; where to allocate next
+	xor bx, bx					; system block
+	call _initializeMemoryBlock			; initialize memory block
+	mov byte [ es:_memSignature ], _RxDOS_ENDSIGNATURE
+
+	pop ax						; memory available
+	restoreSegments
+	retn
+
+
+		; Sub allocate system space
+		;
+		; Input:
+		; ax	space in bytes to sub allocate
+		;
+		; Output:
+		; es:di-> allocated space
+		; ax = cx = space in bytes allocated
+AllocateSystemSpace:
+
+	push bx
+	push ax						; save bytes to allocate
+	xor di, di
+
+	add ax, (sizeMEMBLOCK) - 1			; round up to next block
+	shr ax, 1
+	shr ax, 1
+	shr ax, 1
+	shr ax, 1					; create para address
+
+	mov es, word [ _RxDOS_pStartMemBlock ]		; get start of system memory
+	mov bx, es
+	add bx, word [ es:di + _memAlloc ]		; point to end segment
+	add word [ es:di + _memAlloc ], ax		; add new allocation bytes
+	mov dx, word [ es:di + _memAlloc ]
+
+	inc bx
+	mov es, bx					; point to free segment
+	sub ax, word [ es:di + _memAlloc ]		; get free segments
+	neg ax
+
+	inc dx
+	add dx, word [ _RxDOS_pStartMemBlock ]		; get start of system memory
+	mov es, dx					; where new allocation
+
+	push bx						; segment address available
+	xor bx, bx
+	call _initializeMemoryBlock			; puts end block at es:bx
+	mov byte [ es:di + _memSignature ], _RxDOS_ENDSIGNATURE
+
+	pop es						; segment address available
+	pop cx						; space allocated (bytes)
+	push cx						; save
+	xor di, di
+	clearMemory					; clear area
+
+	pop cx						; space allocated (bytes)
+	pop bx						; original bx
+	xor di, di
+	mov ax, cx
+	retn
+
+
+		; RxDOS Disk Parameter Blocks subsystem initialize
+		;
+		; No Parameters Required.
+RxDOSini_DPBSubSystem:
+
+	push ds
+	setDS cs
+	setES cs
+
+	mov al, sizeDPB
+	mul byte [ _RxDOS_bLastDrive ]			; number of logical devices
+	call AllocateSystemSpace			; allocate DPBs for all used devices
+
+	mov word [ _RxDOS_pDPB + _pointer ], di
+	mov word [ _RxDOS_pDPB + _segment ], es
+
+	xor ax, ax
+	xor cx, cx
+	mov cl, byte [ _RxDOS_bLastDrive ]
+	setDS es					; point to PDB area
+
+		; values are defaults without special meaning
+		; actual values are assigned later by calling driver
+RxDOS_DPBinit_12:
+	mov byte [ _dpbDrive + di ], al
+	mov byte [ _dpbUnit + di ], al
+	mov word [ _dpbBytesPerSector + di ], 512
+	mov byte [ _dpbClusterSizeMask + di ], 0FEh
+	mov byte [ _dpbClusterSizeShift + di ], 0
+	mov word [ _dpbFirstFAT + di ], 1
+	mov byte [ _dpbNumCopiesFAT + di ], 2
+	mov word [ _dpbMaxAllocRootDir + di ], 64
+	mov word [ _dpbFirstDataSector + di ], 9
+	mov word [ _dpbMaxClusterNumber + di ], 352
+
+	mov word [ _dpbSectorsPerFat + di ], 2
+	mov word [ _dpbFirstDirSector + di ], 5
+	mov word [ _dpbptrDeviceDriver + _segment + di ], NULL
+	mov word [ _dpbptrDeviceDriver + _pointer + di ], NULL
+	mov byte [ _dpbMediaDescriptor + di ], 0
+	mov byte [ _dpbAccessFlag + di ], -1		; UNACCESSED
+
+	lea bx, [ sizeDPB + di ]			; current pointer + sizeDPB
+	mov word [ _dpbNextDPB + _segment + di ], ds
+	mov word [ _dpbNextDPB + _pointer + di ], bx
+	mov word [ _dpbNextFree + di ], 0
+	mov word [ _dpbFreeCount + _low + di ], -1
+	mov word [ _dpbFreeCount + _high + di ], -1
+
+	inc ax
+	mov di, bx
+	loop RxDOS_DPBinit_12
+
+		; set end marker at last DPB
+	mov word [ _dpbNextDPB + _segment - sizeDPB + di ], -1
+	mov word [ _dpbNextDPB + _pointer - sizeDPB + di ], -1
+
+		; loop through DPB's and assign drivers
+	setES cs
+	mov bx, _RxDOS_NULLDev				; get start of chain
+	mov ax, sizeDPB
+	mul byte [ cs:_RxDOS_bNumBlockDev ]
+	add ax, word [ cs:_RxDOS_pDPB + _pointer ]
+	mov di, ax					; points nth + 1 entry
+
+RxDOS_DPBinit_08:
+	cmp bx, byte -1					; end of list ?
+	jz RxDOS_DPBinit_22				; if end of list -->
+
+	test word [ es:bx + devAttributes ], ( DEV_CHAR )
+	jnz RxDOS_DPBinit_14				; if a character device -->
+
+	xor cx, cx
+	mov cl, byte [ es:bx + devUnits ]		; number of logical devices
+
+RxDOS_DPBinit_10:
+	sub di, byte sizeDPB
+	mov word [ _dpbptrDeviceDriver + _segment + di ], es
+	mov word [ _dpbptrDeviceDriver + _pointer + di ], bx
+	loop RxDOS_DPBinit_10
+
+RxDOS_DPBinit_14:
+	les bx, [ es:bx + devLink ]
+	jmp short RxDOS_DPBinit_08			; go to next ->
+
+RxDOS_DPBinit_22:
+	pop ds
+	retn
+
+
+		; RxDOS Current Directory Structure subsystem initialize
+		;
+		; No Parameters Required.
+RxDOSini_CDSSubSystem:
+
+%if 0
+	push ds
+%endif
+	setDS cs
+	mov ax, sizeCDS
+	mul word [ _RxDOS_bLastDrive ]			; ax contains offset to current drive
+	call AllocateSystemSpace
+	mov word [ _RxDOS_pCDS + _segment ], es
+	mov word [ _RxDOS_pCDS + _pointer ], di
+
+	xor ax, ax
+	shr cx, 1
+	repe stosw					; init entire space to nulls
+
+	mov ax, sizeLFNCDS
+	mul word [ _RxDOS_bLastDrive ]			; ax contains offset to current drive
+	call AllocateSystemSpace
+	mov word [ _RxDOS_pLFNCDS + _segment ], es
+	mov word [ _RxDOS_pLFNCDS + _pointer ], di
+
+	xor ax, ax
+	shr cx, 1
+	repe stosw					; init entire space to nulls
+
+	xor cx, cx
+	mov cl, byte [ _RxDOS_bLastDrive ]
+	mov di, word [ _RxDOS_pLFNCDS + _pointer ]	; es is still what we put in _RxDOS_pLFNCDS+_segment
+
+	mov dx, word [ _RxDOS_pCDS + _segment ]
+	mov bx, word [ _RxDOS_pCDS + _pointer ]
+
+		; Link each LFNCDS entry to its CDS entry
+RxDOS_CDSinit_04:
+	mov word [ es:_lfnPtrToCDS + _segment + di ], dx
+	mov word [ es:_lfnPtrToCDS + _pointer + di ], bx
+	add bx, byte sizeCDS
+	add di, sizeLFNCDS
+	loop RxDOS_CDSinit_04
+
+		; Fill in the default path (root directory) for each CDS
+	mov al, 'A'					; starts with A:
+	xor cx, cx
+	mov cl, byte [ _RxDOS_bLastDrive ]
+	les di, [ _RxDOS_pCDS ]
+
+RxDOS_CDSinit_08:
+	mov byte [ es:di + _cdsActualDirectory ], al
+	mov byte [ es:di + _cdsActualDirectory + 1 ], ':'
+	mov byte [ es:di + _cdsActualDirectory + 2 ], '\'
+	mov byte [ es:di + _cdsActualDirectory + 3 ], 0	; drive,':\',0
+	mov byte [ es:di + _cdsNonSubstOffset ], 3	; points to the 0
+
+	inc al						; next letter
+	add di, byte sizeCDS
+	loop RxDOS_CDSinit_08
+
+		; init DPB values for each CDS
+	setDS cs
+	xor cx, cx
+	les di, [ _RxDOS_pCDS ]
+	mov ax, word [ _RxDOS_pDPB + _pointer ]
+	mov dx, word [ _RxDOS_pDPB + _segment ]
+	mov cl, byte [ _RxDOS_bNumBlockDev ]
+
+RxDOS_CDSinit_12:
+	or word [ es:di + _cdsFlags ], _CDS_PHYSICALDRIVE
+	mov word [ es:di + _cdsPtrToDPB + _pointer ], ax
+	mov word [ es:di + _cdsPtrToDPB + _segment ], dx
+	add ax, byte sizeDPB
+	add di, byte sizeCDS
+	loop RxDOS_CDSinit_12
+%if 0
+	pop ds
+%endif
+	retn
+
+
+		; RxDOS System File Tables subsystem initialize
+		;
+		; ax = number of SFT entries to initialize
+RxDOSini_SFTSubSystem:
+
+%if 0
+	push ds
+%endif
+	setDS cs
+	push ax						; files
+	mov cx, sizeSFT
+	mul cx						; total bytes for the actual SFT entries
+%if 1
+	add cx, byte sizeFT				;  add size of the FT header
+%else
+	add ax, byte sizeFT
+%endif
+
+	call AllocateSystemSpace
+
+%if 0
+	xor ax, ax
+	shr cx, 1
+	repe stosw					; init entire space to nulls
+%endif
+
+	mov word [ _RxDOS_pFT + _segment ], es
+	mov word [ _RxDOS_pFT + _pointer ], di
+
+%if 1
+	mov word [ es:nextFTPointer + _pointer ], -1
+%else
+		; RxDOS 7.20N:	BUG. Assumes that AllocateSystemSpace will return
+		;		a zero pointer.
+	mov word [ es:di + nextFTPointer + _pointer ], -1
+%endif
+	pop word [ es:di + numberSFTEntries ]
+
+	call RxDOSini_StdInStdOutDrivers		; initialize drivers
+%if 0
+	pop ds
+%endif
+	retn
+
+
+		; RxDOS Cache Control Buffers subsystem initialize
+		;
+		; ax = number of CCBs to initialize
+RxDOSini_CCBSubSystem:
+
+	push ax						; buffers
+	mov cx, sizeCCB
+	mul cx						; total bytes for cache blocks
+
+	call AllocateSystemSpace
+	mov word [ _RxDOS_BufferList + _segment ], es
+	mov word [ _RxDOS_BufferList + _pointer ], di
+
+	pop cx						; number of buffers
+%if 1
+		; RxDOS 7.20N:	I think this instruction should be commented.
+		;
+		;		Test: Leave it uncommented and verify after bootup if
+		;		amount of buffers defined (BUFFERS=) is initialized,
+		;		or if it's one buffer to less. If it's one to less
+		;		most probably this instruction caused the trouble.
+	dec cx
+%endif
+	mov dx, -1					; previous of first is invalid
+
+RxDOS_CCBinit_10:
+	lea ax, [ sizeCCB + di ]
+	mov word [ es:di + ccbNext ], ax		; next
+	mov word [ es:di + ccbPrev ], dx		; previous
+	mov byte [ es:di + ccbDrive ], -1		; unitialized
+
+	mov dx, di					; current becomes previous
+	mov di, ax					; go to next
+	loop RxDOS_CCBinit_10				; go to next -->
+
+	mov di, dx					; at end set end marker
+	mov word [ es:di + ccbNext ], -1		; next of last is invalid
+	retn
+
+
+		; Allocate SFTs for StdIn and StdOut Devices
+RxDOSini_StdInStdOutDrivers:
+
+	push es
+	push ds
+
+		; Update system CON pointer to last driver with StdIn and StdOut bits
+	mov ax, ( DEV_STDINPUT + DEV_STDOUTPUT )
+	call checkforDeviceType
+	jc RxDOS_DRIVERinit_10
+
+	mov word [ _RxDOS_pCONdriver + _pointer ], bx
+	mov word [ _RxDOS_pCONdriver + _segment ], es
+
+RxDOS_DRIVERinit_10:
+
+		; Update system CLOCK pointer to last driver with StdIn and StdOut bits
+	mov ax, ( DEV_CLOCK )
+	call checkforDeviceType
+	jc RxDOS_DRIVERinit_12
+
+	mov word [ _RxDOS_pCLOCKdriver + _pointer ], bx
+	mov word [ _RxDOS_pCLOCKdriver + _segment ], es
+
+		; allocate StdIn, StdOut, StdErr, StdAux, StdPrn
+RxDOS_DRIVERinit_12:
+	setDS cs
+	mov di, stdDeviceAssignTable
+
+RxDOS_DRIVERinit_14:
+	setES cs
+	call checkforDeviceName				; locate device
+	jc RxDOS_DRIVERinit_22				; if can't be located -->
+
+	push bx
+	push es						; save pointer to driver
+
+	push di
+	mov ax, word [ cs:di + stdIOHandle ]		; get assigned handle
+	call FindSFTbyHandle				; find SFT address (es:di)
+	mov bx, di					; SFT address to bx
+	pop di						; restore
+	jc RxDOS_DRIVERinit_22				; if can't be located -->
+
+	mov ax, word [ cs:di + stdDevInfo ]
+	or ax, sftProtected				; can't close those
+	mov word [ es:bx + sftDevInfo ], ax
+
+	push di
+	push bx
+	mov cx, sizeFnName
+
+RxDOS_DRIVERinit_16:
+	mov al, byte [ cs:di + stdDriverName ]		; copy name
+	mov byte [ es:bx + sftFileName ], al
+	inc bx
+	inc di
+	loop RxDOS_DRIVERinit_16
+
+	pop bx
+	pop di
+	pop word [ es:bx + sftDHD + _segment ]
+	pop word [ es:bx + sftDHD + _pointer ]		; set pointer to device header
+	inc word [ es:bx + sftRefCount ]		; bump use count
+
+RxDOS_DRIVERinit_22:
+	add di, byte sizeStdRedirec
+	cmp word [ cs:di ], byte -1
+	jnz RxDOS_DRIVERinit_14
+
+	pop ds
+	pop es
+	retn
+
+
+		; Initialize attached file system
+		;
+		; cl = number of blocked devices
+		; dx = driver segment
+InitializeAttachedFileSystem:
+
+	xor ch, ch
+	or cx, cx					; any devices declared ?
+	jz Init_AttachedFileSystem_16			; none -->
+
+	saveSegments di, si
+
+	mov ax, sizeCDS
+	mul byte [ _RxDOS_bNumBlockDev ]		; offset into CDS
+
+	les di, [ _RxDOS_pCDS ]
+	add di, ax					; pointer to first CDS
+
+	mov ax, sizeDPB
+	mul byte [ _RxDOS_bNumBlockDev ]		; offset into DPB
+	lds si, [ _RxDOS_pDPB ]				; starting DPB address in ds:si
+	add si, ax					; offset to drive
+	xor ax, ax					; logical unit
+
+Init_AttachedFileSystem_08:
+	or word [ es:di + _cdsFlags ], _CDS_PHYSICALDRIVE
+	mov word [ es:di + _cdsPtrToDPB + _pointer ], si
+	mov word [ es:di + _cdsPtrToDPB + _segment ], ds
+
+	mov byte [ _dpbUnit + si ], al
+	mov byte [ _dpbAccessFlag + si ], -1		; never used before
+	mov word [ _dpbptrDeviceDriver + _segment + si ], dx	; driver segment
+	mov word [ _dpbptrDeviceDriver + _pointer + si ], 0
+
+	inc ax
+	add si, byte sizeDPB
+	add di, byte sizeCDS
+	loop Init_AttachedFileSystem_08
+
+	restoreSegments si, di
+
+Init_AttachedFileSystem_16:
+	retn
+
+
+		; CONFIG Switches
+F5_SkipConfigProcessing dw 0000				; non-zero if skipping
+F8_PromptRequired	dw 0000				; non-zero if prompt required
+
+
+		; CONFIG.SYS keywords
+%if 0
+_RxDOS_RXCONFIGSYS:	db "RXCONFIGSYS", 0
+%endif
+
+%ifdef RxDOS_DEBUG
+_RxDOS_ConfigFile:	db "CONFIG  TST", 0		; if debug mode
+%else
+_RxDOS_ConfigFile:	db "CONFIG  SYS", 0		; if production
+%endif
+
+_RxDOS_ConfigKeywords:	dw CONFIGTYPE_BREAK
+			db 'break', 0
+
+			dw CONFIGTYPE_BUFFERS
+			db 'buffers', 0
+
+			dw CONFIGTYPE_COUNTRY
+			db 'country', 0
+
+			dw CONFIGTYPE_COMMENTS
+			db 'comments', 0
+
+			dw CONFIGTYPE_DEVICE
+			db 'devicehigh', 0
+
+			dw CONFIGTYPE_DEVICE
+			db 'device', 0
+
+			dw CONFIGTYPE_DOS
+			db 'dos', 0
+
+			dw CONFIGTYPE_DRIVPARAM
+			db 'drivparm', 0
+
+			dw CONFIGTYPE_FCBS
+			db 'fcbs', 0
+
+			dw CONFIGTYPE_FILES
+			db 'files', 0
+
+			dw CONFIGTYPE_INCLUDE
+			db 'include', 0
+
+			dw CONFIGTYPE_INSTALLHIGH
+			db 'installhigh', 0
+
+			dw CONFIGTYPE_INSTALL
+			db 'install', 0
+
+			dw CONFIGTYPE_LASTDRIVE
+			db 'lastdrive', 0
+
+			dw CONFIGTYPE_MENUCOLOR
+			db 'menucolor', 0
+
+			dw CONFIGTYPE_MENUDEFAULT
+			db 'menudefault', 0
+
+			dw CONFIGTYPE_MENUITEM
+			db 'menuitem', 0
+
+			dw CONFIGTYPE_MULTITRACK
+			db 'multitrack', 0
+
+			dw CONFIGTYPE_NUMLOCK
+			db 'numlock', 0
+
+			dw CONFIGTYPE_REM
+			db 'rem', 0
+
+			dw CONFIGTYPE_SET
+			db 'set', 0
+
+			dw CONFIGTYPE_SHELL
+			db 'shell', 0
+
+			dw CONFIGTYPE_STACKS
+			db 'stacks', 0
+
+			dw CONFIGTYPE_SUBMENU
+			db 'submenu', 0
+
+			dw CONFIGTYPE_SWITCHCHAR
+			db 'switchar', 0
+
+			dw CONFIGTYPE_SWITCHES
+			db 'switches', 0
+
+			dw -1, 0
+
+
+		; True/False table
+_RxDOS_ConfigTrueFalse: dw TRUE
+			db 'true', 0
+
+			dw FALSE
+			db 'false', 0
+
+			dw -1, 0
+
+
+		; DOS options
+_RxDOS_ConfigDOSOptions:dw 1
+			db 'umb', 0
+
+			dw -1
+			db 'noumb', 0
+
+			dw 2
+			db 'high', 0
+
+			dw -2
+			db 'low', 0
+
+			dw -1, 0
+
+
+		; On/Off table
+_RxDOS_ConfigOnOff:	dw _ON
+			db 'on', 0
+
+			dw _OFF
+			db 'off', 0
+
+			dw -1, 0
+
+
+		; Error Messages
+msgUnknownCommandinConfig:	db 'Unrecognized command in config.sys', 0
+msgProcessCommandYesNo:	db ' [y,n]?', 0
+
+Config_MenuSelector:	db 'MENU', 0
+Config_CommonSelector:	db 'COMMON', 0
+
+%ifdef RxDOS_DEBUG
+		; Debug Init
+		;
+		; Called when in debug mode.
+		;
+DebugInit:
+
+	Entry
+	def	floppyDrives
+	def	fixedDrives
+	defbytes	execBlock, sizeEXEC
+
+	mov cx, cs
+	mov ax, word [ _RxDOS_CurrentStackTop ]
+	add ax, PARAGRAPH				; round up to nearest para
+	shr ax, 1
+	shr ax, 1
+	shr ax, 1
+	shr ax, 1
+	add cx, ax					; low address available
+	mov word [ ss:_RxDOS_pStartMemBlock ], cx	; until relocation
+
+	mov ax, 40h
+	mov es, ax					; BIOS communications area
+
+	xor bx, bx
+%if 1
+	mov ax, word [ es:bx + _BIOS_Memory ]
+%else
+	mov ax, word [ es:_BIOS_Memory ]
+%endif
+	shl ax, 1					; multiply * 64 KiB
+	shl ax, 1
+	shl ax, 1
+	shl ax, 1
+	shl ax, 1
+	shl ax, 1					; max segment
+	mov word [ _RxDOS_MaxMemory ], ax		; memory available
+
+		; driver link (normally this will get done by driver init calls)
+	currSegment ds
+
+	mov ax, 5200h
+	int 21h
+
+	xor di, di
+	mov ax, word [ es:di + _RxDOS_NULLDev + _pointer ]
+	mov dx, word [ es:di + _RxDOS_NULLDev + _segment ]
+	mov word [ _RxDOS_NULLDev + _pointer ], ax
+	mov word [ _RxDOS_NULLDev + _segment ], dx
+
+		; this code should move to RxBIO
+	call maxBlockDevices
+	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
+
+	int 11h						; read hardware configuration
+
+	shr ax, 1					; floppy bit
+	shr ax, 1					; math coprocessor
+	shr ax, 1					; memory (XT only)
+	shr ax, 1
+	shr ax, 1					; video mode bits
+	shr ax, 1
+	and ax, 0003h
+	inc ax
+	mov word [ _floppyDrives + bp ], ax		; number of floppy disks
+	mov byte [ _RxDOS_CurrentDrive ], 0		; default to drive A:
+
+	xor bx, bx
+	mov ax, 40h
+	mov es, ax
+%if 1
+	mov al, byte [ es:bx + _BIOS_NumFixedDrives ]
+%else
+	mov al, byte [ es:_BIOS_NumFixedDrives ]
+%endif
+	mov word [ _fixedDrives + bp ], ax		; number of fixed drives
+	or ax, ax					; any fixed drives ?
+	jz _DebugInit_06				; none -->
+	mov byte [ _RxDOS_CurrentDrive ], 2		; else default to drive C:
+
+_DebugInit_06:
+	add ax, 2					; offset start of fixed by floppy disks
+	cmp ax, (DEFAULT_LASTDRIVE & 1Fh)		; max device less than LASTDRIVE ?
+%if 1
+	jg _DebugInit_08				; no, use available devices -->
+%else
+	ja _DebugInit_08				; no, use available devices -->
+%endif
+	mov ax, (DEFAULT_LASTDRIVE & 1Fh)		; use LASTDRIVE
+
+_DebugInit_08:
+	cmp al, byte [ _RxDOS_bNumBlockDev ]		; compare with number of block devices
+	jnc _DebugInit_12				; if at least as many block devices -->
+	mov al, byte [ _RxDOS_bNumBlockDev ]		;  else use number of block devices
+
+_DebugInit_12:
+	mov byte [ _RxDOS_bLastDrive ], al		; number of logical devices
+
+	mov al, byte [ _RxDOS_CurrentDrive ]		; get current drive
+	inc al
+	mov byte [ _RxDOS_BootDrive ], al		; boot drive
+
+	Return
+%endif
+
+		; Relocate data segment low
+		;
+		; DX	where to relocate DS
+		;
+		; At the start of the program, the data segment is located at
+		; the low end of the current CS. The data segment space
+		; begins at 0000 and ends at 'SDAExtendedSwapArea'
+relocateDataSegmentLow:
+
+%ifdef RELOCDATASEG
+	retn						; never execute
+
+	mov es, dx					; destination segment
+	mov cx, SDAExtendedSwapArea			; size
+
+	xor di, di
+	xor si, si
+	shr cx, 1					; words
+	repe movsw					; copy
+
+		; stack also moves with data segment
+	mov ss, dx					; but offset remains intact
+	mov ds, dx					;
+	mov word [ _RxDOS_CurrentSeg ], ds		; Update current segment
+%endif
+
+	retn
+
+
+		; Initialize
+		;
+		; Expects from RxBIO:
+		;
+		; DL	unit code of startup disk
+		; ES:DI	points to SYSINIT block
+RxDOS_initialize:
+
+	cli						; disable interrupts
+	cld						; set direction
+	mov ax, cs
+	mov ds, ax
+	mov ss, ax
+	mov sp, RxDOS_EndOfInitCode + RXDOS_PERCALL_STACKRESERVE
+
+	mov ax, (RxDOS_EndOfInitCode + 3 * RXDOS_PERCALL_STACKRESERVE)
+	mov word [ _RxDOS_CurrentStackTop ], ax
+	mov word [ _RxDOS_CurrentSeg ], ss		; Current segment
+
+	sti
+
+		; initialize data segment
+	Entry
+	defbytes	execBlock, sizeEXEC
+	ddef	InitBlockPtr, es, di
+
+%ifdef RxDOS_DEBUG
+	call DebugInit
+
+	mov dl, 02h
+	mov dh, dl
+	and dx, 807Fh					; save offset, hard drive bit
+	rol dh, 1					; hard drive
+	rol dh, 1					; A: or C:
+	add dl, dh					; RxDOS drive number
+	mov byte [ _RxDOS_CurrentDrive ], dl		; default to drive A:
+%else
+	mov dl, byte [ es:di + initBootDrive ]
+	mov dh, dl
+	and dx, 807Fh					; save offset, hard drive bit
+	rol dh, 1					;
+	rol dh, 1					; if harddrive, dh = 2 (else 0)
+	add dl, dh					; RxDOS drive number
+	mov byte [ _RxDOS_CurrentDrive ], dl		; current drive = boot drive (A: = 0, ...)
+
+	inc dl
+	mov byte [ _RxDOS_BootDrive ], dl		; boot drive (A: = 1, ...)
+
+	mov cl, byte [ es:di + initTotalDrives ]	; number of block devices
+	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
+	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
+
+	mov ax, word [ _RxDOS_CurrentStackTop ]
+	add ax, PARAGRAPH				; round up to nearest para
+	shr ax, 1
+	shr ax, 1
+	shr ax, 1
+	shr ax, 1
+
+	mov cx, cs
+	add cx, ax					; low address available
+	mov word [ ss:_RxDOS_pStartMemBlock ], cx	; allocate from here
+
+	mov cx, 6
+	mov ax, word [ es:di + initMemParagraphs ]	; available memory size
+	shl ax, cl					; convert to segment address form
+	mov word [ _RxDOS_MaxMemory ], ax		; memory available
+
+	mov ax, word [ es:di + initDeviceChain + _pointer ]
+	mov dx, word [ es:di + initDeviceChain + _segment ]
+	mov word [ _RxDOS_NULLDev + _pointer ], ax
+	mov word [ _RxDOS_NULLDev + _segment ], dx
+%endif
+
+	mov ax, 0500h					; set page zero
+	int 10h
+
+		; set interrupt vectors for interrupt 21, 23, ... 28, 2F, 30
+	xor ax, ax
+	mov ds, ax
+	mov bx, ( 21h * 4 )				; Int21
+	mov word [ _pointer + bx ], _Interrupt_21
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 20h * 4 )				; Int20
+	mov word [ _pointer + bx ], _Interrupt_20
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 23h * 4 )				; Int23
+	mov word [ _pointer + bx ], _Interrupt_23
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 24h * 4 )				; Int24
+	mov word [ _pointer + bx ], _Interrupt_24
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 25h * 4 )				; Int25
+	mov word [ _pointer + bx ], _Interrupt_25
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 26h * 4 )				; Int26
+	mov word [ _pointer + bx ], _Interrupt_26
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 27h * 4 )				; Int27
+	mov word [ _pointer + bx ], _Interrupt_27
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 28h * 4 )				; Int28
+	mov word [ _pointer + bx ], _Interrupt_28
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 2Ah * 4 )				; Int2A
+	mov word [ _pointer + bx ], _Interrupt_2a
+	mov word [ _segment + bx ], cs
+
+%ifndef RxDOS_DEBUG
+	mov bx, ( 2fh * 4 )				; Int2F
+	mov word [ _pointer + bx ], _Interrupt_2f
+	mov word [ _segment + bx ], cs
+%endif
+
+	mov bx, ( 30h * 4 )				; "jmp far _CallDOS" at Int30/Int31
+	mov byte [ bx ], 0EAh				; "jmp far" instruction
+	mov word [ (1 + _pointer) + bx ], _CallDOS
+	mov word [ (1 + _segment) + bx ], cs
+
+		; compute number of block devices installed
+	setDS cs
+	call maxBlockDevices
+	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
+
+		; initialized environment size
+	mov ax, _RxDOS_SharedBuffer
+	mov word [ _RxDOS_pDTA + _pointer ], ax
+	mov word [ _RxDOS_pDTA + _segment ], ds
+
+	mov word [ _RxDOS_CurrentPSP ], 0
+
+		; relocate data segment low
+	mov dx, word [ _RxDOS_pStartMemBlock ]		; where to relocate ds
+	call relocateDataSegmentLow
+
+		; initialize memory and other buffers
+	call RxDOSini_MemorySubSystem
+	call RxDOSini_DPBSubSystem
+	call RxDOSini_CDSSubSystem
+
+	mov ax, DEFAULT_FILES
+	call RxDOSini_SFTSubSystem			; open CON, AUX, PRN
+
+	mov ax, DEFAULT_BUFFERS
+	call RxDOSini_CCBSubSystem
+
+	mov word [ _RxDOS_UserCodePage ], DEFAULT_CODEPAGE
+	mov word [ _RxDOS_SystemCodePage ], DEFAULT_CODEPAGE
+	mov word [ _RxDOS_CurrCountryInfo + intlCaseMap + _segment ], cs
+
+		; parse RXCONFIG.SYS file
+	xor di, di
+	mov ax, word [ _RxDOS_MaxMemory ]		; available memory
+	sub ax, 64 * ( 1024 / 16 )			; segments
+	mov es, ax
+
+	call configProcessing				; process RXCONFIG.SYS file
+	call RxDOSini_StdInStdOutDrivers		; initialize drivers
+
+		; parse command line
+	setDS cs
+	setES ss
+
+	lea di, [ word _execBlock + bp ]
+	clearMemory sizeEXEC				; clear load exec block
+
+	mov al, ' '
+	mov cx, 128
+	mov di, _RxDOSini_CommandShell
+	cmp byte [ es:di ], 0				; starts with a null character ?
+	jz RxDOS_init_36				; yes, go do default -->
+
+	cmp byte [ es:di ], al				; starts with a space ?
+	jnz RxDOS_init_14				; no -->
+	repz scasb					; scan for first non-space
+	or cx, cx					; zero here would mean all spaces
+	jz RxDOS_init_36				; yes, go do default -->
+	dec di						; adjust address
+
+RxDOS_init_14:
+	push cx						; save start address
+	push di						; save start address
+	repnz scasb					; scan for space delimiter
+	or cx, cx					; zero means no space delimeter
+	jz RxDOS_init_24				; no arguments passed -->
+
+	push cx
+	dec di						; adj address
+	mov si, di
+	mov di, _RxDOSini_CommandTail			; command tail copy
+	mov word [ _execBlock + lexecCommandTail + _segment + bp ], ss
+	mov word [ _execBlock + lexecCommandTail + _pointer + bp ], di
+
+	inc di						; store address
+
+RxDOS_init_18:
+	lodsb
+	stosb						; copy rest of line
+	or al, al					; null terminator ?
+	jz RxDOS_init_20				; no more than required -->
+	loop RxDOS_init_18				; no more than required -->
+
+RxDOS_init_20:
+	mov ax, di
+	sub ax, (_RxDOSini_CommandTail + 2)
+	mov byte [ _RxDOSini_CommandTail ], al		; command tail length
+	pop cx
+	inc cx
+	inc cx
+
+		; load RxCMD and transfer control
+RxDOS_init_24:
+	pop si						; start of command area
+	pop ax
+	dec cx
+	sub ax, cx
+	xchg cx, ax
+	mov di, _RxDOS_CommandShell
+	repe movsb					; copy shell command/command line arguments
+
+	lea bx, [ word _execBlock + bp ]		; exec block address
+	mov dx, _RxDOS_CommandShell
+	Int21 ExecuteProgram, 00			; execute custom user shell from RXCONFIG.SYS SHELL= statement
+	jnc RxDOS_init_68				; only branches if the main shell terminated
+
+RxDOS_init_36:
+	lea bx, [ word _execBlock + bp ]		; exec block address
+	mov dx, _RxDOSini_DefaultShell
+	Int21 ExecuteProgram, 00			; if failed, execute default shell (RXCMD.EXE)
+
+%if 0
+	jnc RxDOS_init_68				; only branches if the main shell terminated
+	lea bx, [ word _execBlock + bp ]
+	mov dx, _RxDOSini_DefaultShell
+	mov word [ _RxDOSini_DefaultShellExt + 0 ], ".C"
+	mov word [ _RxDOSini_DefaultShellExt + 2 ], "OM"; set .COM extension
+	mov byte [ _RxDOSini_DefaultShellExt + 4 ], 0	; make sure it's zero
+
+	Int21 ExecuteProgram, 00			; if failed, execute default shell (RXCMD.COM)
+	jnc RxDOS_init_68				; only branches if the main shell terminated
+
+	lea bx, [ word _execBlock + bp ]
+	mov dx, _RxDOSini_compatibilityshell
+	Int21 ExecuteProgram, 00			; if failed, execute compatibility shell (COMMAND.COM)
+	jnc RxDOS_init_68				; only branches if the main shell terminated
+%endif
+		; Display Error Message and stop
+	push cs
+	pop ds
+	mov si, RxDOSmsg_CouldNotFindShell
+	cmp ax, errFileNotFound
+	jz RxDOS_init_62
+
+	mov si, RxDOSmsg_InvalidPathShell
+	cmp ax, errPathNotFound
+	jz RxDOS_init_62
+
+	mov si, RxDOSmsg_ArenaTrashedShell
+	cmp ax, errArenaTrashed
+	jz RxDOS_init_62
+
+	mov si, RxDOSmsg_NotEnoughMemoryShell
+
+RxDOS_init_62:
+	call RxDOSIni_TypeMessage
+
+		; Wait for Ctrl+Alt+Del
+RxDOS_init_68:
+	xor ax, ax
+	int 16h						; this allows Ctrl+Alt+Del
+	jmp short RxDOS_init_68				; infinite loop
+
+
+		; Type Message
+		;
+		; ds:si-> ASCIZ message
+RxDOSIni_TypeMessage:
+
+	push ax
+
+RxDOSIni_TypeMessage_08:
+	lodsb
+	or al, al
+	jz RxDOSIni_TypeMessage_12
+
+	int 29h
+	jmp short RxDOSIni_TypeMessage_08
+
+RxDOSIni_TypeMessage_12:
+	pop ax
+	retn
+
+
+		; Type CR, LF
+RxDOSIni_TypeCR:
+
+	push ax
+
+	mov al, 13
+	int 29h
+	mov al, 10
+	int 29h
+
+	pop ax
+	retn
+
+
+		; Detect F8 during boot time
+checkforF8:
+
+	mov ah, 01h
+	int 16h						; test for F8 keystroke
+	jz checkforF8_exit				; if no character -->
+
+	xor ax, ax
+	int 16h						; get character
+	cmp ax, 4200h					; F8 character ?
+	jnz checkforF8					; eat character and look ahead -->
+
+	mov word [ cs:F8_PromptRequired ], 0001
+
+checkforF8_exit:
+	cmp word [ cs:F8_PromptRequired ], byte 0000	; check flag
+	retn
+
+
+		; Error Message
+RxDOSmsg_CouldNotFindShell:
+	db 13,10,"Could not find command shell",0
+
+RxDOSmsg_InvalidPathShell:
+	db 13,10,"Invalid Path: Shell command line probably contains wrong path",0
+
+RxDOSmsg_ArenaTrashedShell:
+	db 13,10,"Arena trashed detected while loading command shell",0
+
+RxDOSmsg_NotEnoughMemoryShell:
+	db 13,10,"Not enough memory to load command shell",0
+
+RxDOSmsg_CouldNotLoadDriver:
+	db 13,10,"Could not load: ",0
+
+
+		; Shell Name
+	align 2, db 0
+
+_RxDOSini_CommandShell:
+	times 128 db 0					; command shell
+_RxDOSini_CommandTail:
+	times 128 db 0					; command tail
+
+%ifndef RxDOS_DEBUG
+_RxDOSini_DefaultShell:
+%if 1
+	db "rxdoscmd"
+_RxDOSini_DefaultShellExt:
+	db ".exe",0
+%else
+	db "RXCMD"
+_RxDOSini_DefaultShellExt:
+	db ".EXE",0
+%endif
+%if 1
+	times 128-$+_RxDOSini_DefaultShell db 0
+%endif
+%else
+_RxDOSini_DefaultShell:
+	db 'c:/rxdos/rxdoscmd.exe', 0
+%if 1
+	times 128-$+_RxDOSini_DefaultShell db 0
+%endif
+%endif
+
+%if 0
+_RxDOSini_compatibilityshell:
+	db "COMMAND.COM",0
+%endif
+
+		; Stacks
+	align 2, db 0
+
+RxDOS_EndOfInitCode:

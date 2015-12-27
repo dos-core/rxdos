@@ -1,0 +1,287 @@
+#####:
+
+This file contains the bugs that were fixed between RxDOS 7.20N and RxDOS 7.30.
+Used tab size is 8, line breaks are after 79th column.
+
+Example entry:
+UDESC:	Short description for users.
+FOUND:	Consequences that were caused by the bug.
+BFILE:	Filename of binary file that contained the bug.
+PDESC:	Longer description for programmers/RxDOS developers.
+SOLTN:	Description of the bugfix.
+SFILE:	Filename of source file that contained the bug.
+LABEL:	A label inside the source file which is before the bug.
+
+#0000:
+UDESC:	Extended LBA partitions are recognized as file system partitions.
+FOUND:	Logical partitions inside the Extended LBA partition don't get assigned
+	to a drive letter. The Extended LBA partition itself gets assigned to a
+	drive letter instead. This drive contains no valid data and generates
+	errors on access to it.
+BFILE:	RXBIO.SYS
+PDESC:	PTTs were compared with FILESYSID_16EXTENDEDX, defined in RXDSTRUC.MAC
+	(now: FILESYSID_EXTENDEDLBA). The jump branched to the code for FS
+	partitions.
+SOLTN:	Now the jump branches to the code for Extended partitions.
+SFILE:	RxBIO.ASM
+LABEL:	_mapStandardPartitions_12
+
+#0001:
+UDESC:	Interrupt 21h, function 0Ah (buffered input) appends no Carriage Return
+	character to the buffer if it is at least 128 character sized.
+FOUND:	FreeDOS DEBUG complains an error after entering any command. The error
+	pointer ("^ Error") points two characters behind the actual end of the
+	entered command.
+BFILE:	RXDOS.SYS
+PDESC:	Inside function 0Ah the byte containing the length of the entered
+	command is compared with the length of the buffer. A conditional jump
+	greater-equal (signed comparison) was used to skip appending a CR
+	if the buffer is completely filled. However both length values are
+	unsigned bytes so buffers from 128 byte upwards got no CR.
+SOLTN:	The jump greater-equal (signed comparison) has been replaced with a
+	jump above-equal (unsigned comparison).
+SFILE:	RxDOS.ASM
+LABEL:	_buffkbdInput_16
+
+#0002:
+UDESC:	The CP/M compatibility interface "CALL 5" causes the system to crash.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	A near call to address 0005h inside an executing .COM file continues
+	the executation inside the program's PSP. At this location DOS places
+	the opcode for a far call either to the absolute location 0000:00C0 or
+	directly into the internal "CALL 5" dispatcher. (If it calls 0000:00C0,
+	this address holds a far jump opcode to the dispatcher.)
+
+	The stack then actually holds the return address for the far call (this
+	points into address 000Ah of the PSP) and the return address for the
+	near call.
+
+	The "CALL 5" dispatcher used to execute the Interrupt 21h function
+	after setting the registers appropriate and to return with a far return
+	opcode then. This however returns to address 000Ah of the PSP, holding
+	some DOS related data.
+SOLTN:	The "CALL 5" dispatcher has been extended to also set up the stack like
+	an interrupt opcode would do and jumping into Interrupt 21h. The normal
+	DOS dispatcher will then return to the code that executed the near call
+	to address 0005h of its PSP.
+SFILE:	RxDOS.ASM
+LABEL:	_CallDOS
+
+#0003:
+UDESC:	An Interrupt 23h handler that has been set up by an application causes
+	the system to crash if DOS encounters that the user pressed Ctrl-C.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	MS-DOS allows the Interrupt 23h handler to return either using a normal
+	far return opcode, a far return opcode that additionally restores the
+	stack of the calling DOS code or an interrupt return opcode.
+	
+	The RxDOS code didn't expect that the Interrupt 23h handler could
+	return using a normal far return opcode. Additionally the code didn't
+	force to restart the aborted system call if the Interrupt 23h handler
+	returned with a interrupt return opcode. (The first can cause the
+	system crashs while the second is a minor incompatibility to MS-DOS.)
+SOLTN:	Now it's expected that the stack of the calling DOS code may not be
+	restored correctly. If it indeed is restored correctly it's expected
+	that the Interrupt 23h handler wanted to restart the aborted system
+	call instead of terminate the application.
+SFILE:	RxDOS.ASM
+LABEL:	CtrlC_CheckCallBack
+
+#0004:
+UDESC:	An application terminated by DOS after encountering that the user
+	pressed Ctrl-C returns a random return code (errorlevel).
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	MS-DOS always sets the return code (errorlevel) of aborted applications
+	to zero. The RxDOS code only filled ah with the terminate function code
+	but left al in an unknown state.
+SOLTN:	Now the code fills ax with the terminate function code and a return
+	code (errorlevel) of zero.
+SFILE:	RxDOS.ASM
+LABEL:	CtrlC_CheckCallBack_04
+
+#0005:
+UDESC:	Interrupt 21h, function 37h (get/set switch character, specify \dev\
+	prefix use) doesn't report an error on unsupported subfunctions. These
+	will instead set the reported switch character to an unknown state.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	MS-DOS subfunctions 02h and 03h aren't known yet. However, these and
+	all higher subfunction codes were handled by the subfunction 01 code
+	and set the switch character to a random value.
+SOLTN:	Some comparisons were added to handle the case of a subfunction code
+	of 02h or higher. These now return an error.
+SFILE:	RxDOS.ASM
+LABEL:	_GetSetSwitchChar
+
+#0006:
+UDESC:	Interrupt 21h, function 58h (get/set allocation strategy, get/set upper
+	memory link) will cause a system crash if invoked with an invalid
+	subfunction.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	After a simple dispatcher for all valid subfunctions the code used to
+	set ax to an error code, setting CY and jumping to _ChangeFileMode_18.
+	However this code includes a return macro that expects some pushed
+	registers while the stack actually holds only the return address for
+	the main Interrupt 21h dispatcher.
+SOLTN:	The code after the function 58h dispatcher now just executes a near
+	return after setting ax to the error code.
+SFILE:	RxDOS.ASM
+LABEL:	_GetAllocationStrategy
+
+#0007:
+UDESC:	Interrupt 21, function 58, subfunction 01 (set allocation strategy) may
+	set the allocation strategy to an invalid value.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	The dispatcher inside this subfunction checks if the input strategy is
+	inside three different valid ranges. The comparisons branched to the
+	actual function code if the input value was valid. Invalid input values
+	in the range of 83h and 7FFFh (including this both values) didn't
+	branch out of the dispatcher and hence felt through to the code after
+	the dispatcher. However there is the actual function code instead of
+	the code that will report an error caused by an invalid input value.
+SOLTN:	The last comparison of the dispatcher now branches to the code that
+	reports an error if the input value is not inside the third valid
+	range. If it is inside the third valid range, executation falls through
+	and continues at the actual function code as intended.
+SFILE:	RxDOS.ASM
+LABEL:	_SetAllocStrategy
+
+#0008:
+UDESC:	Sometimes many invalid directory entries appear after the end of the
+	actual directory.
+FOUND:	The command DIR (of RxCMD) shows many entries with unreadable names and
+	random values for file creation date and time, file access date and
+	time and file size.
+BFILE:	RXDOS.SYS
+PDESC:	Did not occur if the directory is terminated with an unused directory
+	entry (that starts with a zero byte). The code expected that all
+	directories are	terminated by an unused directory entry.
+SOLTN:	-
+	(Now checks if this is the last entry of the last directory sector.)
+SFILE:	RxDOSFIL.ASM
+LABEL:	scanDir_36, locByAttrib_18
+
+#0009:
+UDESC:	Random read and write errors on all disks occur.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	The CCB function to locate a buffer from a given pointer compared with
+	signed comparison (less, greater).
+SOLTN:	The code compares using unsigned comparison (below, above) now.
+SFILE:	RxDOSCCB.ASM
+LABEL:	locateCCBPHeader_04
+
+#0010:
+UDESC:	The free cluster count (inside FSINFO) on FAT32 partitions is unknown
+	after any write operation to the disk.
+FOUND:	See UDESC.
+BFILE:	RXDOS.SYS
+PDESC:	The code that calculated and stored the correct free cluster count into
+	the DOS drive's DPB will then try to update the FSINFO sector. However
+	the code loaded the correct address into bx and then used si instead to
+	address the values. Hence it failed to update the count.
+SOLTN:	The code now uses bx to address the values.
+SFILE:	RxDOSFAT.ASM
+LABEL:	UpdateFreeSpace
+
+#0011:
+UDESC:	Programs that are aware of the DOS LFN services crash if used on drives
+	that don't provide LFN services.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	The code for Int21.71A0 (Get volume information) did not use the root
+	directory path provided by the user. Instead it always returned the
+	information expected for FAT12/FAT16 local drives that provide the LFN
+	services.
+SOLTN:	-
+	(Now it expands and checks the provided root directory path. This also
+	fixes the minor issue that FAT32 drives were reported as FAT12/FAT16.)
+SFILE:	RxDOSLFN.ASM
+LABEL:	Int71LFNGetVolumeInformation
+
+#0012:
+UDESC:	Programs that are aware of the DOS LFN services may not use the LFN
+	services or crash.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	On unknown/invalid subfunctions, the Int21.71 dispatcher just returned
+	to the main Int21 dispatcher leaving CF in the state from the last
+	comparison (cmp al, 0A8h). If the called unknown/invalid subfunction
+	was below 0A8h, the main Int21 dispatcher received a CY state, returned
+	a CY state to the Int21 caller and passed the word at [doscs:ax] (where
+	ax is 7100h - 71A7h) as random error code in ax to the Int21 caller. If
+	the called unknown/invalid subfunction was above 0A8h, the main Int21
+	dispatcher received a NC state, returned a NC state to the Int21 caller
+	and left ax of the Int21 caller unchanged.
+SOLTN:	Now the Int21.71 dispatcher always returns CY and the appropriate error
+	pointer if an unknown/invalid subfunction is called.
+SFILE:	RxDOSLFN.ASM
+LABEL:	_Int21Function71
+
+#0013:
+UDESC:	If no floppy drives are reported by the ROM BIOS, a random number of
+	floppy drives is created
+FOUND:	-
+BFILE:	RXBIO.SYS
+PDESC:	Before reading the hardware configuration with Int11
+
+#0014:
+UDESC:	If a batch label matches a command found in the same batch file and the
+	command is found before the label, GOTO jumps behind the command.
+FOUND:	-
+BFILE:	RXCMD.COM
+PDESC:	The code to search the label skips any space or colons in front of a
+	possible label. However it didn't check whether any colon at all is
+	in front of the possible label and therefore uses commands as labels as
+	well.
+SOLTN:	
+SFILE:	RxCMD.ASM
+LABEL:	_goto_18
+
+#0015:
+UDESC:	If a referenced environment variable isn't found in the environment it
+	isn't evaluated to an empty string.
+FOUND:	The command "echo %DEBUG%off" doesn't switch off ECHO if the
+	environment variable DEBUG doesn't exist.
+BFILE:	RXCMD.COM
+PDESC:	?
+SOLTN:	?
+SFILE:	? RxCMD.ASM
+LABEL:	?
+
+#0016:
+UDESC:	Some TSR programs may use up to 16 times of their required size.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	Int27 didn't compute the number of required paragraphs and instead
+	handled the number of required bytes to Int21.3100. This resizes the
+	TSR's memory block to a block up to 16 times larger than required, if
+	possible.
+SOLTN:	Now Int27 computes the number of required paragraphs.
+SFILE:	RxDOS.ASM
+LABEL:	relocatedi27 or _Interrupt_27
+
+#0017:
+UDESC:	Some old programs or programs that modify disk labels may crash.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	The code for Int21.10 did return using the return macro although it
+	didn't set up it's own stack frame.
+SOLTN:	Macro usage replaced by retn instruction.
+SFILE:	RxDOS.ASM
+LABEL:	_CloseFileFCB
+
+#0018:
+UDESC:	Some programs crash.
+FOUND:	-
+BFILE:	RXDOS.SYS
+PDESC:	Although the SDA/DOSDATA layout word was set to 1 (MS-DOS 4.x+), the
+	SDA actually had the MS-DOS 3.x layout.
+SOLTN:	SDA changed to MS-DOS 4.x+ layout.
+SFILE:	RxDOS.ASM
+LABEL:	SwappableDataArea

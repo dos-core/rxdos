@@ -1,0 +1,18 @@
+Known Bugs:
+
+LFN (long filenames) supported, but delete of an entry creates an invalid directory entry. This does not affect the disk, and scandisk will repair the entry, but it is a known bug. 
+
+Filespace on a FAT32 volume may not be updated correctly in all cases. 
+
+Extended partitions using LBA (type 0F) are wrongly treated as FAT partitions.
+
+
+Experiences:
+
+Some tests by Japheth 
+
+LBA48 support seems not to be implemented in RX-DOS. 
+
+There are also some severe incompatibilities, for example, the simple DOS buffered input function doesn't work as expected or destroys register contents which should be preserved. Therefore many DOS programs will simply not run under RX-DOS. 
+
+The good thing is: if you have MASM 5.1 and an appropriate linker, the binaries will be generated within some seconds from the sources, no errors occur.

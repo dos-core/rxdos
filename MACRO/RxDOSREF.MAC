@@ -1,0 +1,71 @@
+[list -]
+%if 0
+
+RxDOSREF - Labels to internal DOS data
+
+This product is distributed AS IS and contains no warranty
+whatsoever, including warranty of merchantability or
+fitness for a particular purpose.
+
+(c) Copyright 1990, 1999. Mike Podanoffsky
+
+This is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, see
+the file LICENSE.TXT.
+
+%endif
+
+
+		; DOS Data
+_RxDOS_SDALayoutStyle		equ 0001h		; byte: SDA style, 00 = DOS 3, 01 = DOS 4+
+_RxDOS_ShareRetry		equ 001Ah		; sharing retry count
+_RxDOS_ShareDelay		equ 001Ch		; sharing retry delay
+%if 1
+_RxDOS_pDTA			equ 001Eh		; ptr to current disk buffer (* violates m/tasking)
+%else
+_RxDOS_pdiskbuffer		equ 001Eh
+%endif
+_RxDOS_UnreadCON		equ 0022h
+_RxDOS_pStartMemBlock		equ 0024h		; seg ptr to start of memory allocation
+
+_RxDOS_pDPB			equ 0026h		; ptr to Drive Parameter Block (DPB)
+_RxDOS_pFT			equ 002Ah		; ptr to File Tables (FT)
+_RxDOS_pCLOCKdriver		equ 002Eh		; ptr to CLOCK$ device driver
+_RxDOS_pCONdriver		equ 0032h		; ptr to CON device driver
+_RxDOS_wMaxBlock		equ 0036h		; maximum bytes per block for any/all devices
+_RxDOS_BufferList		equ 0038h		; pointer set for buffer list
+_RxDOS_pCDS			equ 003Ch		; ptr to array of current directory structures
+_RxDOS_pFCBs			equ 0040h		; ptr to FCB table
+_RxDOS_nProtFCBs		equ 0044h		; number of protected fcbs
+_RxDOS_bNumBlockDev		equ 0046h		; number of block devices
+_RxDOS_bLastDrive		equ 0047h		; lastdrive from config.sys
+
+
+		; NULL Device Driver
+_RxDOS_NULLDev			equ 0048h		; link to other device
+
+
+		; Installable File System Parameters
+_RxDOS_bNumJoinDev		equ 005Ah		; number of JOIN'ed drives
+_RxDOS_wSpecialNames		equ 005Bh		; pointer to list of special names
+_RxDOS_Buffers			equ 0065h		; BUFFERS x
+_RxDOS_BootDrive		equ 0069h		; Boot Drive
+_RxDOS_MachineType		equ 006Ah		; 1 if 80386+, else 0
+_RxDOS_ExtendedMem		equ 006Bh		; extended memory size in KiB
+
+%if 0
+		; RxDOS 7.20N:	Following entries don't match the RxDOS 7.1.5/7.20N data
+_RxDOS_CurrentDrive		equ 006Dh		; current drive ( a=0, ... )
+
+
+		; Other DOS Data (Not Compatible with DOS 6/7)
+_RxDOS_INDOSFlag		equ 006Eh		; INDOS flag
+
+_RxDOS_Verify			equ 0070h		; NonZero if Verify
+_RxDOS_AllocStrategy		equ 0072h		; Allocation strategy
+_RxDOS_bCtrlBreakCheck		equ 0074h		; Ctrl Break Flag
+_RxDOS_bSwitchChar		equ 0075h		; Switch Char
+_RxDOS_MaxMemory		equ 0076h		; max memory
+%endif
+
+[list +]

@@ -1,0 +1,144 @@
+\C{build} Building RxDOS 7.20N from the source code
+
+\H{} Required tools
+
+\n NASM 2.04 .. 2.10, other versions might work
+
+\n One of these linkers:
+
+\lcont{
+\n WarpLink 2.70
+
+\n ALink, possibly
+
+\n Other 16-bit OMF linkers, with trivial adjustments
+
+\n NASM's internal linker (output format \c{bin}), requiring some adjustments to
+ the source code and scripts
+}
+
+\n exe2bin (tested with OpenWatcom 1.6 .. 1.9 program)
+
+Note that usage of NASM's internal linker would make exe2bin unnecessary too. Some
+other linkers will output a flat binary instead of an .EXE file too.
+
+\H{} Warnings to expect
+
+Recent attempts to assemble the provided source code (with NASM 2.10rc1\-20101106)
+caused several warnings in RxCMD.ASM, mostly by re-using variable names
+without manually undefining these pre-processor variables. The reason that this
+was not yet fixed might have been that RxCMD wasn't finished yet. Some (but probably
+not all) of these cases warn with "trailing garbage after expression ignored"
+because the %[i]assign directives get passed something like "\cw{_-2\_-2}" (as %1 is
+already expanded). A simple solution to these problems (in the macros) requires
+the %# feature that is not yet implemented in NASM.
+
+The "word data exceeds bounds" warnings that are displayed for RxCMD.ASM too
+can probably be ignored.
+
+The erroneous relocation in the RxDOS.EXE file as reported by exe2bin is,
+though non-sensical, indeed in the source.
+
+\H{} Script
+
+The mak.cmd script should be sufficient to create a makefile or simple script
+for your particular platform. It was created for a Windows NT environment.
+
+To achieve mostly binary-compatible files to RxDOS 7.1.5 the automatic optimization of recent
+NASM versions needs to be turned off using the command line switch "\cw{-O0}".
+
+\S{simplebin} Building RxBIO, RxVDISK, RxBOOT, RxMBR
+
+The associated .SYS file has to be build from the .ASM source code file using NASM's
+output format \c{bin}. As for all NASM command lines, \c{-i..\\MACRO\\} or \c{-i../MACRO/}
+has to be specified
+to pass the macro include path to NASM. Minimal example:
+
+\c nasm -i..\MACRO\ -o..\bin\RxBIO.SYS RxBIO.ASM
+\c nasm -i..\MACRO\ -o..\bin\RxVDISK.SYS RxVDISK.ASM
+\c  .
+\c  .
+\c  .
+
+\S{} Building RxD_BOOT
+
+First, the intermediate file RxD_BOOT.SYS has to build like the other files described in \k{simplebin}:
+
+\c nasm -i..\MACRO\ -o..\bin\RxD_BOOT.SYS RxD_BOOT.ASM
+
+Then, the file RxBOOT.SYS has to be appended to RxD_BOOT.SYS to form RxD_BOOT.COM. A
+\c{copy} command might require a \c{/b} switch to specify that it should open the
+files in binary mode. The \c{/y} is used here to specify overwriting
+the destination if it exists.
+
+\c copy /y /b RXD_BOOT.SYS + RXBOOT.SYS RXD_BOOT.COM
+
+\S{builddosobj} Building RxDOS
+
+Each of the RxDOS modules RxDOS, RxDOSCCB, RxDOSDEV, RxDOSEXE, RxDOSFAT, RxDOSFCB,
+RxDOSFIL, RxDOSLFN, RxDOSF32, RxDOSIFS, RxDOSMEM, RxDOSSFT, RxDOSSTR, RxDOSCTB,
+RxDOSERR and RxDOSINI need to be assembled into intermediate objects file first. For example:
+
+\c nasm -i..\MACRO\ -fobj -o..\obj\RxDOS.OBJ RxDOS.ASM
+\c nasm -i..\MACRO\ -fobj -o..\obj\RxDOSCCB.OBJ RxDOSCCB.ASM
+\c  .
+\c  .
+\c  .
+
+Then, all the object files have to be linked together with a linker. This is the command line
+that works with WarpLink:
+
+\c warplink @warplink.lin
+
+The file warplink.lin contains the list of files and command line options. The order
+in which these files are linked is important. RxDOS.OBJ must be the first, while RxDOSINI.OBJ
+must be the last. The order of the other files probably doesn't matter.
+
+\c  /s /mx /xt + 
+\c RxDOS.OBJ + 
+\c RxDOSCCB.OBJ + 
+\c RxDOSDEV.OBJ + 
+\c RxDOSEXE.OBJ + 
+\c RxDOSFAT.OBJ + 
+\c RxDOSFCB.OBJ + 
+\c RxDOSFIL.OBJ + 
+\c RxDOSLFN.OBJ + 
+\c RxDOSF32.OBJ + 
+\c RxDOSIFS.OBJ + 
+\c RxDOSMEM.OBJ + 
+\c RxDOSSFT.OBJ + 
+\c RxDOSSTR.OBJ + 
+\c RxDOSCTB.OBJ + 
+\c RxDOSERR.OBJ + 
+\c RxDOSINI.OBJ + 
+\c  ,RxDOS.EXE,RxDOS.MAP,;
+
+(The plus sign specifies line continuation to WarpLink.)
+
+The RxDOS.EXE file that is created by the linker (in the obj subdirectory) now needs to
+be converted to a flat .COM file. This command line works with OpenWatcom's exe2bin:
+
+\c exe2bin -x -r -l=0 RxDOS.EXE ..\bin\RXDOS.SYS
+
+\S{} Building RxCMD
+
+Similar to RxDOS's build process described in \k{builddosobj}, each of the RxCMD
+modules RxCMDCPY, RxCMDDIR, RxCMDFOR, RxCMDPRM, RxCMDREN and RxCMD need to be
+assembled into object files first. The
+files have to be linked similarly to the RxDOS link process then, too. 
+The order of the RxCMD objects probably is important too, the module RxCMD
+quite certainly must be specified last. exe2bin is not to be used for RxCMD.
+
+\S{} Building the documentation
+
+The provided documentation is partly written for Halibut, a program that compiles
+its input to various other formats. To compile the documentation into one text file
+and one HTML file, use this command:
+
+\c halibut --text --html readme.but intro.but changes.but build.but
+
+This writes the readme.txt and readme.htm files.
+The order of the input files matters, as the output will reflect this order. Note
+that readme.but contains some configuration for the text and HTML output formats
+of Halibut, but not for any other formats. You may wish to configure other
+output formats if you want to use them.

@@ -1,0 +1,13 @@
+
+Int21.714B - Long filename - Load and/or execute program
+INP:	ax = 714Bh
+	cl = mode
+	ds:dx-> ASCIZ (long) filename
+	es:bx-> parameter block
+OUT:	CF unchanged, ax = 7100h if Int21.71 not supported
+	CY on error,
+	 ax = 0001h if function not supported
+	NC if successful
+
+This function is an extension supported by RxDOS only.
+Error codes, modes and parameter blocks for each mode as for Int21.4B.

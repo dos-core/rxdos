@@ -1,0 +1,115 @@
+[list -]
+%if 0
+
+AMIS.MAC - NASM macros and structures to work with the IISP and AMIS
+Public Domain by C. Masloch, 2008
+
+I recommend reading AMIS itself for the exact function descriptions.
+
+%endif
+
+%ifndef __AMIS_MAC__
+%assign __AMIS_MAC__ 1
+
+
+; The following macros are useful for pre-installed AMIS programs that are
+; inside the kernel and don't want to allocate a number at system startup.
+; We can pre-assign any multiplex number because at system startup, no
+; numbers are allocated yet.
+
+		; Multiplex number for pre-installed AMIS interfaces. (Counts multiplex
+		; numbers assigned to internal AMIS programs in the kernel.)
+		;
+		; Initially, __AMIS_NUMBER__ is zero. It represents two values:
+		; - The number of already pre-installed interfaces.
+		; - The actual multiplex number for the next pre-installed interface.
+		;
+		; Each interface that wants to pre-install itself first has to use the
+		; amisinsure macro below, then store __AMIS_NUMBER__(+offset) in its
+		; multiplex number storage and then use the amisincrease macro below.
+%ifnnum __AMIS_NUMBER__
+%assign __AMIS_NUMBER__ 0
+%endif
+
+		; Insure pre-installed multiplex numbers available
+		;
+		; %1 = Required number of multiplex numbers (default is 1)
+	%imacro amisinsure 0-1.nolist 1
+%if (__AMIS_NUMBER__ + %1) > 100h
+ %error "Not enough AMIS multiplex numbers available"
+%endif
+	%endmacro
+
+		; Increase pre-installed multiplex number counter
+		;
+		; %1 = Number of used multiplex numbers (default is 1)
+	%imacro amisincrease 0-1.nolist 1
+%assign __AMIS_NUMBER__ __AMIS_NUMBER__+%1
+	%endmacro
+
+
+; I don't use the following structures in my code. However, you
+; may use them if you like to do.
+
+	struc IISPENTRY
+ieEntry:	resb 2			; 00h "jmp short" to ieStart
+ieNext:		resd 1			; 02h next vector
+ieSignature:	resb 2			; 06h "KB"
+ieEoi:		resb 1			; 08h 80h if issues "end of interrupt"
+ieJmphwreset:	resb 2			; 09h "jmp short" to hardware reset
+ieReserved:	resb 7			; 0Bh initialize to 0, don't depend on these
+ieStart:				; 12h actual vector code
+	endstruc
+
+	struc AMISSIGNATURE
+asVendor:	resb 8			; 00h blank padded vendor name
+asProduct:	resb 8			; 08h blank padded product name
+asDescription:	resb 1			; 10h ASCIZ description, up to 64 byte
+	endstruc
+
+	struc AMISFUNCTIONS
+afInstalled:	resb 1			; 00h installation check
+afEntry:	resb 1			; 01h get private entry
+afUninstall:	resb 1			; 02h uninstall
+afPopup:	resb 1			; 03h request pop-up
+afInterrupts:	resb 1			; 04h determine chained interrupts
+afHotkeys:	resb 1			; 05h get hotkey list
+afDevice:	resb 1			; 06h get device information (changes ah)
+	endstruc
+
+; Layout of AMIS interrupt lists:
+; byte:00	Interrupt number. Last entry if 2Dh
+; word:01	IISP interrupt entry in same segment.
+
+		; Generate an IISP interrupt entry
+		;
+		; %1 = label for interrupt entry
+		; %2 = label of retf opcode used (actual used label is %2.hwreset)
+		;      If no label is specified, a dummy hardware reset opcode is
+		;      created in front of the actual interrupt entry.
+	%imacro iispentry 1-2.nolist
+%ifn %0 >= 2
+	iisphwreset %1
+%endif
+%1: 		jmp short .start
+.next:		dd 0
+.signature:	db "KB"
+.eoi:		db 0
+%if %0 >= 2
+.jmphwreset:	jmp short %2.hwreset
+%else
+.jmphwreset:	jmp short %1.hwreset
+%endif
+.reserved:	times 7 db 0
+.start:
+	%endmacro
+
+		; Generate a retf opcode for an IISP compatible interrupt entry, with label
+		;
+		; %1 = label for retf opcode (actual generated label is %1.hwreset)
+	%imacro iisphwreset 1.nolist
+%1.hwreset:	retf
+	%endmacro
+
+%endif
+[list +]
