@@ -900,13 +900,6 @@ the file LICENSE.TXT.
 %idefine ifnbe	if_ nbe,
 
 
-		; Jump Far
-	%imacro jmp_far 2.nolist
-%warning jmp_far used
-		jmp %1:%2
-	%endmacro
-
-
 		; Normalize segment and pointer
 		; Makes sure pointer is in range 00h-0Fh, adds higher values to segment
 		;
@@ -972,7 +965,7 @@ the file LICENSE.TXT.
 		;
 		; RxDOS 7.20N:	Some source files used this with two parameters ("si, di")
 		;		but obviously they're not required and were removed.
-	%imacro fastmove 0-2.nolist
+	%imacro fastmove 0.nolist
 		shr cx,1			; get number of words
 		repz movsw			; move them
 		jnc %%evencount			; even bytes -->

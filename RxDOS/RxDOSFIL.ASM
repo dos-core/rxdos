@@ -1337,7 +1337,7 @@ readLogicalBuffer_16:
 	setDS es
 	mov si, bx					; where data read (ds:si)
 	les di, [ _readbuffer + bp ]			; to destination (es:di)
-	fastmove si, di					; move buffer
+	fastmove					; move buffer
 
 	pop cx
 	pop ds
@@ -1565,7 +1565,7 @@ writeLogicalBuffer_16:
 	push cx						; save bytes written in move
 	mov di, bx					; where to write data (es:di)
 	lds si, [ _appbuffer + bp ]			; data source (ds:si)
-	fastmove si, di					; move buffer
+	fastmove					; move buffer
 
 	mov si, bx					; where data written
 	call locateCCBPHeader				; find CCB header
