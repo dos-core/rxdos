@@ -55,7 +55,6 @@ Performs the actual disk (Int13) access.
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
 
-	global _DiskReset
 	global RxDOS_LFNTempStoreCount
 	global RxDOS_LFNTempStorage
 
@@ -323,12 +322,7 @@ _RxDOS_data		times 21 db 0		; uninitialized
 
 _RxDOS_ShareRetry	dw 0			; sharing retry count
 _RxDOS_ShareDelay	dw 0			; sharing retry delay
-%if 1
-_RxDOS_pDTA		dd 0			; ptr to current disk buffer (* violates m/tasking)
-%else
-_RxDOS_pdiskbuffer	dd 0			; RxDOS 7.20N:	Actually ptr to disk buffer which isn't DTA!
-						;		The DTA ptr is inside the SDA
-%endif
+_RxDOS_pdiskbuffer	dd 0			; pointer to disk buffer
 _RxDOS_UnreadCON	dw 0			; ptr to unread CON input
 _RxDOS_pStartMemBlock	dw 0			; seg ptr to start of memory allocation
 
@@ -370,11 +364,6 @@ _RxDOS_MachineType	db 0			; 1 if 80386+, else 0
 _RxDOS_ExtendedMem	dw 0			; extended memory size in KiBs
 
 		; the remainder of these arguments are not compatible with MS-DOS
-%if 1
-_RxDOS_Verify		dw 0			; NonZero if Verify
-_RxDOS_AllocStrategy	dw 0			; Allocation strategy
-_RxDOS_bSwitchChar	db '/'			; Switch Char
-%endif
 _RxDOS_MaxMemory	dw 0			; max memory
 _RxDOS_NumFileHandles	dw sizePSPHandleTable	; default
 _RxDOS_pLFNCDS		dd 0			; expanded LFN buffer
@@ -461,7 +450,7 @@ _RxDOS_SharedBuffer	times 128 db 0		; shared buffer.
 		;		items. These were removed.
 		;
 		; cm: Added some SDA... labels with RBIL 61.
-%if 0
+
 		; Pre-SDA data. Not part of the SDA, but software may expect it here.
 		;
 		; NTVDM 5.1:			Pre-SDA = 300h,	SDA = 322h
@@ -474,10 +463,10 @@ _RxDOS_SharedBuffer	times 128 db 0		; shared buffer.
 		; Check if Pre-SDA data available:
 		; 1. Get SDA
 		; 2. Save 17 bytes starting at SDA - (SDABeginArea-SDA5E01inc)
-%if 0
-%if $ > 2FEh
+%if ($ - $$) > 2FEh
  %warning "Can't pad start of SDA to address 2FEh"
-%endif
+%else
+	times (2FEh - ($ - $$)) db 0
 %endif
 
 SDAprinterecho:		db 0
@@ -500,7 +489,6 @@ SDApatchoffsets:	times 4 dw SDApatchbyte	; DOS-C 2036 and (according to RBIL) MS
 SDApatchbyte equ 0				; just fill list with terminators if unsupported
 %endif
 			db 0			; Padding
-%endif
 		; Start of real SDA
 SDABeginArea:
 _RxDOS_CritErrorFlag	db 0
@@ -511,22 +499,12 @@ _RxDOS_ExtErrorcode	dw 0
 _RxDOS_SuggestedAction	db 0
 _RxDOS_ClassOfError	db 0
 SDApLastError		dd 0			; pointer for last error
-%if 1
-SDACurrentDTA		dd 0			; current disk transfer area
-%else
-_RxDOS_pDTA		dd 0			; RxDOS 7.20N:	Actually this points to the DTA
-%endif
+_RxDOS_pDTA		dd 0			; pointer to the current DTA
 _RxDOS_CurrentPSP	dw 0			; current PSP
 SDASaveSP		dw 0			; SP across int 23h
 _RxDOS_ChildReturnCode	dw 0			; Child return code
 _RxDOS_CurrentDrive	db 0			; current drive (A: = 0, ...)
-%if 1
-SDAExtendedBreakFlag	db 0			; extended break flag
-%else
 _RxDOS_bCtrlBreakCheck	db -1			; check Ctrl-Break
-		; RxDOS 7.20N:	BUG. This is the flag if we should check for Ctrl-C
-		;		(see also below at SDATerminatedByCtrlC)
-%endif
 
 SDAEndArea:
 
@@ -544,15 +522,8 @@ SDALastDirEntryChecked	dw 0
 SDAInt24_RetFailStatus	db 0
 SDAInt24_AllowedActions db 0			; Abort, Retry, Fail bits
 SDADirectoryFlag	db 0
-%if 1
-_RxDOS_bCtrlBreakCheck	db -1			; check Ctrl-Break
-%else
 SDATerminatedByCtrlC	db 0
-		; RxDOS 7.20N:	BUG. This is _not_ the flag if we should check for
-		;		Ctrl-C but the one set if MS-DOS terminates something
-		;		caused by Ctrl-C. (RxDOS doesn't use it because it'S
-		;		a fixed memory location.)
-%endif
+
 _RxDOS_FCBAllowBlanks	db 0			; RxDOS 7.20N:	Yet unused
 			db 0			; Padding
 SDADayOfMonth		db 0
@@ -626,18 +597,10 @@ SDAUnknownDPB		dd 0			; points to an unknown DPB
 SDALowCluster		dw 0
 SDACurrentSector	dw 0
 SDAHighCluster		dw 0
-%if 0
 			dw 0			; Unknown
-		; RxDOS 7.20N:	This word is missing in RxDOS <= 7.20N.
-		;		Anyway this data isn't used at all.
-%endif
 SDAMediaID		db 0
 			db 0			; Padding
-%if 1
-SDApCurrentDPB		dd 0
-%else
-SDApCurrentDevice	dd 0			; RxDOS 7.20N:	Would actually point to a device header, not DPB
-%endif
+SDApCurrentDevice	dd 0
 SDApCurrentSFT		dd 0
 SDApCurrentCDS		dd 0
 SDApCurrentFCB		dd 0
@@ -657,13 +620,11 @@ SDAPathNameLast		dw 0
 SDAExtendedSwapArea:
 
 
-%if 0
 		; System Default Handle Table (use if no PSP loaded)
 		; RxDOS 7.20N:	Could be smaller. 5 handles should be enough.
 pspSysHandleTable:	db 0, 0, 0
 			times 17 db 0FFh
 sizepspSysHandleTable equ $-pspSysHandleTable
-%endif
 
 		; RxDOS Product Identification
 
@@ -681,8 +642,7 @@ _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
 
 	; ** ROMABLE BEYOND THIS ADDRESS **
 
-_RxDOS_DOSProgramName	db 'RxDOS7.20N'		; Product Name. First 8 bytes copied into system MCBs
-						; RxDOS 7.20N:	Changed from 'RxDOS7.1.6'
+_RxDOS_DOSProgramName	db 'RxDOS7.21'		; Product Name. First 8 bytes copied into system MCBs
 
 _RxDOS_ContrlC_Message	asciz '^C',13,10
 
@@ -694,13 +654,6 @@ stdDeviceAssignTable:
 	STDREDIREC 'PRN', stdRedirec_Prn, (sftIsDevice)
 	STDREDIREC -1
 
-%if 1
-		; System Default Handle Table (use if no PSP loaded)
-		; RxDOS 7.20N:	Could be smaller.
-pspSysHandleTable:	db 0, 0, 0
-			times 17 db 0FFh
-sizepspSysHandleTable equ $-pspSysHandleTable
-%endif
 
 		; Code Segment Data
 
@@ -872,18 +825,11 @@ _RxDOS_functions:
 	dw _GetSetCountryInformation		; 70 -	Get/set extended country information
 	dw _Int21Function71			; 71 -	Long filename functions
 	dw _Unused				; 72 -	Chicago LFNFindClose (beta only)
-%if 1
-	dw _Int21Function73			; 73 -	FAT32 extended drive functions
-_RxDOS_functionsLast:
-	dw _Unused				;   *-	items: undocumented DOS function
-
-_RxDOS_maxFunctionCode equ (_RxDOS_functionsLast - _RxDOS_functions)/2
-%else
 	dw _Int21Function73			; 73 -	FAT32 extended drive functions
 						;   *-	items: undocumented DOS function
 
 _RxDOS_maxFunctionCode equ ($ - _RxDOS_functions)/2
-%endif
+
 
 		; Critical Section Patch Area
 _RxDOS_CritSectPatches	times 5 dw 0
@@ -956,10 +902,7 @@ _Interrupt_21:
 
 	mov bp, sp
 	add bp, byte sizeStackFrame
-%if 1
-		; RxDOS 7.20N:	Releases >= 7.30 will do this after calling the function code.
-	and word [ byte bp + _Flags ], byte 0FFFEh	; clear carry bit
-%endif
+
 
 		; switch to internal stack
 	cli
@@ -1006,37 +949,27 @@ _Interrupt_21_12:
 	currSegment ds					; point to current segment
 	mov word [ _RxDOS_FunctionCall ], ax		; AX on call
 
+	mov bx, _Unused_al00
 	cmp ah, _RxDOS_maxFunctionCode			; max function code ?
-	jnc _Interrupt_21_48				; if out of range -->
+	jnc _Interrupt_21_21				; if out of range -->
 
 	xor bh, bh
 	mov bl, ah					; offset into functions table
 	add bx, bx
-
-_Interrupt_21_20:
 	mov bx, word [ _RxDOS_functions + bx ]
+_Interrupt_21_21:
 	mov word [ byte bp + _FctAddress ], bx		; save dispatch address
 
 	RetCallersStackFrame ds, bx
 	mov es, word [ byte bx + _DS ]			; ds on call
-%if 1
-	mov di, word [ byte bx + _DX ]			; set di from dx
-	mov bx, word [ byte bx + _BX ]			; restore bx
-	mov dx, di					; and also passed in dx
-%else
 	mov dx, word [ byte bx + _DX ]			; restore dx
 	mov bx, word [ byte bx + _BX ]			; restore bx
 	mov di, dx					; dx also passed in di
-%endif
 
-%if 1
-	clc
-%endif
 	currSegment ds					; point to current segment
 	mov word [ _RxDOS_StackLongJump ], sp		; save stack long jump
 
-%if 0
-		; RxDOS 7.30:	New Ctrl-C check code in the main Int21 dispatcher.
+
 	cmp ah, 00h					; function 00h ?
 	je .checkif					; doesn't always check -->
 	cmp ah, 0Ch					; function 01h-0Ch ?
@@ -1051,7 +984,7 @@ _Interrupt_21_20:
 
 .checkdone:
 	clc
-%endif
+
 		; es:di is ds:dx from user call
 		; dx, ax, bx, cx, si have their values as set from user call
 		; ds is changed to current segment
@@ -1070,15 +1003,7 @@ _Interrupt_21_20:
 		; ---> Set CY in caller's flags
 		;  ax = 0000h if custom error, don't modify caller's ax (_Unused needs this)
 		; ---> Don't modify CF in caller's flags
-		;
-		; RxDOS 7.20N:
-		; NC no error, all registers on stack frame set appropriate
-		; --> Leave CF in caller's flags unchanged (preset to NC)
-		; CY error,
-		;  ax = extended error pointer to be used by GetExtErrorCodeValue.
-		;       This will return another ax that's returned to the caller.
-		; --> Set CY in caller's flags
-		;
+
 		; RxDOS 7.20N:	Releases <= 7.20N always supposed there's no error and set
 		;		NC in caller's flags before calling the function code.
 		;		However unused DOS functions are reported to return just
@@ -1090,24 +1015,6 @@ _Interrupt_21_20:
 		;		dispatcher (sets CF of caller) or jmp to _Unused_alFF that
 		;		sets the framed al and returns with CY, ax=0000h to the
 		;		Int21 dispatcher (preserves CF of caller).
-%if 1
-	jnc _Interrupt_21_48
-
-_Interrupt_21_22:
-	RetCallersStackFrame es, bx
-	or word [ byte es:bx + _Flags ], byte 1		; set carry bit
-
-	mov si, ax					; error pointer in AX
-	cmp ax, byte -1					; error an FCB error ?
-	mov ah, byte [ byte es:bx + _AX + _AH ]		; retain ah in case FCB error
-	jz _Interrupt_21_32				; yes -->
-
-	mov word [ ss:_RxDOS_pExtErrorCode ], si	; save ptr to error code
-	call GetExtErrorCodeValue			; ax will contain ext error code
-
-_Interrupt_21_32:
-	mov word [ byte es:bx + _AX ], ax		; get actual error code
-%else
 	RetCallersStackFrame ds, bx
 	jnc _Interrupt_21_40				; go clear CF in caller's flags -->
 
@@ -1131,7 +1038,6 @@ _Interrupt_21_32:
 
 _Interrupt_21_40:
 	and byte [ byte bx + _FL ], ~1			; clears bit0 of the flag word (CF)
-%endif
 
 		; return registers
 _Interrupt_21_48:
@@ -1143,14 +1049,10 @@ _Interrupt_21_48:
 
 	pop bx						; function address (useless)
 	pop bx						; caller's sp
-%if 1
-	sub bx, byte sizeStackFrame			; adjust stack pointer (include stack frame)
-	pop ss						; restore caller's ss
-	mov sp, bx					; restore caller's sp
-%else
+
 	pop ss						; restore caller's ss
 	lea sp, [ byte bx-sizeStackFrame ]		; restore caller's sp (with stack frame)
-%endif
+
 	pop ax
 	pop bx
 	pop cx
@@ -1194,12 +1096,13 @@ css_stackfix_nc:
 
 
 		; Stack Frame Recover
+		; It's not terribly clear to me what this is meant for. ~ ecm
 _RxDOS_StackFrameRestore:
 
 	cmp word [ _RxDOS_StackFrameLock ], byte 0
 	je _RxDOS_StackFrameRestore_20			; no locked stack there? -->
 
-%if 1
+%if 0
 	cmp ah, GetDOSVersion
 	je _RxDOS_StackFrameRestore_08
 	cmp ah, GetExtendedError
@@ -1209,14 +1112,7 @@ _RxDOS_StackFrameRestore:
 	cmp ah, ProgramTerminate			; (compares with 00h, not 4Ch!)
 	je _RxDOS_StackFrameRestore_08
 	cmp ah, ClearBufferedKeyboardInput
-%if 1
-	jle _RxDOS_StackFrameRestore_20
-%else
-		; RxDOS 7.20N:	I don't know if the above conditional jump should branch if ah is 80h-0Ch
-		;		(signed, "less-equal") or only on 00h-0Ch (unsigned, "below-equal"). I
-		;		assume it should only branch on 00h-0Ch because 80h-FFh is unused anyway.
 	jbe _RxDOS_StackFrameRestore_20
-%endif
 
 _RxDOS_StackFrameRestore_08:
 		; RxDOS 7.20N:	Shouldn't we use ss: for these memory addresses?
@@ -1235,12 +1131,7 @@ saveStackFrame:
 	cmp word [ ss:_RxDOS_StackFrameLock ], byte 0
 	jne saveStackFrame_08				; Already a stack locked here? -->
 
-%if 1
-	saveSegments bx, ax
-%else
 	saveregisters ds, bx, ax
-		; RxDOS 7.20N:	Actually es doesn't get modified
-%endif
 	setds ss
 	inc word [ _RxDOS_StackFrameLock ]		; Indicate storage for locked stack used
 
@@ -1249,28 +1140,19 @@ saveStackFrame:
 	mov word [ _RxDOS_StackFramePtr ], ax
 	mov ax, word [ byte bx - 8 ]			; InDOS flag
 	mov word [ _RxDOS_INDOSRecover ], ax
-%if 1
-	restoreSegments ax, bx
-%else
+
 	restoreregisters ax, bx, ds
-		; RxDOS 7.20N:	Actually es doesn't get modified
-%endif
 
 saveStackFrame_08:
 	retn
 
+
 		; Call DOS interface for CP/M compatibility, "CALL 5"
 _CallDOS:
-
-%if 1
-	mov ah, cl					; old compatability
-	Int21
-	retf
-%else
-		; RxDOS 7.20N:	Actually the CALL 5 interface isn't just a far call to this address.
-		;		Rather it's a near call (inside the program's PSP) to address 5, which
-		;		then calls far to this address. Doing a retf here will screw anything
-		;		up and return into the PSP data instead of into the actual caller code.
+		; The CALL 5 interface isn't just a far call to this address.
+		; Rather it's a near call (inside the program's PSP) to address 5, which
+		; then calls far to this address. Doing a retf here will screw everything
+		; up and return into the PSP data instead of into the actual caller code.
 	pushf
 	push bp
 	mov bp, sp
@@ -1301,7 +1183,7 @@ _CallDOS:
 							;  (I found this behaviour while debugging MS-DOS)
 
 	mov ah,cl					; CP/M compatibility interface uses cl as function
-	jmp short _Interrupt_21				; Pass it through to our normal Int21 entry
+	jmp _Interrupt_21				; Pass it through to our normal Int21 entry
 
 .nocpmfunc:
 	xor al,al					; Report "Unused" function
@@ -1310,20 +1192,15 @@ _CallDOS:
 		;		A short solution for all this CP/M crap is to place "xor al,al",
 		;		"retn" at address 5 of the PSP. This will report an error to all CP/M
 		;		CALL 5s and it's even shorter than the code used by RxDOS <= 7.20N
-%endif
 
 
 		; Interrupt 20
 		;
 		; Terminate program
 _Interrupt_20:
-%if 1
-	Int21 TerminateProcess, 00
-	iret						; no return expected
-%else
-	xor ax,ax
-	jmp short _Interrupt_21				; RxDOS 7.20N:	Do it faster.
-%endif
+	xor ax, ax
+	jmp _Interrupt_21
+
 
 		; Where Data Segment Relocated
 
@@ -1332,16 +1209,7 @@ _RxDOS_CurrentSeg	dw 0000				; Current Segment
 		; System Wide Functions
 		;
 		; NULL Device Driver
-%if 1
-null_interrupt:
-		mov word [ byte es:bx + rhStatus ], ( OP_DONE )
-null_strategy:	retf
-		
-		; RxDOS 7.20N:	This assumes that between the strategy and interrupt calls es:bx
-		;		is unchanged. However, this is ok for the kernel itself because
-		;		the call will come from us anyway.
 
-%else
 		; RxDOS 7.20N:	This is actually the way MS-DOS does it, and thinking about it,
 		;		this makes even sense. Nobody said you mustn't modify the request
 		;		header in the strategy code itself. And there es:bx must be set
@@ -1360,7 +1228,6 @@ null_strategy:
 		mov word [ byte es:bx + rhStatus ], OP_DONE
 null_interrupt:
 		retf
-%endif
 
 
 		; Interrupt 23 - Control-Break Exit Address
@@ -1405,8 +1272,10 @@ _Interrupt_23:
 		;
 		; RxDOS 7.30:	Will move into resident RxCMD. All changed code moved into RxCMDRES.ASM.
 _Interrupt_24:
-
 %if 1
+	mov al, CRITERROR_FAIL				; default DOS handler always returns fail
+	iret
+%else
 	push ds
 	push es
 
@@ -1571,9 +1440,6 @@ perr_devErrSharingViolation:	asciz "Error Sharing Violation"
 perr_devErrLockViolation:	asciz "Error Lock Violation"
 perr_devErrInvalidDiskChange:	asciz "Error Invalid Disk Change"
 perr_OnDrive:			asciz " On Drive "
-%else
-	mov al, CRITERROR_FAIL				; default DOS handler always returns fail
-	iret
 %endif
 
 
@@ -1608,6 +1474,15 @@ _Interrupt_25:
 
 	saveSegments di, si, bp, dx, cx, bx
 
+	mov si, DevRead
+	jmp _Interrupt_26.common
+
+_Interrupt_26:
+
+	saveSegments di, si, bp, dx, cx, bx
+
+	mov si, DevWrite
+.common:
 	push ds
 	push bx
 	pop di
@@ -1624,108 +1499,57 @@ _Interrupt_25:
 	mov cx, word [ di + diskioStartSector + _high ]
 	mov dx, word [ di ]	; word [ di + diskioStartSector + _low ]
 				; RxDOS 7.20N:	Commented operand would generate a zero offset in NASM
-%if 1
-	mov es, word [ di + diskioBuffer + _segment ]
-	mov di, word [ di + diskioBuffer + _pointer ]
-%else
 	les di, [ di + diskioBuffer ]
-%endif
 
 _Int25_06:
 	or bx, bx					; nothing to read ?
 	jz _Int25_08					; if none (flags: NC, ZR) -->
 
-	call DevRead
+	call si
 
 _Int25_08:
 	restoreSegments bx, cx, dx, bp, si, di
 	retf						; Leaves interrupt flags on stack
 
 
-
-
-		; Interrupt 26 - Write To Disk (see comment above)
-_Interrupt_26:
-
-	saveSegments di, si, bp, dx, cx, bx
-
-	push ds
-	push bx
-	pop di
-	pop es					; buffer to es:di
-
-	mov bx, cx					; sectors
-	xor cx, cx					; extended sector address
-						; sector number in cx:dx,
-						; number of sectors in bx
-	cmp bx, byte -1					; points to DISKIO struct ?
-	jnz _Int26_06					; no -->
-
-	mov bx, word [ di + diskioSectors ]
-	mov cx, word [ di + diskioStartSector + _high ]
-	mov dx, word [ di ]	; word [ di + diskioStartSector + _low ]
-				; RxDOS 7.20N:	Commented operand would generate a zero offset in NASM
-%if 1
-	mov es, word [ di + diskioBuffer + _segment ]
-	mov di, word [ di + diskioBuffer + _pointer ]
-%else
-	les di, [ di + diskioBuffer ]
-%endif
-
-_Int26_06:
-	or bx, bx					; nothing to write ?
-	jz _Int26_08					; if none (flags: NC, ZR) -->
-
-	call DevWrite
-
-_Int26_08:
-	restoreSegments bx, cx, dx, bp, si, di
-	retf						; Leaves interrupt flags on stack
-
-		; RxDOS 7.20N:	The Int25 and 26 handlers do the very same except calling
-		;		either DevWrite or DevRead. RxDOS 7.30+ may merge both functions
-
-
-
 		; Interrupt 27
 		;
 		; Terminate and stay resident
+		;
+		; INP:	(cs = PSP)
+		;	dx = number of bytes to keep resident
 _Interrupt_27:
-%if 1
-	Int21 TerminateStayResident, 00			; no return code
-%else
+	mov cl, 4
+	mov ax, dx
+	shr dx, cl			; ignore excess over 10h boundary
+	and ax, 0Fh			; isolate excess (if any)
+	add ax, 0Fh			; if any excess, ax >= 10h
+	shr ax, cl			; if any excess, ax = 1, else 0
+	add dx, ax			; add in the excess
+
 	mov ax, 3100h
-	jmp short _Interrupt_21				; RxDOS 7.20N:	Do it faster.
-%endif
+	jmp _Interrupt_21
 
 
 		; Interrupt 28
 		;
 		; DOS idle loop
 _Interrupt_28:
-	iret
+;	iret
 
 
 		; Interrupt 2A
 		;
 		; DOS critical sections
 _Interrupt_2a:
-%if 1
-		; RxDOS 7.20N:	MS-DOS doesn't clear ax
-	xor ax, ax
-%endif
-	iret
+;	iret
 
 
 		; Interrupt 2F
 		;
 		; DOS hard-coded multiplex, MS Windows, many services
 _Interrupt_2f:
-%if 1
-		; RxDOS 7.20N:	MS-DOS and DOS-C don't clear bx on unsupported functions
-	xor bx, bx
-%endif
-	iret
+;	iret
 
 
 		; All other interrupts
@@ -1773,12 +1597,11 @@ getHandleTable_08:
 		; For Directory Functions, Change Error to 'Path Not Found'
 		;
 		; Usage:
-		; ax	contains error reference
-		; CF	error flag retained
-		; OUT:
-		; ax = pexterrPathNotFound if CY and input ax = pexterrFileNotFound
+		; INP:	ax = error reference
+		;	CF = error flag
+		; OUT:	if CY and input ax = pexterrFileNotFound,
+		;	 ax = pexterrPathNotFound 
 _chgErrorToPathNotFound:
-
 	jnc _chgtoPathError_14				; if no error -->
 
 	pushf						; save carry, status
@@ -1812,15 +1635,7 @@ _RetCallersStackFrame:
 	push word [ bp ]
 	push bx
 
-%if 1
-	pushf						; save interrupts
-	cli
-%endif
 	mov bx, word [ ss:_RxDOS_CurrentInstance ]	; base address of current stack
-%if 1
-	popf						; restore interrupts
-%endif
-		; RxDOS 7.20N:	What sense does it make to disable interrupts for one instruction?
 
 	push word [ ss:bx + 2 ]
 	pop word [ bp + 2 ]
@@ -1842,9 +1657,6 @@ setFCBErrorIfCarry:
 	mov word [ ss:_RxDOS_pExtErrorCode ], ax	; save ptr to error code
 
 setFCBErrorIfCarry_08:
-%if 1
-	mov ax, 0000
-%endif
 	sbb ax, ax					; NC -> 0000; CY -> FFFF
 
 	push ds
@@ -1954,31 +1766,27 @@ CheckKeyboardCharsAvailable:
 	entry
 	defbytes	reqBlock, sizeMaxReqHeader
 
-	mov al, -1					; character device
+	mov al, -1			; character device
 	mov ah, NONDESTRREAD
 	lea di, [ word bp + _reqBlock ]
 	call initReqBlock
 
 	mov ax, word [ _RxDOS_pCONdriver + _segment ]
 	or ax, word [ _RxDOS_pCONdriver + _pointer ]
-	jz checkKeybd_None				; if no CON driver -->
-							;  (al is zero as well if this branches)
+	jz checkKeybd_None		; if no CON driver -->
+					;  (al is zero as well if this branches)
 
 	push word [ _RxDOS_pCONdriver + _segment ]
 	push word [ _RxDOS_pCONdriver + _pointer ]
-	call CharDevRequest				; ask CON for character
+	call CharDevRequest		; ask CON for character
 
-	mov al, 00					; set character available
+	mov al, 00			; set character available
 	test word [ bp + _reqBlock + ndrStatus ], OP_DONE
-	jz checkKeybd_None				; if no character -->
+	jz checkKeybd_None		; if no character -->
 	test word [ bp + _reqBlock + ndrStatus ], OP_BUSY
-	jnz checkKeybd_None				; if no character -->
+	jnz checkKeybd_None		; if no character -->
 
-%if 1
-	mov al, -1					; set character available
-%else
-	dec al
-%endif
+	dec al				; = -1, set character available
 
 checkKeybd_None:
 	or al, al
@@ -1999,9 +1807,6 @@ _RedirectedInput:
 	def	handle, ax
 	defbytes	tempbuffer, 8			 ; just need 2, but give a little.
 
-%if 1
-	call CtrlC_CheckAlways				; Ctrl-C ?
-%endif
 	mov word [ bp + _tempbuffer ], 0		; just place a null in case of error
 
 	call MapAppToSFTHandle				; map to internal handle info
@@ -2042,9 +1847,6 @@ _RedirectedOutput:
 
 	mov byte [ bp + _tempbuffer ], dl		; save character to display
 
-%if 1
-	call CtrlC_CheckAlways				; Ctrl-C ?
-%endif
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
 	jc _redirectedOutput_22				; if SFT not located -->
@@ -2087,26 +1889,14 @@ CtrlC_CheckAlways:
 	defbytes	reqBlock, sizeMaxReqHeader
 	defbytes	tempBuffer, 8
 
-%if 1
-	SaveAllRegisters
-%else
 	mpush ds, es, bx, ax, dx, cx, di
-%endif
 
 	xor bx, bx
 	mov ds, bx
-%if 1
-	test byte [ bx + 471h ], 80h			; test Ctrl-Break flag
-	jz CtrlC_Check12				; if not set -->
 
-	and byte [ bx + 471h ], ~ 80h			; clear Ctrl-Break flag
-%else
 	test byte [ 471h ], 80h				; test Ctrl-Break flag
 	jz CtrlC_Check12				; if not set -->
-
 	and byte [ 471h ], ~ 80h			; clear Ctrl-Break flag
-		; RxDOS 7.20N	This offset with bx seems not useful.
-%endif
 
 	setds ss
 	mov al, -1					; character device
@@ -2117,7 +1907,7 @@ CtrlC_CheckAlways:
 	push word [ _RxDOS_pCONdriver + _segment ]
 	push word [ _RxDOS_pCONdriver + _pointer ]
 	call CharDevRequest				; flush all characters
-	jmp CtrlC_CheckCallBack				; call back current app -->
+	jmp short CtrlC_CheckCallBack			; call back current app -->
 
 CtrlC_Check12:
 	setds ss
@@ -2160,11 +1950,7 @@ CtrlC_Check12:
 CtrlC_Check18:
 	clc						; clear carry
 
-%if 1
-	RestoreAllRegisters				; restore all
-%else
 	mpop di, cx, dx, ax, bx, es, ds
-%endif
 	return
 
 
@@ -2208,95 +1994,95 @@ CtrlC_CheckCallBack:
 	pop ds
 	pop es
 
-		; RxDOS 7.20N:	MS-DOS and DR-DOS behave very strange with Int23:
-		;		- If the handler returns with RETF and CY set, both DOS will
-		;		  terminate the current program.
-		;		- (MS-DOS) If the handler returns with IRET or RETF 2 (which
-		;		  both restore the stack like the interrupt should do) NC is
-		;		  assumed and the current program is not terminated.
-		;		- (DR-DOS) If the handler returns CY it'll adjust SP
-		;		  assuming that the handler returned with RETF. (I don't
-		;		  know if it will adjust (add sp,2) or restore SP. Probably
-		;		  it's a very bad idea to return with CY and RETF 2 in DR-DOS.)
-		;
-		;		RxDOS 7.30+ will:
-		;		- assume that SP could be changed and the flags could be left
-		;		  on stack. SP is saved in another register across the Int23.
-		;		  (MS-DOS and others possible use the word [SDASaveSP] for
-		;		  that but for obvious reasons RxDOS won't use a fixed memory
-		;		  location.)
-		;		- use the strategy described above for MS-DOS. This one is
-		;		  in fact less dangerous because it won't screw up stacks.
-		;		  However, handlers that do stc, retf 2 will tell DOS it
-		;		  should restart the call instead of aborting the program.
-		;		  (Important is that the RxDOS <= 7.20N default Int23 handler
-		;		  does exactly this but is intended to abort the program.)
-		;
-		;		  Anyway most applications only set their own Int23 handler
-		;		  so they won't get terminated on Ctrl-C, so this should not
-		;		  be a big problem.
-		;		- hence use the returned CF state only if the Int23 handler
-		;		  returned with RETF.
-		;
-		;		The alternative function will just (always) restore SP from
-		;		BP and then use the returned CF state not comparing SP. This
-		;		behaves rather like DR-DOS but won't trash stacks when the
-		;		handler does stc, retf 2. (To use this, set the defined
-		;		CTRLC_MS_STRAT to zero.)
+%if 0
+RxDOS 7.20N:
+MS-DOS and DR-DOS behave very strange with Int23:
+- If the handler returns with RETF and CY set, both DOS will
+  terminate the current program.
+- (MS-DOS) If the handler returns with IRET or RETF 2 (which
+  both restore the stack like the interrupt should do) NC is
+  assumed and the current program is not terminated.
+- (DR-DOS) If the handler returns CY it'll adjust SP
+  assuming that the handler returned with RETF. (I don't
+  know if it will adjust (add sp,2) or restore SP. Probably
+  it's a very bad idea to return with CY and RETF 2 in DR-DOS.)
 
-%if 1
-	int intCONTROLC					; invoke Int23
-%else
+  This is in the file DRDOS/cio.a86 and in fact it always uses the CF
+  set by the interrupt. That is, direct CF if it returned using RETF
+  or RETF 2, and the CF from the stack if IRET. Now, in EDR-DOS 7.01.08
+  it will always check [SDASaveSP] and if SP doesn't match, it executes
+  add sp, 2 to restore the stack.
+
+  However, in the original DR-DOS 7.01 release's IBMDOS/CIO.A86, in the
+  CY case it assumes that the return was with RETF and it will then
+  always adjust the stack by add sp, 2 (even if that's wrong).
+
+RxDOS 7.30+ will:
+- assume that SP could be changed and the flags could be left
+  on stack. SP is saved in another register across the Int23.
+  (MS-DOS and others possible use the word [SDASaveSP] for
+  that but for obvious reasons RxDOS won't use a fixed memory
+  location.)
+- use the strategy described above for MS-DOS. This one is
+  in fact less dangerous because it won't screw up stacks.
+  However, handlers that do stc, retf 2 will tell DOS it
+  should restart the call instead of aborting the program.
+  (Important is that the RxDOS <= 7.20N default Int23 handler
+  does exactly this but is intended to abort the program.)
+
+  Anyway most applications only set their own Int23 handler
+  so they won't get terminated on Ctrl-C, so this should not
+  be a big problem.
+- hence use the returned CF state only if the Int23 handler
+  returned with RETF.
+
+The alternative function will just (always) restore SP from
+BP and then use the returned CF state not comparing SP. This
+behaves rather like DR-DOS but won't trash stacks when the
+handler does stc, retf 2. (To use this, set the defined
+CTRLC_MS_STRAT to zero.)
+
+%endif
+
+	numdef CTRLC_MS_STRAT
+
 	push bp
 	mov bp, sp
 		; remembering SP is always done because application
 		; Int23 handlers could use RETF alone
-%ifn CTRLC_MS_STRAT
+%ifn _CTRLC_MS_STRAT
 	; clc						; If application's Int23 is only IRET
 							;  we must prepare CF so'll see NC
 		; (However flags should already contain NC. See sub ax instruction above.)
 %endif
 	int intCONTROLC					; invoke Int23
 
-%if CTRLC_MS_STRAT
+%if _CTRLC_MS_STRAT
 	pushf						; remember CF state!
 	cmp bp, sp					;  now compare these
 %endif
 	mov sp, bp					; (if it actually changed)
-%if CTRLC_MS_STRAT
+%if _CTRLC_MS_STRAT
 	jne CtrlC_CheckCallBack_04			; it did change, use CF state -->
 	popf						; stacked flags back
 	clc						; force NC
 	pushf						; and restore stack for using the same code
 CtrlC_CheckCallBack_04:
 	popf
-%endif	; CTRLC_MS_STRAT
+%endif	; _CTRLC_MS_STRAT
 	pop bp
-%endif
 
 	jnc CtrlC_CheckCallBack_08			; if not terminate -->
 
-%if 1
-	mov ah, TerminateProcess			; terminate process
-%else
 	mov ax, 4C00h
-		; RxDOS 7.20N:	Setting only ah will set a random errorlevel. It should be zero.
-%endif
 		; RxDOS 7.20N:	MS-DOS will return on Int21.4D if Ctrl-C was used. However it sets
 		;		the byte [SDATerminatedByCtrlC] to FFh to tell the Ctrl-C state to
 		;		the termination code. RxDOS 7.30+ must do this different. Possible
 		;		a flag inside the PSP which is to be terminated?
 
 CtrlC_CheckCallBack_08:
-%if 1
-	Int 21h						; either terminate process or restart interrupt
+	jmp _Interrupt_21
 
-	stc						; exit with carry
-	retf 2						; if it does, we left a return address
-%else
-	jmp short _Interrupt_21
-		; RxDOS 7.20N:	Otherwise would always return with CY if restarted.
-%endif
 
 		; DOS Functions
 
@@ -2401,10 +2187,6 @@ _DisplayString:
 	ddef	sftPointer
 	ddef	buffer, es, dx
 
-%if 1
-	call CtrlC_CheckAlways				; Ctrl-C ?
-%endif
-
 	mov ax, STDOUT					; handle
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
@@ -2437,7 +2219,6 @@ _displayOutput_22:
 		; es:dx	pointer to a buffer
 		; 	(lead byte contains max length)
 _BufferedKeyboardInput:
-
 	entry
 	ddef	buffer, es, dx
 	def	needsEcho, FALSE
@@ -2447,10 +2228,6 @@ _BufferedKeyboardInput:
 	mov al, byte [ es:bx ]	; [ byte es:bx + bufMaxLength ]	; max requested
 	or ax, ax					; any requested ?
 	ifz _buffkbdInput_42				; if none, exit -->
-
-%if 1
-	call CtrlC_CheckAlways				; Ctrl-C ?
-%endif
 
 	mov ax, STDIN					; handle is stdin
 	call MapAppToSFTHandle				; map to internal handle info
@@ -2488,14 +2265,8 @@ _buffkbdInput_14:
 _buffkbdInput_16:
 	getdarg es, bx, _buffer
 	mov byte [ byte es:bx + bufActualLength ], al	; actual bytes read
-	cmp al, byte [ es:bx ]	; [ byte es:bx + bufMaxLength ]	; at maximum buffer ?
-%if 1
-	jge _buffkbdInput_22				; yes -->
-%else
+	cmp al, byte [ es:bx ]	; [ es:bx + bufMaxLength ]	; at maximum buffer ?
 	jae _buffkbdInput_22				; yes -->
-		; RxDOS 7.20N:	BUG. This must compare the length unsigned. Otherwise buffers
-		;		>= 128 characters won't get the CR at the end when they should.
-%endif
 
 	add bx, ax
 	mov byte [ byte es:bx + bufData ], 13		; add cr to end
@@ -2534,11 +2305,6 @@ _buffkbdInput_42:
 		; Usage:
 		; AL	= -1 if data available in STDIN
 _CheckKeyboardInput:
-
-%if 1
-	call CtrlC_CheckAlways				; Ctrl-C ?
-%endif
-
 	mov ax, STDIN					; handle is stdin
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
@@ -2605,28 +2371,13 @@ _ClrBuf_16:
 	cmp al, BufferedKeyboardInput
 	ifz _BufferedKeyboardInput			; if function 0A -->
 
-	RetCallersStackFrame es, bx
-	mov byte [ es:bx + _AX + _AL ], 0		; else return zero
-%if 1
-	or ax, ax
-		; RxDOS 7.20N: clear carry?
-%else
-	clc
-%endif
-	retn
+	jmp _Unused_al00				; else return zero
+
 
 		; 0Dh Reset Disk
 		;
 		; Update disk buffers.
-%if 1
-_DiskReset:
-
-	call updateAllChangedCCBBuffers
-	retn
-%else
 _DiskReset equ updateAllChangedCCBBuffers
-		; RxDOS 7.20N:	This also does a retn.
-%endif
 
 
 		; 0Eh Select Disk
@@ -2640,13 +2391,8 @@ _SelectDisk:
 	mov byte [ es:bx + _AX + _AL ], al		; return max.
 
 	cmp dl, al					; greater than max drives ?
-%if 1
-	jge _selectDisk_08				; yes, ignore change -->
-%else
 	jae _selectDisk_08				; yes, ignore change -->
-		; RxDOS 7.20N:	BUG. This must be compared unsigned. Invalid drive
-		;		numbers above 7Fh would pass this otherwise.
-%endif
+
 
 	push dx
 	xor ah, ah
@@ -2656,19 +2402,14 @@ _SelectDisk:
 	jc _selectDisk_08				; if invalid drive -->
 
 	cmp word [ es:bx + _dpbptrDeviceDriver + _segment ], byte 0
-%if 1
-	stc
-%endif
 	jz _selectDisk_08				; if invalid drive -->
 
 	mov byte [ _RxDOS_CurrentDrive ], dl		; else change drive
+	clc
+	retn
 
 _selectDisk_08:
-%if 1
-	or ax, ax					; no carry
-%else
-	clc
-%endif
+	stc
 	retn
 
 
@@ -2686,10 +2427,6 @@ _OpenFileFCB:
 	ddef	fcbPointer, es, dx
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	expandedName, 128		; expanded file name (128 bytes)
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; convert FCB name to name usable by SFT Open
 	mov si, dx					; source FCB address
@@ -2716,10 +2453,7 @@ _OpenFileFCB:
 
 		; return
 _OpenFileFCB_26:
-%if 0
 	call setFCBErrorIfCarry
-		; RxDOS 7.20N:	Shouldn't we do that?
-%endif
 	return
 
 
@@ -2755,10 +2489,6 @@ _SearchFirstFileFCB:
 	entry
 	ddef	fcb, es, dx
 	defbytes	findEntry, sizeFINDENTRY
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; build find entry
 	lea di, [ word bp + _findEntry ]
@@ -2797,10 +2527,6 @@ _SearchNextFileFCB:
 	entry
 	ddef	fcb, es, dx
 	defbytes	findEntry, sizeFINDENTRY
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; build find entry
 	lea di, [ word bp + _findEntry ]
@@ -2844,16 +2570,8 @@ _DeleteFileFCB:
 	def	deleted, 0000
 	defbytes	findEntry, sizeFINDENTRY
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; build find entry
-%if 1
-	lea di, [ word bp + _findEntry ]
-%else
 	lea di, [ byte bp + _findEntry ]
-%endif
 	push es
 	push dx
 	push ss
@@ -2864,11 +2582,7 @@ _DeleteFileFCB:
 		; keep looping until all matching are deleted
 _deleteFileFCB_08:
 	setes ss
-%if 1
-	lea di, [ word bp + _findEntry ]
-%else
 	lea di, [ byte bp + _findEntry ]
-%endif
 	call LocateFileByAttribute			; locate item
 	jc _deleteFileFCB_20
 
@@ -2893,14 +2607,7 @@ _deleteFileFCB_08:
 		; return
 _deleteFileFCB_20:
 	cmp word [ bp + _deleted ], byte 0		; any deleted ?
-%if 1
-	jg _deleteFileFCB_24				; yes -->
-%else
-	ja _deleteFileFCB_24
-		; RxDOS 7.20N:	This must compare unsigned. Otherwise numbers above
-		;		7FFFh might cause errors. (Though 8000h deleted files
-		;		are somewhat unlikely...)
-%endif
+	ja _deleteFileFCB_24				; yes -->
 	stc						; if none found.
 
 _deleteFileFCB_24:
@@ -2921,10 +2628,6 @@ _SeqReadFileFCB:
 	def	readCount
 	ddef	position
 	ddef	fcbPointer, es, dx
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; ok to read if valid FCB
 	mov di, dx
@@ -2990,10 +2693,6 @@ _SeqWriteFileFCB:
 	ddef	position
 	ddef	fcbPointer, es, dx
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; ok to write if valid fcb
 	mov di, dx
 	mov cx, word [ es:di + fcbRecordSize ]
@@ -3053,10 +2752,6 @@ _CreateFileFCB:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	expandedName, 128		; expanded file name (128 bytes )
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; convert FCB name to name usable by SFT Open
 	mov si, dx					; source FCB address
 	lea di, [ _expandedName + bp ]			; expand name
@@ -3098,10 +2793,6 @@ _RenameFileFCB:
 	entry
 	ddef	fcb, es, dx
 	defbytes	expandedName, 128		; expanded file name (128 bytes)
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; build first name
 	mov si, dx					; source FCB address
@@ -3157,7 +2848,7 @@ _CurrentDisk:
 		;
 		; ds:dx-> New DTA
 		;
-		; (see related function 2F - Get Disk Transfer Address)
+		; (see related function 2Fh - Get Disk Transfer Address)
 _SetDiskTransferAddress:
 
 	mov word [ _RxDOS_pDTA + _pointer ], dx
@@ -3236,10 +2927,6 @@ _ReadFileFCB:
 	ddef	position
 	ddef	fcbPointer, es, dx
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; ok to read if valid fcb
 	mov di, dx
 	mov cx, word [ es:di + fcbRecordSize ]
@@ -3301,10 +2988,6 @@ _WriteFileFCB:
 	def	writeCount
 	ddef	position
 	ddef	fcbPointer, es, dx
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; ok to Write if valid fcb
 	mov di, dx
@@ -3456,10 +3139,6 @@ _RandomBlockReadFCB:
 	ddef	position
 	ddef	fcbPointer, es, dx
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; ok to read if valid fcb
 	mov di, dx
 	mov cx, word [ es:di + fcbRecordSize ]
@@ -3536,10 +3215,6 @@ _RandomBlockWriteFCB:
 	def	numBlocks, cx
 	ddef	position
 	ddef	fcbPointer, es, dx
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; compute byte offset from block/rec numbers
 	mov di, dx
@@ -3986,30 +3661,13 @@ _settime_error:
 		; 2E00h Reset DOS write with verify switch
 		; 2E01h Set DOS write with verify switch
 		;
-		; (see related function 54 - Get DOS write with verify switch)
+		; (see related function 54h - Get DOS write with verify switch)
 		;
 		; RxDOS 7.20N:	MS-DOS preserves CF regardless of al. al&1 is used and returned.
 _SetVerifySwitch:
-
-%if 1
-	or al,al
-	jz _setverifySwitch_20
-	cmp al,1
-	jz _setverifySwitch_20
-
-	stc
-	retn
-
-_setverifySwitch_20:
-	mov byte [ _RxDOS_Verify ], al
-	or ax, ax
-	retn
-
-%else
 	and al, 01h
 	mov byte [ _RxDOS_Verify ], al
 	jmp _Unused_al				; return CF unchanged and possible changed al
-%endif
 
 
 		; 2Fh Get Disk Transfer Area address
@@ -4451,10 +4109,6 @@ _GetInterruptVector:
 		; (See also Int21.7303 - Extended Free Space)
 _GetFreeDiskSpace:
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 	RetCallersStackFrame es, bx
 	mov word [ es:bx + _AX ], -1			; in case of error, -1
 
@@ -4633,10 +4287,6 @@ _CreateSubdirectory:
 	ddef	datetime
 	defbytes	dirAccess, sizeDIRACCESS
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; does entry already exist ?
 	mov ax, (FILE_NODEVICENAME + FILEHAS_NOFILENAME + FILECANNOT_BEDEFINED)
 	getdarg es, si, _pathname			; arg passed internally as es:dx
@@ -4745,10 +4395,6 @@ _RemoveSubdirectory:
 	defbytes	diskAccess, sizeDISKACCESS
 	defbytes	tempfilename, sizeShortZFILENAME
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; parse file name
 	mov ax, (FILE_NODEVICENAME + FILEHAS_NOFILENAME)
 	getdarg es, si, _pathname			; arg passed internally as es:dx
@@ -4828,10 +4474,6 @@ _ChangeSubdirectory:
 	ddef	pathname, es, dx			; arg passed internally as es:dx
 	defbytes	dirAccess, sizeDIRACCESS
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; parse file name
 	mov ax, (FILE_NODEVICENAME + FILEHAS_NOFILENAME)
 	getdarg es, si, _pathname			; arg passed internally as es:dx
@@ -4896,10 +4538,6 @@ _CreateFile:
 	def	attributes, cx
 	ddef	filename, es, dx
 	defbytes	dirAccess, sizeDIRACCESS
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 	call VerifyAvailableHandle			; see if handle available
 	jc _CreateFile_42				; exit if none -->
 
@@ -4932,10 +4570,6 @@ _OpenFile:
 	def	mode, ax
 	ddef	filename, es, dx
 	defbytes	dirAccess, sizeDIRACCESS
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 	call VerifyAvailableHandle			; see if handle available
 	jc _OpenFile_42					; exit if none -->
 
@@ -4999,10 +4633,6 @@ _ReadFile:
 	ddef	sftPointer
 	ddef	bufPtr, es, dx				; save buffer pointer
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 	getarg ax, _handle				; get file handle
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
@@ -5034,10 +4664,6 @@ _WriteFile:
 	ddef	sftPointer
 	ddef	bufPtr, es, dx				; save buffer pointer
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 	mov ax, bx					; handle
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
@@ -5063,10 +4689,6 @@ _DeleteFile:
 	entry
 	ddef	filename, es, dx			; arg passed internally as es:dx
 	defbytes	dirAccess, sizeDIRACCESS
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; parse file name
 	mov si, dx					; name from caller
@@ -5106,10 +4728,6 @@ _MoveFilePointer:
 	def	handle, bx
 	ddef	moveDistance, cx, dx
 	ddef	newPosition
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 	mov ax, bx					; handle
 	call MapAppToSFTHandle				; map to internal handle info
@@ -5161,10 +4779,6 @@ _ChangeFileMode:
 	def	attributes, cx				; attributes, if change.
 	ddef	filename, es, dx			; arg passed internally as es:dx
 	defbytes	dirAccess, sizeDIRACCESS
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 		; parse file name
 	mov si, dx					; name from caller
@@ -5241,10 +4855,6 @@ _IoControl:
 	def	handle, bx
 	def	count, cx
 	ddef	bufPtr, es, dx
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 
 	Goto 00h,	_IoControl_GetDeviceData
 	Goto 01h,	_IoControl_SetDeviceData
@@ -5726,10 +5336,6 @@ _ExecuteProgram:
 	ddef	filename, es, dx			; arg passed internally as es:dx
 	defbytes	dirAccess, sizeDIRACCESS
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 		; lookup
 	mov si, dx					; name from caller
 	mov ax, (FILE_NODEVICENAME + FILECANNOT_BEDIRECTORY)
@@ -5853,21 +5459,13 @@ _TerminateProcess_20:
 
 		; 4Dh Get Return Code
 _GetReturnCode:
-
-%if 1 ; RxDOS 7.20N
-	mov ax, word [ _RxDOS_ChildReturnCode ]
-	mov word [ _RxDOS_ChildReturnCode ], 0
-%else ; RxDOS 7.20N
-
+	; RxDOS 7.30: unclear whether we should 'extend' this interface
 %if 1
 	mov ax, word [ _RxDOS_ChildReturnCode ]
 %else
 	xor ax, ax
 	xchg ax, word [ _RxDOS_ChildReturnCode ]
 %endif
-
-%endif ; RxDOS 7.20N
-
 	RetCallersStackFrame ds, bx
 	mov word [ bx + _AX ], ax
 	retn
@@ -5897,43 +5495,22 @@ _FindFirstFile:
 	xor ax, ax
 	mov cx, sizeFINDENTRY
 	les di, [ _RxDOS_pDTA ]
-%if 1
-	repz stosb					; clear area (0 handle)
-%else
 	push di
 	repz stosb					; clear area (0 handle)
 	pop di
-%endif
 
 		; copy template name, search string
-%if 1
-	mov di, word [ _RxDOS_pDTA + _pointer ]
-%endif
 	mov al, byte [ _dirAccess + fileAcDrive + bp ]
 	mov byte [ es:di + findSrchDrive ], al
 
 	mov si, word [ _dirAccess + fileAcNameOffset + bp ]
-%if 1
-	lea di, [ word di + findSrchName ]
-%else
 	lea di, [ byte di + findSrchName ]
-%endif
 	call convFilenametoFCBString			; convert to a match template
 
 	les di, [ _RxDOS_pDTA ]
-%if 1
-	db 8Dh,0B5h					; lea si, [di+imm16]
-	dw findSrchDrive				; == zero
-		; RxDOS 7.20N:	NASM 2.04 won't generate a zero offset in an effective
-		;		address. MASM's bad optimization for lea however does.
-%else
 	lea si, [ di + findSrchDrive ]
-%endif
-%if 1
-	lea di, [ word di + findFileName ]
-%else
 	lea di, [ byte di + findFileName ]
-%endif
+
 	saveRegisters es, si, es, di			; arguments
 	call convFCBNametoASCIZ				; build ASCIZ name
 
@@ -6227,10 +5804,6 @@ _renameFile_40:
 		; dx	date
 _SetFileDateTime:
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 	push ax						 ; save mode
 	mov ax, bx					; handle
 	call MapAppToSFTHandle				; map to internal handle info
@@ -6293,15 +5866,9 @@ _GetAllocationStrategy:
 	Goto 02, _GetUpperMemLink
 	Goto 03, _SetUpperMemLink
 
-%if 1
-	SetError pexterrInvalidFunction, _ChangeFileMode_18 ; else -->
-%else
 	seterror pexterrInvalidFunction
 	retn
-		; RxDOS 7.20N:	BUG. The code at _ChangeFileMode_18 includes a return macro
-		;		that expects some registers and parameters on the stack. DOS
-		;		will hang on calls of Int21.5804 - .58FF.
-%endif	
+
 
 		; Get allocation strategy
 _GetAllocStrategy:
@@ -6312,28 +5879,6 @@ _GetAllocStrategy:
 
 		; set allocation strategy
 _SetAllocStrategy:
-%if 1
-	cmp bx, byte _MEM_FIRSTFIT_LOWTHENHIGH		; must be greater than this
-	jl _SetAllocStrategy_22				; if error -->
-	cmp bx, byte _MEM_LASTFIT_LOWTHENHIGH		; low memory range values
-	jle _SetAllocStrategy_08			; if ok -->
-
-	cmp bx, byte _MEM_FIRSTFIT_HIGHONLY		; must be greater than this
-	jl _SetAllocStrategy_22				; if error -->
-	cmp bx, byte _MEM_LASTFIT_HIGHONLY		; high only memory range values
-	jle _SetAllocStrategy_08			; if ok -->
-
-	cmp bx, _MEM_FIRSTFIT_HIGHTHENLOW		; must be greater than this
-	jl _SetAllocStrategy_22				; if error -->
-	cmp bx, _MEM_LASTFIT_HIGHTHENLOW		; high memory range values
-	jle _SetAllocStrategy_08			; if ok -->
-%else
-		; RxDOS 7.20N:	BUGs. The above code should compare unsigned.
-		; RxDOS 7.20N:	Another BUG. The above code would allow any value
-		;		between 82h and 8000h for bx. The last conditional
-		;		jump must branch to _SetAllocStrategy_22 if bx is
-		;		invalid and fall through to _SetAllocStrategy_08
-		;		if bx is valid.
 %if 1
 		; RxDOS 7.20N:	MS-DOS allows any combination of the high bits. If
 		;		both are set, this is the same as if only the "
@@ -6358,8 +5903,6 @@ _SetAllocStrategy:
 	jb _SetAllocStrategy_22
 	cmp bl, _MEM_LASTFIT_HIGHTHENLOW
 	ja _SetAllocStrategy_22				; Above it is invalid
-%endif
-
 %endif
 
 _SetAllocStrategy_08:
@@ -6489,11 +6032,7 @@ _CreateUniqueFile:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	tempname, 128
 
-		; file handle available ?
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-	call VerifyAvailableHandle			; see if handle available
+		; file handle available ?	call VerifyAvailableHandle			; see if handle available
 	ifc _CreateUniqueFile_40			; exit if none -->
 
 		; copy buffer
@@ -6612,10 +6151,6 @@ _CreateNewFile:
 	entry
 	def	attributes, cx				; attributes
 	defbytes	dirAccess, sizeDIRACCESS
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 	call VerifyAvailableHandle			; see if handle available
 	jc _CreateNewFile_40				; exit if none -->
 
@@ -6961,7 +6496,6 @@ _SetCodePage:
 		;
 		; bx number of file handles to allocate to an application
 _SetHandlesCount:
-
 	entry
 	def	handles, bx
 	def	allocatedseg
@@ -7026,10 +6560,6 @@ _SetHandlesCount_30:
 		;
 		; bx = handle to open file
 _CommitFile:
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
-
 	mov ax, bx					; handle
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
@@ -7063,9 +6593,6 @@ _ExtendedOpenCreate:
 	ddef	filename, es, si
 	defbytes	dirAccess, sizeDIRACCESS
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C check
-%endif
 	call VerifyAvailableHandle			; see if handle available
 	ifc _ExtendedOpenCreate_42			; if error -->
 
@@ -7224,28 +6751,8 @@ _GetSetCountryInformation:
 %endif
 
 
-%if 1
-		; Unused / Unimplemented Functions
-_UnusedReturnInst:
-	RetCallersStackFrame es, bx
-	mov word [ es:bx + _AX + _AL ], 01h
-
-	stc
-	retn
-
-_GetSetCountryInformation:
-_GetDiskSerialNumber:
-
-_LockFileAccess:
-_GetMachineName:
-_GetRedirectionList:
-
-_Unused:
-	call _UnusedReturnInst
-	retn
-
-%else
 		; Unused/Unimplemented Functions
+_GetSetCountryInformation:
 _GetDiskSerialNumber:
 _LockFileAccess:
 _GetMachineName:
@@ -7266,7 +6773,6 @@ _Unused_al:
 _Unused_alFF:						; Set caller's al to 0FFh (FCB error but preserve CF)
 	mov al, 0FFh
 	jmp short _Unused_al
-%endif
 
 
 		; Debug Interrupt Trap

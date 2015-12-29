@@ -26,7 +26,6 @@ the file LICENSE.TXT.
 	global _Int21Function71
 	global LFNReleaseFindData
 
-	extern _DiskReset
 	extern initdiskAccess
 	extern CtrlC_Check
 	extern VerifyAvailableHandle
@@ -141,7 +140,7 @@ LFN_DirEntry_MatchTable:db 1, 3, 5, 7, 9, 14, 16, 18, 20, 22, 24, 28, 30, -1
 		; Dispatch on function code services
 _Int21Function71:
 
-	Goto DiskReset,			_DiskReset			; 0Dh
+	Goto DiskReset,			updateAllChangedCCBBuffers	; 0Dh
 	Goto CreateSubdirectory,	Int71LFNCreateSubdirectory	; 39h
 	Goto RemoveSubdirectory,	Int71LFNRemoveSubdirectory	; 3Ah
 	Goto ChangeSubdirectory,	Int71LFNChangeSubdirectory	; 3Bh
