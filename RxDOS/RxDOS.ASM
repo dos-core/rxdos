@@ -4088,21 +4088,11 @@ _getFreeDiskSpace_20:
 		; and returns always '/' on Get Switch Char. (Anyway RxDOS
 		; still supports it.)
 _GetSetSwitchChar:
-
-%if 1
-	or al, al
-	jnz _GetSetSwitchChar_Set
-%else
 	cmp al, 01h
 	jb _GetSetSwitchChar_Get
 	je _GetSetSwitchChar_Set
 	seterror 0FFFFh
 	retn
-		; RxDOS 7.20N:	BUG. Int21.3702 and .3703 are not yet supported.
-		;		However RxDOS <= 7.20N handles them as Set Switch
-		;		Character instead of reporting an error. (Any al
-		;		value above 03 should also report an error.)
-%endif
 
 _GetSetSwitchChar_Get:
 	mov dl, byte [ _RxDOS_bSwitchChar ]
@@ -4953,27 +4943,17 @@ _IoControl_GetDeviceParameters:
 
 	getarg ax, _drive				; restore drive
 	cmp ax, byte 2			; we should have a better mechanism to handle this
-%if 1
-	jge _IoControl_GetDevPar_16			; if not a floppy -->
-%else
-		; RxDOS 7.20N:	Must compare signed.
 	jae _IoControl_GetDevPar_16			; if not a floppy -->
-%endif
+
 	storarg _DeviceType, DEVICETYPE_144FLOPPY
 	storarg _DeviceAttribs, 3
 
 	xor bx, bx					; segment
 	mov ds, bx
-%if 1
-	mov ds, word [ 40Eh + bx ]			; BIOS Extended information
+	mov ds, word [ 40Eh ]				; BIOS Extended information
 							; 0040:000E == 0000:040E
-	mov cl, byte [ 00E7h + bx ]			; get drive type bits
+	mov cl, byte [ 00E7h ]				; get drive type bits
 							; 00E7 inside EBDA!
-%else
-	mov ds, word [ 40Eh ]
-	mov cl, byte [ 00E7h ]
-		; RxDOS 7.20N:	Unused offset with bx
-%endif
 
 	or ax, ax					; drive A: ?
 	jz _IoControl_GetDevPar_14
@@ -5049,12 +5029,7 @@ _DuplicateFileHandle:
 	mov es, word [ _RxDOS_CurrentPSP ]
 	mov cx, word [ es:pspFileHandleCount ]
 	mov dx, cx					; save original count
-%if 1
-	cmp bx, word [ es:pspFileHandleCount ]		; illegal reference ?
-%else
-	cmp bx, cx
-		; RxDOS 7.20N:	Shorter
-%endif
+	cmp bx, cx					; illegal reference ?
 	jb _duplFileHandle_12				; if valid ->
 
 _duplFileHandle_InvHandleError:
@@ -5082,7 +5057,7 @@ _duplFileHandle_12:
 	inc word [ es:di + sftRefCount ]		; bump in use count
 
 	pop ax						; new handle
-	or ax, ax					; no carry
+	clc
 
 		; if error, exit with error code.
 _duplFileHandle_Return:
@@ -5253,14 +5228,8 @@ _freeallocateMemory_12:
 _ModifyAllocatedMemory:
 
 	RetCallersStackFrame es, si
-	mov es, word [ es:_ExtraSegment + si ]
-%if 1
-	call _modifyMemBlock				; fix size
-	retn
-%else
+	mov es, word [ es:si + _ExtraSegment ]
 	jmp _modifyMemBlock
-		; RxDOS 7.20N:	Shorter
-%endif
 
 
 		; 4Bxxh Load and Execute Program
@@ -5854,9 +5823,9 @@ _SetAllocStrategy_22:
 
 		; Get allocation strategy
 _GetUpperMemLink:
-	RetCallersStackFrame es, bx
 	mov ax, word [ _RxDOS_UMBAllowed ]		; set allow/disallow flag
-	mov word [ es:_AX + bx ], ax
+	RetCallersStackFrame ds, bx
+	mov word [ bx + _AX ], ax
 	retn
 
 		; Get allocation strategy
@@ -5864,21 +5833,13 @@ _SetUpperMemLink:
 	cmp word [ _RxDOS_UMBEnabled ], byte 0		; UMB enabled ?
 	jz _SetUpperMemLink_08				; no -->
 
-%if 1
-	cmp bx, byte 0
-	je _SetUpperMemLink_04
-	cmp bx, byte 1
-	jne _SetUpperMemLink_08
-%else
-		; RxDOS 7.20N:	Does the same but shorter.
 	cmp bx, byte 1
 	ja _SetUpperMemLink_08
-%endif
 
 _SetUpperMemLink_04:
 	clc
-	; mov word [ _RxDOS_UMBAllowed ], bx		; set allow/disallow flag
-	; retn
+	mov word [ _RxDOS_UMBAllowed ], bx		; set allow/disallow flag
+	retn
 
 	; always return error until UMB support can be provided
 
@@ -6161,13 +6122,8 @@ _SetExtendedError:
 	mov word [ _RxDOS_ExtErrorFlag ], TRUE		; extended error is true
 
 	mov ds, word [ es:bx + _DS ]
-%if 1
-	mov si, word [ es:bx + _DS ]			; where extended info available
-%else
-		; RxDOS 7.20N:	Bug. Caller passes pointer in ds:dx, but above code
-		;		used ds:ds by mistake.
 	mov si, word [ es:bx + _DX ]			; where extended info available
-%endif
+
 	mov di, _RxDOS_ExtErrorInfo
 	mov cx, sizeDOSERROR / 2
 	repz movsw					; copy words
