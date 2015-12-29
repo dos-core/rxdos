@@ -1555,22 +1555,22 @@ pspFileHandlePtr	equ pspAHTaddress
 
 		; .EXE file header
 	struc EXEHEADER
-exeSignature		resw 1				; .EXE file signature
-exeExtraBytes		resw 1				; number of bytes in last partial page
-exePages		resw 1				; number of whole and partial pages
-exeRelocItems		resw 1				; number of pointers in reloc table
-exeHeaderSize		resw 1				; size of header, in paragraphs
-exeMinAlloc		resw 1				; minimum allocation (parag)
-exeMaxAlloc		resw 1				; maximum allocation (parag)
-exeInitSS		resw 1				; initial ss value
-exeInitSP		resw 1				; initial sp value
-exeChecksum		resw 1				; complemented checksum
-exeInitIP		resw 1				; initial ip value
-exeInitCS		resw 1				; initial cs value
-exeRelocTable		resw 1				; byte offset to reloc table
-exeOverlay		resw 1				; overlay number
-			resw 16				; reserved (unused)
-exeNewExe		resd 1				; pointer to new EXE header
+exeSignature		resw 1	; 00h .EXE file signature
+exeExtraBytes		resw 1	; 02h number of bytes in last partial page
+exePages		resw 1	; 04h number of whole and partial pages
+exeRelocItems		resw 1	; 06h number of pointers in reloc table
+exeHeaderSize		resw 1	; 08h size of header, in paragraphs
+exeMinAlloc		resw 1	; 0Ah minimum allocation (parag)
+exeMaxAlloc		resw 1	; 0Ch maximum allocation (parag)
+exeInitSS		resw 1	; 0Eh initial ss value
+exeInitSP		resw 1	; 10h initial sp value
+exeChecksum		resw 1	; 12h complemented checksum
+exeInitIP		resw 1	; 14h initial ip value
+exeInitCS		resw 1	; 16h initial cs value
+exeRelocTable		resw 1	; 18h byte offset to reloc table
+exeOverlay		resw 1	; 1Ah overlay number
+			resw 16	; 1Ch reserved (unused)
+exeNewExe		resd 1	; 1h pointer to new EXE header
 	endstruc
 
 EXE_SIGNATURE		equ 5A4DH			; 'MZ'
