@@ -1294,12 +1294,7 @@ ConfigPrompt_26:
 	inc di						; skip over equal sign
 
 ConfigPrompt_28:
-%if 1
-	cmp byte [ es:di ], ' ' + 1			; space follows ?
-%else
-		; RxDOS 7.20N:	BUG. Didn't skipped but '!'.
 	cmp byte [ es:di ], ' '				; space follows ?
-%endif
 	jnz ConfigPrompt_32				; no, return -->
 	inc di						; skip over space
 	jmp short ConfigPrompt_28			; loop through all spaces -->
@@ -1482,22 +1477,19 @@ _getNumber_08:
 	mov cl, byte [ es:di ]				; get digit
 	and cx, byte 15					; ch = 0, and remove the 30h ('0' = 30h, '1' = 31h, ...)
 	add ax, cx
-%if 0
 	jc _getNumber_16				; overflow -->
-%endif
+
 	inc di
 	jmp short _getNumber_08
 
-%if 0
 		; overflow
 _getNumber_16:
 	pop cx
-		; message for number overflow here
+		; RxDOS 7.30: message for number overflow here
 	xor ax, ax
 	dec ax						; NZ
 	pushf
 	jmp short _getNumber_32				; sets CY
-%endif	
 
 		; check for error
 _getNumber_26:
@@ -1509,11 +1501,7 @@ _getNumber_26:
 	cmp ax, cx					; is it at least as large as ...
 	jc _getNumber_32				; no -->
 	cmp ax, dx					; is it greater than ...
-%if 1
-	jle _getNumber_36				; if within range -->
-%else
 	jbe _getNumber_36				; if within range -->
-%endif
 
 _getNumber_32:
 	popf
@@ -1637,7 +1625,9 @@ _scanToEndofName:
 		; RxDOS 7.20N:	Below sequence is a bit weird. Shouldn't it also
 		;		check if the character is above-equal 'A'?
 	cmp al, 'Z' + 1
-	jnb _scanToEndofName_08
+	jae _scanToEndofName_08
+	cmp al, 'A'
+	jb _scanToEndofName_08
 
 	inc di
 	jmp short _scanToEndofName
@@ -1926,43 +1916,29 @@ RxDOS_CDSinit_12:
 		; ax = number of SFT entries to initialize
 RxDOSini_SFTSubSystem:
 
-%if 0
 	push ds
-%endif
 	setDS cs
 	push ax						; files
 	mov cx, sizeSFT
 	mul cx						; total bytes for the actual SFT entries
-%if 1
-	add cx, byte sizeFT				;  add size of the FT header
-%else
 	add ax, byte sizeFT
-%endif
 
 	call AllocateSystemSpace
 
-%if 0
 	xor ax, ax
 	shr cx, 1
 	repe stosw					; init entire space to nulls
-%endif
 
 	mov word [ _RxDOS_pFT + _segment ], es
 	mov word [ _RxDOS_pFT + _pointer ], di
 
-%if 1
-	mov word [ es:nextFTPointer + _pointer ], -1
-%else
-		; RxDOS 7.20N:	BUG. Assumes that AllocateSystemSpace will return
-		;		a zero pointer.
-	mov word [ es:di + nextFTPointer + _pointer ], -1
-%endif
+	dec ax
+	mov word [ es:di + nextFTPointer + _pointer ], ax
+	mov word [ es:di + nextFTPointer + _segment ], ax
 	pop word [ es:di + numberSFTEntries ]
 
 	call RxDOSini_StdInStdOutDrivers		; initialize drivers
-%if 0
 	pop ds
-%endif
 	retn
 
 
@@ -1980,7 +1956,7 @@ RxDOSini_CCBSubSystem:
 	mov word [ _RxDOS_BufferList + _pointer ], di
 
 	pop cx						; number of buffers
-%if 1
+%if 0
 		; RxDOS 7.20N:	I think this instruction should be commented.
 		;
 		;		Test: Leave it uncommented and verify after bootup if
