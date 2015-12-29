@@ -6098,9 +6098,6 @@ _CreateNewFile_40:
 _ServerShareAndSwap:
 
 	RetCallersStackFrame es, bx
-%if 1
-	Goto 00h, _ShareUnimplemented
-%endif
 	Goto 06h, _GetSwappableDataArea
 	Goto 0Ah, _SetExtendedError
 
@@ -6212,14 +6209,14 @@ _GetDBCSString:
 _ExtCountryDependentFunctions:
 
 	mov ah, al					; copy function to ah also
-%if 1
+%if 0
 ;;	Goto 01h,			_GetExtendedCountryInfo
 %else
 		; RxDOS 7.20N:	Why was that disabled?
 	Goto 01h,			_GetExtendedCountryInfo
 %endif
 
-%if 1
+%if 0
 	Goto 02h,			_GetUpperCaseTable
 	Goto 04h,			_GetFilenameUpperCaseTable
 	Goto 05h,			_GetFilenameCharacterTable
@@ -6253,12 +6250,7 @@ _GetExtendedCountryInfo:
 
 	mov word [ _RxDOS_UserCodePage ], bx		; should check values
 	mov word [ _RxDOS_UserCountryCode ], dx		; should check values
-
-%if 1
-	or bx, bx
-%else
 	clc
-%endif
 	retn
 
 _GetExtendedCountryInfo_08:
@@ -6268,12 +6260,7 @@ _GetExtendedCountryInfo_08:
 	RetCallersStackFrame es, bx
 	mov word [ es:bx + _BX ], ax			; code page
 	mov word [ es:bx + _DX ], dx			; country code
-
-%if 1
-	or bx, bx
-%else
 	clc
-%endif
 	retn
 
 		; capitalize character
@@ -6281,9 +6268,7 @@ _Capitalize_08:
 	_upperCase dl					; upper case
 	RetCallersStackFrame ds, bx
 	mov byte [ bx + _DX + _DL ], dl
-%if 0
 	clc
-%endif
 	retn
 
 		; capitalize length defined string (was ds:dx, now es:di)
@@ -6291,16 +6276,11 @@ _Capitalize_12:
 	or cx, cx
 	jz _Capitalize_18
 
+	cld
 _Capitalize_14:
 	mov al, byte [ es:di ]
 	_upperCase al					; upper case
-%if 1
-	mov byte [ es:di ], al
-	inc di
-%else
-		; RxDOS 7.20N:	Make sure cld.
 	stosb
-%endif
 	loop _Capitalize_14
 
 _Capitalize_18:
@@ -6309,18 +6289,13 @@ _Capitalize_18:
 
 		; capitalize ASCIZ string (was ds:dx, now es:di)
 _Capitalize_22:
+	cld
 	mov al, byte [ es:di ]
 	or al, al
 	jz _Capitalize_28
 
 	_upperCase al					; upper case
-%if 1
-	mov byte [ es:di ], al
-	inc di
-%else
-		; RxDOS 7.20N:	Make sure cld.
 	stosb
-%endif
 	jmp short _Capitalize_22
 
 _Capitalize_28:
@@ -6419,7 +6394,7 @@ _SetHandlesCount_12:
 
 	getarg cx, _handles				; allocated request
 	add cx, byte (sizeParagraph - 1)
-	and cx, byte ~(sizeParagraph - 1)			; allocated size
+	and cx, byte ~(sizeParagraph - 1)		; allocated size
 	shr cx, 1					; optimize for words
 	xor di, di
 	mov ax, -1
@@ -6461,11 +6436,7 @@ _CommitFile:
 	jc _CommitFile_error				; if could not find -->
 
 	call _SFTCommitFile				; commit SFT Entry
-%if 1
-	or bx, bx					; no carry
-%else
 	clc
-%endif
 
 _CommitFile_error:
 	retn
