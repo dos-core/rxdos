@@ -67,6 +67,7 @@ the file LICENSE.TXT.
 	extern updateClusterValue
 	extern CompareString
 	extern StringLength
+	extern capitalise
 
 	extern checkforDeviceName
 	extern _RxDOS_pCDS
@@ -1215,7 +1216,7 @@ getDrive:
 	cmp ah, ':'					; drive break in string ?
 	jnz getDrive_14					; no, return current -->
 
-	call uppercase
+	call capitalise
 	sub ax, "A:"
 	jc getDrive_12					; if invalid, return valid drive with carry ->
 

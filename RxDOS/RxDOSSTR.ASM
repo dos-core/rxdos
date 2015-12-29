@@ -24,6 +24,7 @@ the file LICENSE.TXT.
 %include "RXDSTRUC.MAC"
 
 	global upperCaseName
+	global capitalise
 	global skipToNextName
 	global skipToLast
 	global skipSpaces
@@ -72,6 +73,10 @@ UpperCaseName_08:
 	pop si
 	retn
 
+
+capitalise:
+	_upperCase al
+	retn
 
 		; Skip to start of name
 		;
