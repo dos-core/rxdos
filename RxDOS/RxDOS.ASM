@@ -4016,11 +4016,7 @@ _GetInDOSFlagAddress:
 		; al	interrupt number
 		; es:bx	interrupt routine address
 _GetInterruptVector:
-
 	pushf						; save interrupts
-%if 1
-	push ds						; save current segment
-%endif
 	mov ah, 0
 	mov si, ax
 	add si, si
@@ -4036,9 +4032,6 @@ _GetInterruptVector:
 	mov word [ si + _BX ], bx
 	mov word [ si + _ES ], es
 
-%if 1
-	pop ds
-%endif
 	popf						; restore interrupts
 	retn
 
@@ -4080,11 +4073,7 @@ _GetFreeDiskSpace:
 	mov word [ _AX + si ], ax			; sectors/ cluster
 	mov word [ _CX + si ], cx			; bytes per sector
 	mov word [ _DX + si ], dx			; clusters/ drive
-%if 1
-	or ax, ax					; clear carry
-%else
 	clc
-%endif
 
 _getFreeDiskSpace_20:
 	retn
