@@ -313,7 +313,7 @@ Performs the actual disk (Int13) access.
 
 
 ..start:
-RxDOS_start:		jmp RxDOS_initialize
+RxDOS_start:		jmp near RxDOS_initialize
 			db 0
 
 		; DOS Data Segment
@@ -641,6 +641,9 @@ _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
 %endif
 
 	; ** ROMABLE BEYOND THIS ADDRESS **
+
+_RxDOS_DOSVersionString:
+			asciz RXDOSLONG, " version ", RXDOSVERSIONLONG
 
 _RxDOS_DOSProgramName	db 'RxDOS7.21'		; Product Name. First 8 bytes copied into system MCBs
 
@@ -3880,38 +3883,20 @@ _GetDriveParameterBlock_08:
 		;
 		; * Function is only supported in special debugging versions.
 _CtrlBreakCheck:
-%if 1
-	RetCallersStackFrame es, si
-%else
 	RetCallersStackFrame ds, si
-%endif
 
-%if 1
-	Goto GetControlC,	.getctrlc
-	Goto SetControlC,	.setctrlc
-%else
 	Gotos GetControlC,	.getctrlc
 	Gotos SetControlC,	.setctrlc
-%endif
-%if 0
 	Gotos 02h,		.getsetctrlc
 	Gotos 03h,		.unknown		; Get CPSW (Code Page Switching) flag
 	Gotos 04h,		.unknown		; Set CPSW flag
-%endif
-%if 1
-	Goto GetStartupDrive,	.getbootdrive
-	Goto GetExtDosVersion,	.gettrueversion
-%else
 	Gotos GetStartupDrive,	.getbootdrive
 	Gotos GetExtDosVersion,	.gettrueversion
-%endif
-%if 0
 	Gotos 07h,		.unknown		; Set bit5 of DOS_FLAG
 	Gotos 5Eh,		.getextendedversion
 	Gotos 60h,		.capabilities
 	Gotos FCh,		.setversion		; DOS-C
 	Gotos FFh,		.getversionstring	; DOS-C
-%endif
 
 	stc
 	call setFCBErrorIfCarry				; Sets FCB error (al = 0FFh)
@@ -3919,20 +3904,7 @@ _CtrlBreakCheck:
 .unknown:
 	retn
 
-%if 1
-		; Get extended Ctrl-C flag
-.getctrlc:
-	mov dl, byte [ ss:_RxDOS_bCtrlBreakCheck ]
-	mov byte [ es:si + _DX + _DL ], dl
-	retn
 
-		; Set extended Ctrl-C flag
-.setctrlc:
-	mov dl, byte [ es:si + _DX + _DL ]
-	and dl, 01h					; NC
-	mov byte [ ss:_RxDOS_bCtrlBreakCheck ], dl
-	retn
-%else
 		; Set extended Ctrl-C flag
 .setctrlc:
 	mov dl, byte [ si + _DX + _DL ]
@@ -3944,9 +3916,7 @@ _CtrlBreakCheck:
 	mov dl, byte [ ss:_RxDOS_bCtrlBreakCheck ]
 	mov byte [ si + _DX + _DL ], dl
 	retn
-%endif
 
-%if 0
 		; Get and set extended Ctrl-C flag
 .getsetctrlc:
 	push word [ si + _DX ]
@@ -3957,21 +3927,12 @@ _CtrlBreakCheck:
 	and dl, 01h					; NC
 	mov byte [ ss:_RxDOS_bCtrlBreakCheck ], dl
 	retn
-%endif
 
-%if 1
-		; Get boot drive
-.getbootdrive:
-	mov dl, byte [ ss:_RxDOS_BootDrive ]
-	mov byte [ es:_DX + _DL + si ], dl
-	retn
-%else
 		; Get boot drive
 .getbootdrive:
 	mov dl, byte [ ss:_RxDOS_BootDrive ]
 	mov byte [ si + _DX + _DL ], dl
 	retn
-%endif
 
 
 		; Get true DOS version
@@ -3988,7 +3949,6 @@ _CtrlBreakCheck:
 %endif
 	retn
 
-%if 0
 .getextendedversion:
 		; ax = 7852h ("Rx")
 		; cx:dx = Build, >>16 == year, >>8&0FFh == month, &0FFh == day
@@ -4000,10 +3960,10 @@ _CtrlBreakCheck:
 		; decimal digit with padding to two digits). 0701h == "7.01", 140Ah == "20.10"
 
 	mov [ si + _AX ], "Rx"				; 7852h
-	mov [ si + _CX ], 2008
-	mov [ si + _DX ], 09<<8|17			; cx:dx = build (2008-09-17)
-	mov [ si + _BX ], 7<<8|30			; bx = version (7.30)
-	mov [ si + _DI ], 0				; RxBIO compatibility level gets patched in here
+	mov [ si + _CX ], 2015
+	mov [ si + _DX ], 12<<8|29			; cx:dx = build (2015-12-29)
+	mov [ si + _BX ], 7<<8|21			; bx = version (7.21)
+	mov word [ si + _DI ], 0			; RxBIO compatibility level gets patched in here
 patch_rxbio_version equ $-2
 	retn
 
@@ -4038,29 +3998,17 @@ patch_rxbio_version equ $-2
 	mov word [ si + _AX ], _RxDOS_DOSVersionString
 	retn
 
-; _RxDOS_DOSVersionString:	asciz RXDOS_STR," version ",RXDOS_VERSTR
 
-
-%endif
 		; 34h Get InDOS Flag Address
 		;
 		; Returns:
 		; es:bx-> InDOS flag
 _GetInDOSFlagAddress:
-
-%if 1
-	RetCallersStackFrame es, si
-
-	mov word [ es:si + _BX ], _RxDOS_INDOSFlag
-	mov word [ es:si + _ES ], ds
-	retn
-%else
 	RetCallersStackFrame ds, bx
 
 	mov word [ byte bx + _BX ], _RxDOS_INDOSFlag
 	mov word [ byte bx + _ES ], ss
 	retn
-%endif
 
 
 		; 35h Get Interrupt Vector
