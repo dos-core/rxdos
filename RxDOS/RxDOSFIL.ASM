@@ -170,8 +170,9 @@ ExpandFileName:
 
 	lds si, [ ss:_RxDOS_pCDS ]			; actual address in CDS
 	add si, ax					; from
+%if _cdsActualDirectory != 0
 	add si, byte _cdsActualDirectory		; proper offset
-		; RxDOS 7.20N:	_cdsActualDirectory is zero.
+%endif
 
 	xor cx, cx
 	mov cl, byte [ _cdsNonSubstOffset + si ]
@@ -260,12 +261,7 @@ expandFileName_36:
 
 expandFileName_38:
 	cmp cx, byte 2
-%if 1
-	jg expandFileName_56				; if not . or .., go get next -->
-%else
-		; RxDOS 7.20N:	Unsigned.
-	ja expandFileName_56
-%endif
+	ja expandFileName_56				; if not . or .., go get next -->
 
 	test word [ _options + bp ], FILECANNOT_BEDIRECTORY
 	jz expandFileName_44
@@ -594,11 +590,7 @@ locateFile_48:
 
 		; is FOUND entry a directory ?
 locateFile_50:
-%if 1
-	test bx, ATTR_DIRECTORY				; is item a directory ?
-%else
-	test bl, ATTR_DIRECTORY
-%endif
+	test bl, ATTR_DIRECTORY				; is item a directory ?
 	jz locateFile_FileNotFound			; if not, its an error -->
 							;  (actually it's a volume label/LFN)
 	cmp byte [ _terminatingChar + bp ], '\'
@@ -1079,24 +1071,10 @@ GetActualDrive:
 
 	push ds
 	currSegment ds
-%if 1
-	mov al, byte [ _drive + bp ]
-	and ax, 001fh
-%else
-		; RxDOS 7.20N:	Above code would accept some invalid drives
 	xor ax, ax
 	mov al, byte [ _drive + bp ]
-%endif
-%if 1
-	dec al
-	jge GetActualDrive_20
-%else
-		; RxDOS 7.20N:	I think the above is invalid because dec doesn't set CF.
-		;		This uses 0FFh if actually the current drive was requested!
-		;		(AND always has set NC.)
 	sub al, 1
 	jae GetActualDrive_20
-%endif
 
 	mov al, byte [ _RxDOS_CurrentDrive ]
 
@@ -1105,7 +1083,7 @@ GetActualDrive_20:
 	cmp al, byte [ _RxDOS_bLastDrive ]
 	jnc GetActualDrive_Error
 
-%if 1
+%if 0
 	cmp al, 1					; B: drive ?
 	jnz GetActualDrive_32				; no -->
 
@@ -1113,14 +1091,8 @@ GetActualDrive_20:
 	push bx
 	xor bx, bx					; BIOS segment 
 	mov ds, bx					; 0040:000E
-%if 1
-	mov ds, word [ 40Eh + bx ]			; BIOS Extended information
-	test byte [ 00E7h + bx ], 80h			; B: present ?
-%else
-		; RxDOS 7.20N:	Unused bx offset.
 	mov ds, word [ 40Eh ]				; BIOS Extended information
 	test byte [ 00E7h ], 80h			; B: present ?
-%endif
 
 	jnz GetActualDrive_24				; yes -->
 
@@ -1243,51 +1215,25 @@ getDrive:
 	cmp ah, ':'					; drive break in string ?
 	jnz getDrive_14					; no, return current -->
 
-%if 1
-	xor ah, ah					; clear carry
-	_upperCase al					; upper case
-	sub al, 'A'					; convert to a range
-%else
 	call uppercase
 	sub ax, "A:"
-%endif
 	jc getDrive_12					; if invalid, return valid drive with carry ->
 
 	cmp al, byte [ ss:_RxDOS_bLastDrive ]		; within valid range ?
-%if 1
-	jge getDrive_12					; yes -->
-%else
-		; RxDOS 7.20N:	Unsigned.
-	jae getDrive_12
-%endif
+	jae getDrive_12					; no -->
 
-%if 1
-	add si, byte 2					; skip drive letter / colon
-%else
 	inc si						; skip drive letter
 	inc si						; and colon
-%endif
 
 		; return valid drive.
-%if 1
-		; RxDOS 7.20N:	Not required.
-	cbw						; valid drive
-%endif
-%if 1
-	or ax, ax
-%else
 	clc
-%endif
 	retn
 
 		; return invalid drive
 getDrive_12:
 	stc
-%if 1
 	mov al, byte [ ss:_RxDOS_CurrentDrive ]
 	retn
-		; RxDOS 7.20N:	We'll just fall through.
-%endif
 
 		; return default drive
 getDrive_14:

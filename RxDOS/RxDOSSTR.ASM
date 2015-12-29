@@ -152,7 +152,8 @@ skipSpaces_04:
 
 		; Check For Path Separator
 		;
-		; al	character
+		; INP:	al = character
+		; OUT:	ZR if al was either '/' or '\'
 ifPathSeparator:
 
 	cmp al, '/'
@@ -166,7 +167,10 @@ ifPathSeparator_08:
 
 		; Scan Invalid Filename Chars
 		;
-		; es:si pointer to buffer
+		; INP:	es:si -> buffer
+		; OUT:	CY if invalid characters found
+		;	NC if none
+		; CHG:	al, cx
 scanInvalidFilenameChars:
 
 	saveSegments di, si
@@ -203,6 +207,7 @@ scanInvalidFnChars_12:
 		; ds:si	source string (may contain ? character )
 		; es:di	match string (may not contain wild character )
 		; cx	count
+		; OUT:	ZF set (ZR) if equal
 CompareString:
 
 	repe cmpsb					; match ?
@@ -213,9 +218,6 @@ CompareString:
 	jnz compareString_16				; if not ? wild character -->
 	or cx, cx
 	jnz CompareString				; else continue matching -->
-%if 1
-	retn
-%endif
 
 compareString_16:
 	retn
@@ -542,11 +544,7 @@ convFCBNametoASCIZ:
 	mov al, dl					; in case of error, restore value
 
 	mov ah, ':'
-%if 1
-	add al, 'a'
-%else
 	add al, 'A'
-%endif
 
 	getdarg es, di, _destination
 	stosw
@@ -733,11 +731,7 @@ getDayOfWeek:
 	push dx
 	mov bx, dx
 	sub bh, 2					; past february ?
-%if 1
-	jg getDayOfWeek_08				; yes -->
-%else
 	ja getDayOfWeek_08				; yes -->
-%endif
 
 	add bh, 12					; rotate full year
 	dec cx						; adjust year
@@ -785,12 +779,8 @@ getDayOfWeek_08:
 
 	getarg ax, _dayofweek
 	sub ax, dx					; real day of week
-%if 1
-	jge getDayOfWeek_12				; if ok -->
-%else
-	jae getDayOfWeek_12
-%endif
-	add ax, 7					; else warp around day of week
+	jae getDayOfWeek_12				; if ok -->
+	add ax, 7					; else wrap around day of week
 
 getDayOfWeek_12:
 	pop dx
@@ -966,11 +956,7 @@ getSystemDateValue_06:
 	mov ax, word [ cs:bx + AccumDaysPerMonthTable ]
 
 	cmp word [ _month + bp ], byte 2
-%if 1
-	jle getSystemDateValue_08
-%else
 	jbe getSystemDateValue_08
-%endif
 
 	test word [ _year + bp ], 11b
 	jnz getSystemDateValue_08
