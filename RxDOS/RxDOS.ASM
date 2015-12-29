@@ -54,6 +54,7 @@ Performs the actual disk (Int13) access.
 
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+%include "RXOPTION.MAC"
 
 	global RxDOS_LFNTempStoreCount
 	global RxDOS_LFNTempStorage
@@ -3895,8 +3896,8 @@ _CtrlBreakCheck:
 	Gotos 07h,		.unknown		; Set bit5 of DOS_FLAG
 	Gotos 5Eh,		.getextendedversion
 	Gotos 60h,		.capabilities
-	Gotos FCh,		.setversion		; DOS-C
-	Gotos FFh,		.getversionstring	; DOS-C
+	Gotos 0FCh,		.setversion		; DOS-C
+	Gotos 0FFh,		.getversionstring	; DOS-C
 
 	stc
 	call setFCBErrorIfCarry				; Sets FCB error (al = 0FFh)
@@ -3959,10 +3960,10 @@ _CtrlBreakCheck:
 		; digit without padding) and a binary minor version in the low byte (displayed as
 		; decimal digit with padding to two digits). 0701h == "7.01", 140Ah == "20.10"
 
-	mov [ si + _AX ], "Rx"				; 7852h
-	mov [ si + _CX ], 2015
-	mov [ si + _DX ], 12<<8|29			; cx:dx = build (2015-12-29)
-	mov [ si + _BX ], 7<<8|21			; bx = version (7.21)
+	mov word [ si + _AX ], "Rx"			; 7852h
+	mov word [ si + _CX ], 2015
+	mov word [ si + _DX ], 12<<8|29			; cx:dx = build (2015-12-29)
+	mov word [ si + _BX ], 7<<8|21			; bx = version (7.21)
 	mov word [ si + _DI ], 0			; RxBIO compatibility level gets patched in here
 patch_rxbio_version equ $-2
 	retn
@@ -3973,7 +3974,7 @@ patch_rxbio_version equ $-2
 		; b01:	Supports FAT32 partitions & Provides FAT32 services (Int21.7302-.7305)
 		; b02:	Supports LBA partitions, 28 bit adressing (disks up to 128 GiB)
 		; b03:	Supports LBA partitions, 32 bit adressing (disks up to 2 TiB)
-		: b03:	Supports LBA partitions, 48 bit adressing (disks up to 128 PiB)
+		; b03:	Supports LBA partitions, 48 bit adressing (disks up to 128 PiB)
 		;  Note: LBA28 or LBA48 services have to be provided by the ROM-BIOS.
 		; b02:	Provides LFN services for local discs (Int21.71xx excluding .71AA and .7142)
 		; b03:	Supports 64-bit file sizes & Provides Int21.7142
@@ -3983,10 +3984,10 @@ patch_rxbio_version equ $-2
 		; dh = bytes per DPB
 		; dl = reserved
 		; cx = reserved
-	mov [ si + _AX ], 0000_0000_0001_0110b
-	mov [ si + _CX ], 0
-	mov [ si + _DX ], sizeDPB<<8|0
-	mov [ si + _BX ], sizeSFT<<8|sizeCDS
+	mov word [ si + _AX ], 0000_0000_0001_0110b
+	mov word [ si + _CX ], 0
+	mov word [ si + _DX ], sizeDPB<<8|0
+	mov word [ si + _BX ], sizeSFT<<8|sizeCDS
 	retn
 
 .setversion:
