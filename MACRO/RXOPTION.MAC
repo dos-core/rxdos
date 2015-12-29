@@ -129,28 +129,28 @@ numdef DEFAULT_AVAILDEV,	0
 
 
 					; Following strings may be modified to show custom messages
-%define RXDOS			"RxDOS"
-%define RXDOSLONG		"RxDOS"		; where should it be used ?
-%define RXDOSEXPIRED		0 ; date(2008,11,08)
-%strcat RXDOSVERSION		RXDOS_VERP_STR				; "1.00"
-%strcat RXDOSVERSIONLONG	RXDOS_VERP_STR				; "1.00"
+%define RXDOS_S			"RxDOS"
+%define RXDOSLONG_S		"RxDOS"		; where should it be used ?
+%define RXDOSEXPIRED_S		0 ; date(2008,11,08)
+%strcat RXDOSVERSION_S		RXDOS_VERP_STR				; "1.00"
+%strcat RXDOSVERSIONLONG_S	RXDOS_VERP_STR				; "1.00"
 %if _RXDOSBETA
-%strcat RXDOSVERSION		RXDOSVERSION, "b", RXDOSBETA		; "1.00b1"
-%strcat RXDOSVERSIONLONG	RXDOSVERSIONLONG, " beta ", RXDOSBETA	; "1.00 beta 1"
+%strcat RXDOSVERSION_S		RXDOSVERSION_S, "b", RXDOSBETA		; "1.00b1"
+%strcat RXDOSVERSIONLONG_S	RXDOSVERSIONLONG_S, " beta ", RXDOSBETA	; "1.00 beta 1"
 %endif
 
-%define RXCMD			"RxCMD"		; used in PROMPT $V and other strings
-%define RXCMDLONG		"RxCMD"		; used in VER, STATUS and startup version string
-%define RXCMDAMISVENDOR		"cm"		; up to 8 characters; AMIS vendor identifier
-%define RXCMDAMISPRODUCT	"RxCMD"		; up to 8 characters; AMIS (Int2D.mm00) product identifier
-%define RXCMDSIGNATURE		"RxCMD"		; up to 5 characters; used for file/transient signature
-%define RXCMDMCBNAME		"RXCMD"		; up to 8 characters; MCB name of RxCMD's PSP
-%assign RXCMDEXPIRED		0 ; date(2008,11,08); show message if current date higher; 0 to disable
-%strcat RXCMDVERSION		RXCMD_VERP_STR	; used in PROMPT $V string
-%strcat RXCMDVERSIONLONG	RXCMD_VERP_STR	; used in VER, STATUS and startup version string
+%define RXCMD_S			"RxCMD"		; used in PROMPT $V and other strings
+%define RXCMDLONG_S		"RxCMD"		; used in VER, STATUS and startup version string
+%define RXCMDAMISVENDOR_S	"cm"		; up to 8 characters; AMIS vendor identifier
+%define RXCMDAMISPRODUCT_S	"RxCMD"		; up to 8 characters; AMIS (Int2D.mm00) product identifier
+%define RXCMDSIGNATURE_S	"RxCMD"		; up to 5 characters; used for file/transient signature
+%define RXCMDMCBNAME_S		"RXCMD"		; up to 8 characters; MCB name of RxCMD's PSP
+%assign RXCMDEXPIRED_S		0 ; date(2008,11,08); show message if current date higher; 0 to disable
+%strcat RXCMDVERSION_S		RXCMD_VERP_STR	; used in PROMPT $V string
+%strcat RXCMDVERSIONLONG_S	RXCMD_VERP_STR	; used in VER, STATUS and startup version string
 %if _RXCMDBETA
-%strcat RXCMDVERSION		RXCMDVERSION, "b", RXCMDBETA
-%strcat RXCMDVERSIONLONG	RXCMDVERSIONLONG, " beta ", RXCMDBETA
+%strcat RXCMDVERSION_S		RXCMDVERSION_S, "b", RXCMDBETA
+%strcat RXCMDVERSIONLONG_S	RXCMDVERSIONLONG_S, " beta ", RXCMDBETA
 %endif
 
 %define COPYRIGHT0	"Copyright (C) 1990-1999 Mike Podanoffsky"

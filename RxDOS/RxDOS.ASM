@@ -644,7 +644,7 @@ _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
 	; ** ROMABLE BEYOND THIS ADDRESS **
 
 _RxDOS_DOSVersionString:
-			asciz RXDOSLONG, " version ", RXDOSVERSIONLONG
+			asciz RXDOSLONG_S, " version ", RXDOSVERSIONLONG_S
 
 _RxDOS_DOSProgramName	db 'RxDOS7.21'		; Product Name. First 8 bytes copied into system MCBs
 
@@ -1745,6 +1745,7 @@ _div32_return:
 		;
 		; Cleans the stack
 _cmp32: Entry 2
+
 	darg ArgumentB
 
 	cmp cx, word [ bp + _ArgumentB + _high ]	; To set flags correctly, compare high word first
@@ -4297,6 +4298,7 @@ _MakeSubDir_12:
 	mov byte [ es:deAttributes + si ], ATTR_DIRECTORY
 
 	getdarg dx, ax, _datetime			; get date time
+
 	mov word [ es:deTime + si ], ax			; time created
 	mov word [ es:deDate + si ], dx			; date created
 
