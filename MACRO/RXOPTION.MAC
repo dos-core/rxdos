@@ -7,7 +7,6 @@ Public domain.
 
 %endif
 
-%if 0
 		; RxDOS 7.20 doesn't use most of this defines, but RxDOS 7.30 should do.
 %ifnnum __RXOPTION_MAC__
 %assign __RXOPTION_MAC__ 1
@@ -205,6 +204,5 @@ numdef DEFAULT_AVAILDEV,	0
 						; 01h:	(mostly) MS-DOS OEM versions
 						; 00h:	PC-DOS
 
-%endif
 %endif
 [list +]
