@@ -6124,6 +6124,8 @@ _SetExtendedError:
 	mov ds, word [ es:bx + _DS ]
 	mov si, word [ es:bx + _DX ]			; where extended info available
 
+	push ss
+	pop es
 	mov di, _RxDOS_ExtErrorInfo
 	mov cx, sizeDOSERROR / 2
 	repz movsw					; copy words
