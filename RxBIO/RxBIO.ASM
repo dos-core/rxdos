@@ -2417,7 +2417,7 @@ _hdInit:
 	jc _hdInit_12					; then exit 
 
 	getdarg ds, bx, _packet
-	lea di, [ word di + _dskBPB ]
+	lea di, [ di + _dskBPB ]
 	mov word [ bx + irParamAddress + _pointer ], di
 	mov word [ bx + irParamAddress + _segment ], es
 
@@ -2482,7 +2482,7 @@ _hdBuildBPB:
 	jc _hdBuildBPB_12
 
 	mov al, cl					; Media Descriptor
-	lea di, [ word di + _dskBPB ]
+	lea di, [ di + _dskBPB ]
 
 	getdarg ds, bx, _packet
 	mov byte [ bx + bbrMediaID ], al		; media ID
@@ -3109,7 +3109,7 @@ _RebuildBPB_12:
 		; Copy standard boot sector info
 	getdarg es, di, _dskParameterTable
 	lea si, [ RxBIO_DiskBuffer + _bsBytesPerSector ]
-	lea di, [ word di + _dskBPB ]
+	lea di, [ di + _dskBPB ]
 	mov cx, sizeBPB
 	repe movsb
 
@@ -3167,7 +3167,7 @@ _RebuildBPB_24:
 	mov word [ di + _dskBPB + _bpbSectorsPerFat ], 0000
 
 	lea si, [ RxBIO_DiskBuffer + _bsxBigSectorsPerFat ]
-	lea di, [ word di + _dskBPB + _bpbxBigSectorsPerFat ]
+	lea di, [ di + _dskBPB + _bpbxBigSectorsPerFat ]
 	mov cx, ( _bpbxReserved - _bpbxBigSectorsPerFat )
 	rep movsb
 
@@ -3738,7 +3738,7 @@ ExtendedRead:
 	storarg _unit, dx
 
 	setes ss
-	lea di, [ word bp + _packet ]
+	lea di, [ bp + _packet ]
 	clearMemory sizeEXTENDEDREQUESTPACKET
 
 	mov byte [ bp + _packet + _lbaSize ], sizeEXTENDEDREQUESTPACKET
@@ -3758,7 +3758,7 @@ ExtendedRead:
 	setds ss
 	mov ax, 4200h
 	getarg dx, _unit
-	lea si, [ word bp + _packet ]
+	lea si, [ bp + _packet ]
 	int 13h
 
 	mov ax, word [ bp + _packet + _lbaNumBlocks ]
@@ -3800,7 +3800,7 @@ ExtendedWrite:
 	storarg _unit, dx
 
 	setes ss
-	lea di, [ word bp + _packet ]
+	lea di, [ bp + _packet ]
 	clearMemory sizeEXTENDEDREQUESTPACKET
 
 	mov byte [ bp + _packet + _lbaSize ], sizeEXTENDEDREQUESTPACKET
@@ -3821,7 +3821,7 @@ ExtendedWrite:
 	xor ax, ax
 	getarg dx, _unit
 	mov ah, byte [ bp + _Verify ]
-	lea si, [ word bp + _packet ]
+	lea si, [ bp + _packet ]
 	int 13h
 
 	mov ax, word [ bp + _packet + _lbaNumBlocks ]
@@ -3967,3 +3967,4 @@ RxDOS_StartBlockedDeviceTable:
 	; reallocated
 
 	; this message is destroyed once the device table is initialized
+
