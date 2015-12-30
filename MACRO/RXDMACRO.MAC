@@ -133,16 +133,12 @@ the file LICENSE.TXT.
 		; %2 = Pointer of the saved interrupt (optional, default 0)
 		; %3 = Segment of the saved interrupt (optional, default 0)
 	%macro savint 1-3.nolist 0,0
-%if 1
-		dw %1			; Interrupt number
-%else
 		db %1			; Interrupt number
 		; RxDOS 7.20N:	MS-DOS saves the interrupts using one byte per number
 		;		and four bytes for the actual address. Unfortunately,
 		;		some software relies on this table layout.
-%endif
 %if %1 < 0FFh && %1 >= 0		; If it's not the end of list marker
-		dw %2,%3		;  then store the saved interrupt address
+		dw %2, %3		;  then store the saved interrupt address
 %endif
 	%endmacro
 

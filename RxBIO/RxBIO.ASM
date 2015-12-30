@@ -63,7 +63,7 @@ RxCMD
 	[map all __MAPFILE__]
 	org %2
 %else
-%error "__OUTPUT_FORMAT__ neither obj nor bin"
+ %error "__OUTPUT_FORMAT__ neither obj nor bin"
 %endif
 	segment %1
 	%endmacro
@@ -78,9 +78,6 @@ startseg RXBIO, 0, align=16 class=RXBIO use16 public
 		; Startup Code
 	global RxBIO_Start
 RxBIO_Start:		jmp RxBIO_initialize
-
-
-		; RxDOS 7.20N:	Structs moved into RXDSTRUC.MAC
 
 
 		; Data
@@ -368,12 +365,7 @@ readBuffer_12:
 	adc word [ bp + _sector + _high ], cx
 
 	sub byte [ bp + _buffers ], bl			; buffers remaining after this read 
-%if 1
-	jg readBuffer_08				; if more to read
-%else
 	ja readBuffer_08				; if more to read
-		; RxDOS 7.20N:	BUG. Must compare unsigned.
-%endif
 	jmp short readBuffer_28				; exit -->
 
 readBuffer_26:
@@ -610,17 +602,8 @@ RxBIO_Error_04:
 
 		; Display Message
 _DisplayMsg:
-
-%if 1
-	push cs
-	pop ds
-
-_DisplayMsg_02:
-	lodsb						; get character (ds:si)
-%else
 _DisplayMsg_02:
 	cs lodsb					; get character (cs:si)
-%endif
 
 	or al, al					; null terminator ?
 	jnz _DisplayMsg_06				; not yet -->
@@ -657,23 +640,13 @@ SaveInterruptVectors:
 
 	mov si, SaveInterruptsTable
 
-%if 1
 SaveInterruptVectors_08:
-	mov bx, word [ si ]
-	cmp bx, byte -1
-	jz SaveInterruptVectors_16
-
-	add si, byte 2
-%else
-SaveInterruptVectors_08:
-	xor bx,bx
-	mov bl, word [ si ]
+	xor bx, bx
+	mov bl, byte [ si ]
 	cmp bl, -1
 	jz SaveInterruptVectors_16
 
 	inc si
-%endif
-
 	add bx, bx
 	add bx, bx					; compute interrupt address
 							; save interrupt:
@@ -1000,6 +973,7 @@ RxBIO_InitDeviceChain:
 	jmp far [ cs:RxDOS_LoadSegment ]
 
 
+	align 4
 		; Strategy Argument
 Strategy:		dd 0
 
@@ -1093,10 +1067,6 @@ prn_servicetable:	db (.max - $ - 1) / 2
 	devheader com1, com2, 0, (DEV_CHAR), \
 		_DevStrategy, com1_interrupt, 'COM1', aux_servicetable, 0
 
-%if 1
-	devheader com2, block, 0, (DEV_CHAR), \
-		_DevStrategy, com2_interrupt, 'COM2', aux_servicetable, 1
-%else
 	devheader com2, com3, 0, (DEV_CHAR), \
 		_DevStrategy, com2_interrupt, 'COM2', aux_servicetable, 1
 
@@ -1105,8 +1075,7 @@ prn_servicetable:	db (.max - $ - 1) / 2
 
 	devheader com4, block, 0, (DEV_CHAR), \
 		_DevStrategy, com4_interrupt, 'COM4', aux_servicetable, 3
-		; RxDOS 7.20N:	RxDOS <= 7.20N just had no COM3 and COM4 device
-%endif
+
 
 aux_servicetable:	db (.max - $ - 1) / 2
 			dw _NoAction			; = 0, Init
@@ -1223,6 +1192,7 @@ _DevInterrupt:
 
 	RestoreAllRegisters				; restore all other registers
 	mov sp, bp
+
 	pop bp
 	add sp, byte 4					; sum of arg references
 	retf
@@ -1276,7 +1246,6 @@ com2_interrupt:		push word [ cs:com2 + devLogicalUnit ]
 			push word [ cs:com2 + devTablePtr ]
 			jmp _DevInterrupt
 
-%if 0
 com3_interrupt:		push word [ cs:com3 + devLogicalUnit ]
 			push word [ cs:com3 + devTablePtr ]
 			jmp _DevInterrupt
@@ -1284,7 +1253,6 @@ com3_interrupt:		push word [ cs:com3 + devLogicalUnit ]
 com4_interrupt:		push word [ cs:com4 + devLogicalUnit ]
 			push word [ cs:com4 + devTablePtr ]
 			jmp _DevInterrupt
-%endif
 
 con_interrupt:		push word [ cs:con + devLogicalUnit ]
 			push word [ cs:con + devTablePtr ]
@@ -2331,7 +2299,6 @@ Interrupt_0:
 
 		; Interrupt 19 - Ctrl Alt Delete
 Interrupt_19:
-
 	cld
 	cli
 
@@ -2341,20 +2308,12 @@ Interrupt_19:
 	mov si, SaveInterruptsTable
 
 Interrupt_19_08:
-%if 1
-	mov bx, word [ si ]
-	cmp bx, byte -1
-	jz Interrupt_19_16
-
-	add si, byte 2
-%else
-		; RxDOS 7.20N:	Use bytes for interrupt number
+	xor bx, bx
 	mov bl, byte [ si ]
 	cmp bl, -1
 	jz Interrupt_19_16
 
 	inc si
-%endif
 
 	add bx, bx
 	add bx, bx					; compute interrupt address
@@ -2771,12 +2730,7 @@ _NonLBARead_14:
 
 	mov ax, word [ bp + _numSectorsRead ]
 	sub word [ bp + _numSectorsRemain ], ax		; compute how many more to go 
-%if 1
-	jg _NonLBARead_12				; if more to go -->
-%else
 	ja _NonLBARead_12				; if more to go -->
-		; RxDOS 7.20N:	BUG. Must compare unsigned.
-%endif
 	clc
 
 _NonLBARead_Return:
@@ -3525,17 +3479,9 @@ _mapStandardPartitions_12:
 	jz _mapStandardPartitions_16 
 	cmp al, FILESYSID_FAT16LBA			; FAT16 using LBA
 	jz _mapStandardPartitions_16 
-%if 1
-	cmp al, FILESYSID_16EXTENDEDX			; !!! Wrong: FAT16 using LBA !!!
-							;  Correct: Extended DOS partition using LBA
-	jz _mapStandardPartitions_16 	
-		; RxDOS 7.20N:	BUG. FILESYSID_16EXTENDEDX is an Extended LBA partition.
-		;		This is NOT a file system.
-%else
-	cmp al, FILESYSID_EXTENDEDLBA			; generates same code as above
-	jz _mapStandardPartitions_14			; other code: Jump to processing of EXTENDED partitions
-%endif
 
+	cmp al, FILESYSID_EXTENDEDLBA			; Extended DOS partition using LBA
+	jz _mapStandardPartitions_14			; process extended partition -->
 	cmp al, FILESYSID_EXTENDED			; Extended DOS partition
 	ifnz _mapStandardPartitions_24			; if not DOS file system -->
 
@@ -3634,14 +3580,8 @@ ReadPartitionTable:
 	push dx
 	xor ax, ax
 	call DiskFunctionsWithRetry 
-%if 1
-	jc ReadPartitionTable_12
-	pop dx
-%else
 	pop dx
 	jc ReadPartitionTable_12
-		; RxDOS 7.20N:	Must restore dx before jumping
-%endif
 
 	mov ax, 0201h
 	mov bx, RxBIO_DiskBuffer
@@ -3720,12 +3660,11 @@ seeIfSupportsExtendedReadWrite:
 	jc _extendedReadWrite_NotSupported
 
 	cmp bx, 0AA55h					; ensure pattern reversed
-	jnz _extendedReadWrite_NotSupported		; if not, then not supported -->
+	jne _extendedReadWrite_NotSupported		; if not, then not supported -->
 
-%if 0
 	test cl, 01h					; Support bitmap
 	jz _extendedReadWrite_NotSupported		;  Extended read/write not supported?
-%endif
+	; NC after test
 
 	mov ax, True
 	retn
@@ -3954,20 +3893,6 @@ Max_BIOSErrorCodeTable		equ ($ - BIOSErrorCodeTable - 1)
 SaveInterruptsTable:
 		; RxDOS 7.20N:	This table must move to 70:100 (== 80:0 == 0:800)
 
-%if 1
-	savint 00h
-	savint 01h
-	savint 03h
-	savint 04h
-	savint 08h
-
-	savint 10h
-	savint 13h
-	savint 15h
-	savint 16h
-	savint 19h
-	savint 1Bh
-%else
 	savint 10h
 	savint 13h
 	savint 15h
@@ -3983,7 +3908,6 @@ SaveInterruptsTable:
 	savint 08h
 
 	savint 16h
-%endif
 	savint 1Eh
 
 	savint 21h
