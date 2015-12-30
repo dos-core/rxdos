@@ -979,9 +979,49 @@ Strategy:		dd 0
 
 		; CON definition
 	devheader con, clock, 0, (DEV_CHAR+ DEV_STDINPUT+ DEV_STDOUTPUT+ DEV_FASTCHARIO), \
-		_DevStrategy, con_interrupt, 'CON', con_servicetable, 0
+		_DevStrategy, con_interrupt, 'CON'
 
-con_servicetable:	db (.max - $ - 1) / 2
+		; CLOCK$ definition
+	devheader clock, prn, 0, (DEV_CHAR+ DEV_CLOCK), \
+		_DevStrategy, clock_interrupt, 'CLOCK$'
+
+		; PRN, LPT1, LPT2, LPT3 definitions
+	devheader prn, lpt1, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
+		_DevStrategy, prn_interrupt, 'PRN'
+	devheader lpt1, lpt2, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
+		_DevStrategy, lpt1_interrupt, 'LPT1'
+	devheader lpt2, lpt3, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
+		_DevStrategy, lpt2_interrupt, 'LPT2'
+	devheader lpt3, aux, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
+		_DevStrategy, lpt3_interrupt, 'LPT3'
+
+		; AUX, COM1, COM2, COM3, COM4 definitions
+	devheader aux, com1, 0, (DEV_CHAR), \
+		_DevStrategy, aux_interrupt, 'AUX'
+	devheader com1, com2, 0, (DEV_CHAR), \
+		_DevStrategy, com1_interrupt, 'COM1'
+	devheader com2, com3, 0, (DEV_CHAR), \
+		_DevStrategy, com2_interrupt, 'COM2'
+	devheader com3, com4, 0, (DEV_CHAR), \
+		_DevStrategy, com3_interrupt, 'COM3'
+	devheader com4, block, 0, (DEV_CHAR), \
+		_DevStrategy, com4_interrupt, 'COM4'
+
+		; Block Device, pre-initialised to three units
+	devheader block, -1, 0, (DEV_REMOVABLEMEDIA+ DEV_LOGICALMAPPING+ DEV_IOCTL), \
+		_DevStrategy, block_interrupt, 3, "RXBLOCK"
+
+	align 2
+		; Comm LookAhead Buffer
+Comm_LookAhead:		times 4 db 0			; COM1, COM2, COM3, COM4
+
+		; CON variables
+Con_LookAhead		dw 0
+Con_TabPosition		dw 0
+Con_ScanCode		db 0
+
+	align 2
+con_servicetable:	dw (.max - $ - 2) / 2
 			dw _NoAction			; = 0, Init
 			dw _NoAction			; = 1, Media Check
 			dw _NoAction			; = 2, Build BPB
@@ -995,15 +1035,7 @@ con_servicetable:	db (.max - $ - 1) / 2
 			dw _NoAction			; =10, Output Status
 .max:
 
-Con_LookAhead		dw 0
-Con_ScanCode		db 0
-Con_TabPosition		dw 0
-
-		; CLOCK$ definition
-	devheader clock, prn, 0, (DEV_CHAR+ DEV_CLOCK), \
-		_DevStrategy, clock_interrupt, 'CLOCK$', clock_servicetable, 0
-
-clock_servicetable:	db (.max - $ - 1) / 2
+clock_servicetable:	dw (.max - $ - 2) / 2
 			dw _NoAction			; = 0, Init
 			dw _NoAction			; = 1, Media Check
 			dw _NoAction			; = 2, Build BPB
@@ -1017,20 +1049,7 @@ clock_servicetable:	db (.max - $ - 1) / 2
 			dw _NoAction			; =10, Output Status
 .max:
 
-		; PRN, LPT1, LPT2, LPT3 definitions
-	devheader prn, lpt1, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
-		_DevStrategy, prn_interrupt, 'PRN', prn_servicetable, 0
-
-	devheader lpt1, lpt2, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
-		_DevStrategy, lpt1_interrupt, 'LPT1', prn_servicetable, 0
-
-	devheader lpt2, lpt3, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
-		_DevStrategy, lpt2_interrupt, 'LPT2', prn_servicetable, 2
-
-	devheader lpt3, aux, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
-		_DevStrategy, lpt3_interrupt, 'LPT3', prn_servicetable, 3
-
-prn_servicetable:	db (.max - $ - 1) / 2
+prn_servicetable:	dw (.max - $ - 2) / 2
 			dw _NoAction			; = 0, Init
 			dw _NoAction			; = 1, Media Check
 			dw _NoAction			; = 2, Build BPB
@@ -1060,24 +1079,7 @@ prn_servicetable:	db (.max - $ - 1) / 2
 .max:
 
 
-		; AUX, COM1, COM2 definitions
-	devheader aux, com1, 0, (DEV_CHAR), \
-		_DevStrategy, aux_interrupt, 'AUX', aux_servicetable, 0
-
-	devheader com1, com2, 0, (DEV_CHAR), \
-		_DevStrategy, com1_interrupt, 'COM1', aux_servicetable, 0
-
-	devheader com2, com3, 0, (DEV_CHAR), \
-		_DevStrategy, com2_interrupt, 'COM2', aux_servicetable, 1
-
-	devheader com3, com4, 0, (DEV_CHAR), \
-		_DevStrategy, com3_interrupt, 'COM3', aux_servicetable, 2
-
-	devheader com4, block, 0, (DEV_CHAR), \
-		_DevStrategy, com4_interrupt, 'COM4', aux_servicetable, 3
-
-
-aux_servicetable:	db (.max - $ - 1) / 2
+aux_servicetable:	dw (.max - $ - 2) / 2
 			dw _NoAction			; = 0, Init
 			dw _NoAction			; = 1, Media Check
 			dw _NoAction			; = 2, Build BPB
@@ -1091,16 +1093,7 @@ aux_servicetable:	db (.max - $ - 1) / 2
 			dw AuxOutputStatus		; =10, Output Status
 .max:
 
-		; Comm LookAhead Buffer
-Comm_LookAhead:		times 4 db 0			; COM1, COM2, COM3, COM4
-
-
-		; Block Device, pre-initialized to three devs
-	devheader block, -1, 0, (DEV_REMOVABLEMEDIA+ DEV_LOGICALMAPPING+ DEV_IOCTL), \
-		_DevStrategy, block_interrupt, 3, "RXBLOCK", block_servicetable, 0
-
-block_servicetable:	db (.max - $ - 1) / 2
-
+block_servicetable:	dw (.max - $ - 2) / 2
 			dw _hdInit			; = 0, Init
 			dw _hdMediaCheck		; = 1, Media Check
 			dw _hdBuildBPB			; = 2, Build BPB
@@ -1142,37 +1135,86 @@ _DevStrategy:
 		; Device Interrupt
 		; 
 		; Input:
-		; dword [cs:Strategy] -> request header
-		; 
-		; on stack	pointer to strategy table
-		; on stack	logical unit
+		; INP:	DWO [cs:Strategy] -> request header
+		;	BY [cs:WO [ss:sp]] = logical unit number
+		;	WO [cs:WO [ss:sp] + 1] -> strategy table
 		; 
 		; This appears to be a function, but is some common code that
-		; *most* but not necessarily all functions jump to. IT MUST
-		; MAKE A FAR RETURN ON EXIT.
-		;
+		; *most* but not necessarily all functions jump to. On exit,
+		; it must pop the near call's pointer and then return far.
 _DevInterrupt:
-
 	entry
-	rarg	LogicalUnit, 4
-	rarg	StrategyTable, 2			; offset to items in stack
+	rarg	InfoPointer, 2
+	def	LogicalUnit
+	def	StrategyTable
 	ddef	RequestBlock
 	def	ServiceAddr
 
 	cld
 	SaveAllRegisters
+
+	xor ax, ax
+	mov si, [ bp + _InfoPointer ]
+	lodsb
+	mov word [ bp + _LogicalUnit ], ax
+	lodsw
+	mov word [ bp + _StrategyTable ], ax
+
 	lds bx, [ cs:Strategy ]				; compliant strategy call
 	stordarg _RequestBlock, ds, bx			; see text for compliance issues
+%if 0
+RxDOS 7.20N: This comment appears to refer to the book, Dissecting DOS,
+		page 264, in chapter 5 File Management. Quoting:
+
+Devices within DOS have an accessible device header that contains a
+set of flags describing what services the device provides, for example,
+whether it is a blocked or character device and the address of two entry
+points. These are the strategy and interrupt entry points. The term
+/interrupt/ here has nothing to do with hardware interrupts. If a device
+driver provides interrupt handling support, it links directly to the
+interrupt address vector in low memory. Rather, the strategy and interrupt
+entry points are misnamed entry points. They would more aptly be named
+request and execute entry points.
+
+DOS chose a somewhat restrictive mechanism for communicating with device
+drivers. This mechanism requires calling the device driver twice for every
+function call. The first call is to the device driver's strategy entry point.
+The caller must pass the request header or packet's address, which the
+driver saves. The second call is to the driver's interrupt entry point. The
+driver executes the request made in the previous call.
+
+The unfortunate and restrictive aspect of this calling sequence relates
+to their use in real-time applications. No application should interfere
+between the two function calls made to a device driver. However, there is
+no way to actually know that another application may be running, that a
+device driver request was made, or that it may be interrupting a device
+driver call in progress, except that the interface is restricted to being
+used by DOS and DOS provides an in-use flag to prevent more than one
+function call at a time. A somewhat better interface would have been a
+single request/execute call.
+
+To support the two-call strategy and execute requirement of device drivers,
+RxDOS makes a single function call to an internal routine that handles the
+driver protocol. These functions are CharDevRequest and BlockedDevRequest,
+for character and block devices, respectively. These functions are also
+responsible for detecting errors reported by device drivers, the only errors
+for which error handling is required.
+
+%endif
 	sti
 
-	mov al, byte [ bx + rhFunction ]
-	cbw 
+	xor ax, ax
+	mov al, byte [ bx + rhFunction ]		; ax = function number
+	mov si, word [ bp + _StrategyTable ]		; -> table
+	cmp ax, word [ cs:si ]				; table entries count
+	mov cx, _IllegalFunction			; default handler
+	jae .got_service_address
+	inc ax						; skip count word
 	add ax, ax
-	inc ax						; offset past table entry count
-	mov si, word [ bp + _StrategyTable ]
-	add si, ax
-	mov ax, word [ cs:si ]
-	mov word [ bp + _ServiceAddr ], ax
+	add si, ax					; -> table entry
+	mov cx, word [ cs:si ]
+.got_service_address:
+	mov word [ bp + _ServiceAddr ], cx
 
 	push bp						; device or BIOS might change bp
 	mov ah, byte [ bx + mrMediaID ]
@@ -1194,7 +1236,7 @@ _DevInterrupt:
 	mov sp, bp
 
 	pop bp
-	add sp, byte 4					; sum of arg references
+	add sp, byte 2					; get rid of info pointer
 	retf
 
 
@@ -1213,55 +1255,60 @@ _IllegalFunction:
 	retn
 
 
+	align 2
 		; Strategies
-clock_interrupt:	push word [ cs:clock + devLogicalUnit ]
-			push word [ cs:clock + devTablePtr ]
-			jmp short _DevInterrupt
+clock_interrupt:
+			call _DevInterrupt
+			db 0
+			dw clock_servicetable
 
-prn_interrupt:		push word [ cs:prn + devLogicalUnit ]
-			push word [ cs:prn + devTablePtr ]
-			jmp _DevInterrupt
+prn_interrupt:
+			call _DevInterrupt
+			db 0
+			dw prn_servicetable
+lpt1_interrupt:
+			call _DevInterrupt
+			db 0
+			dw prn_servicetable
+lpt2_interrupt:
+			call _DevInterrupt
+			db 1
+			dw prn_servicetable
+lpt3_interrupt:
+			call _DevInterrupt
+			db 2
+			dw prn_servicetable
 
+aux_interrupt:
+			call _DevInterrupt
+			db 0
+			dw aux_servicetable
+com1_interrupt:
+			call _DevInterrupt
+			db 0
+			dw aux_servicetable
+com2_interrupt:
+			call _DevInterrupt
+			db 1
+			dw aux_servicetable
+com3_interrupt:
+			call _DevInterrupt
+			db 2
+			dw aux_servicetable
+com4_interrupt:
+			call _DevInterrupt
+			db 3
+			dw aux_servicetable
 
-lpt1_interrupt:		push word [ cs:lpt1 + devLogicalUnit ]
-			push word [ cs:lpt1 + devTablePtr ]
-			jmp _DevInterrupt
+con_interrupt:
+			call _DevInterrupt
+			db 0
+			dw con_servicetable
 
-lpt2_interrupt:		push word [ cs:lpt2 + devLogicalUnit ]
-			push word [ cs:lpt2 + devTablePtr ]
-			jmp _DevInterrupt
-
-lpt3_interrupt:		push word [ cs:lpt3 + devLogicalUnit ]
-			push word [ cs:lpt3 + devTablePtr ]
-			jmp _DevInterrupt
-
-aux_interrupt:		push word [ cs:aux + devLogicalUnit ]
-			push word [ cs:aux + devTablePtr ]
-			jmp _DevInterrupt
-
-com1_interrupt:		push word [ cs:com1 + devLogicalUnit ]
-			push word [ cs:com1 + devTablePtr ]
-			jmp _DevInterrupt
-
-com2_interrupt:		push word [ cs:com2 + devLogicalUnit ]
-			push word [ cs:com2 + devTablePtr ]
-			jmp _DevInterrupt
-
-com3_interrupt:		push word [ cs:com3 + devLogicalUnit ]
-			push word [ cs:com3 + devTablePtr ]
-			jmp _DevInterrupt
-
-com4_interrupt:		push word [ cs:com4 + devLogicalUnit ]
-			push word [ cs:com4 + devTablePtr ]
-			jmp _DevInterrupt
-
-con_interrupt:		push word [ cs:con + devLogicalUnit ]
-			push word [ cs:con + devTablePtr ]
-			jmp _DevInterrupt
-
-block_interrupt:	push word [ cs:block + devLogicalUnit ]
-			push word [ cs:block + devTablePtr ]
-			jmp _DevInterrupt
+block_interrupt:
+			call _DevInterrupt
+			db 0
+			dw block_servicetable
 
 
 		; Clock Read
