@@ -32,7 +32,7 @@ the file LICENSE.TXT.
 %include "RXOPTION.MAC"
 [list -]
 
-%if 1
+%if 0
 		; RxDOS 7.20N: Make all jumps strict
 	%imacro jmp 1+.nolist
 %push jmp
@@ -365,9 +365,6 @@ the file LICENSE.TXT.
 	%endmacro
 
 %idefine color colour
-
-
-		; RxDOS 7.20N: Deleted chklabel
 
 
 		; Get Double Argument
@@ -958,9 +955,6 @@ the file LICENSE.TXT.
 
 
 		; Fast Move
-		;
-		; RxDOS 7.20N:	Some source files used this with two parameters ("si, di")
-		;		but obviously they're not required and were removed.
 	%imacro fastmove 0.nolist
 		shr cx,1			; get number of words
 		repz movsw			; move them
@@ -1034,9 +1028,6 @@ the file LICENSE.TXT.
 		jae %%noletter
 		and %1, ~20h
 %%noletter:
-%if 1
-		or %1, %1		; RxDOS 7.20N:	Is this useful at all?!
-%endif
 	%endmacro
 
 
@@ -1048,36 +1039,17 @@ the file LICENSE.TXT.
 		jae %%noletter
 		or %1, 20h
 %%noletter:
-%if 1
-		or %1, %1		; RxDOS 7.20N:	Is this useful at all?!
-%endif
 	%endmacro
 
 
-%if 1
-		; RxDOS 7.20N:	This macro introduces a bug. Because EXE2BIN assumes it should relocate
-		;		to segment 0, the call far below reads afterwards "CALL 0000:Interrupt2F".
-		;
-		;		Another bug is that ah isn't preset to 11h (IFS functions) so possible a
-		;		random Int2F function is called with al = Requested IFS function.
-		;
-		;		And this strange macro got used at only one location anyway...
 	%imacro ifs 0-1.nolist
-	%if 1	; RxDOS 7.20N
-%if %0 >= 1
-		mov al,%1
-%endif
-	%else	; RxDOS 7.20N
 %if %0 >= 1
 		mov ax, 1100h|%1
 %else
 		mov ah, 11h
 %endif
-	%endif	; RxDOS 7.20N
-		pushf
-		call far Interrupt2F
+		int 2Fh
 	%endmacro
-%endif
 
 	%imacro intr 1-3.nolist
 %if %0 >= 2
@@ -1104,7 +1076,7 @@ the file LICENSE.TXT.
 
 		; Extended interrupt (interrupt can change bp)
 		;
-		; RxDOS 7.20N:	Hu, why is it called "Extended"?
+		; RxDOS 7.20N:	Huh, why is it called "Extended"?
 	%imacro exint 1.nolist
 		push bp
 		int %1
