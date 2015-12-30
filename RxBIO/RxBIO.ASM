@@ -152,7 +152,7 @@ RxBIOS_FIXEDDRIVEMASK		equ 80h			; fixed drive mask
 
 
 		; messages
-RXDOSBIO_MSGDivideByZero:	db "Int0: Divide by zero", 0
+RXDOSBIO_MSGDivideByZero:	db "Int0: Divide by zero", cr, lf, 0
 RXDOSBIO_MSGLoadingRxDOS:	db "Starting RxDOS...", cr, lf, 0
 RXDOSBIO_MSGErrorLoadingSystem: db cr, lf, "Error loading RxDOS. Please reboot. ", 0
 
@@ -787,7 +787,7 @@ RxBIO_initialize:
 	mov si, RXDOSBIO_MSGDEBUG_CANTLOAD
 	call _DisplayMsg				; Can't Load Debug Image
 
-	RxBIO_InitHalt:
+RxBIO_InitHalt:
 	jmp short RxBIO_InitHalt
 %endif
 
@@ -2292,7 +2292,7 @@ getComStatus_08:
 		; CHG: ah
 OutputCharacter:
 
-	cmp al, ControlJ
+	cmp al, ControlJ		; 0Ah = LF
 	jnz OutputCharacter_08
 
 	push ds
@@ -2300,21 +2300,15 @@ OutputCharacter:
 
 	xor bx, bx
 	mov ds, bx
-%if 1
-	mov ah, byte [ bx + 451h ]			; get current row #
-	cmp ah, byte [ bx + 484h ]			; is it equal to screen size ?
-%else
-	mov ah, byte [ 451h ]				; get current row #
-	cmp ah, byte [ 484h ]				; is it equal to screen size ?
-%endif
-
+	mov ah, byte [ 451h ]		; get current row #
+	cmp ah, byte [ 484h ]		; is it equal to screen size ?
 
 	pop bx
 	pop ds	 
 	jz OutputCharacter_12
 
 OutputCharacter_08:
-	Int 29h					 	; internal Video Driver
+	Int 29h				; internal Video Driver
 
 OutputCharacter_12:
 	retn
