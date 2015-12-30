@@ -7,7 +7,7 @@ This product is distributed AS IS and contains no warranty
 whatsoever, including warranty of merchantability or
 fitness for a particular purpose.
 
-(c) Copyright 1990, 1999. Mike Podanoffsky
+Copyright (C) 1990-1999 Mike Podanoffsky
 
 This is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License, see
@@ -19,7 +19,6 @@ the file LICENSE.TXT.
 %assign __RXDMACRO_MAC__ 1
 
 
-		; RxDOS 7.20N: New macros
 %ifdef __CMMACROS_MAC__
  %fatal "CMMACROS.MAC already included"
 %endif
@@ -31,51 +30,6 @@ the file LICENSE.TXT.
 [list -]
 %include "RXOPTION.MAC"
 [list -]
-
-%if 0
-		; RxDOS 7.20N: Make all jumps strict
-	%imacro jmp 1+.nolist
-%push jmp
-
-%defstr %$short %1
-%substr %$short %$short 1,5
-
-%defstr %$far %1
-%substr %$far %$far 1,3
-
-%defstr %$instlen %1
-%strlen %$instlen %$instlen
-%assign %$coloncount 0
-%assign %$colonfound 0
-
-%rep %$instlen
-
-%assign %$coloncount %$coloncount+1
-%defstr %$colon %1
-%substr %$colon %$colon %$coloncount,1
-
-%ifidn %$colon, ":"
-%assign %$colonfound 1
-%exitrep
-%endif
-
-%endrep
-
-%ifidni %$short, "short"
-		%? %1			; Really a jmp "short"
-%elifidni %$far, "far"
-		%? %1			; Really a jmp "far"
-%else
-%if %$colonfound
-		%? %1			; Really a jmp "far" with a colon seperated seg:ofs address
-%else
-		%? strict near %1	; It _is_ a jmp "near", so say NASM so
-%endif ; %$colonfound
-%endif ; %$far, %$short
-%pop ; jmp
-	%endmacro
-
-%endif
 
 
 		; Compare and goto (short jump)
@@ -95,7 +49,7 @@ the file LICENSE.TXT.
 	%endmacro
 
 
-		; Specify device header (RxDOS 7.20N)
+		; Specify device header
 		;
 		; %1 = Label to place in front of the header
 		; %2 = Pointer of the next driver
@@ -105,24 +59,31 @@ the file LICENSE.TXT.
 		; %6 = Pointer to the driver's interrupt code
 		; %7 = For character devices, device name (gets filled to 8 with blanks)
 		;      For block devices, number of supported units
-		; %8 = word data to append after the header
-		; %8 is "greedy"
+		; %8 = For block devices, device name (gets filled to 7 with blanks)
+		; %8 = for character devices, word data to append
+		; %9 = word data to append (greedy parameter)
 	%macro devheader 7-9+.nolist
 %1:		dw %2,%3,%4,%5,%6	; Addresses and attribute
 
 %if %4 & 8000h				; If it's a character device
-		fill 8,32,db %7		;  then fill name with blanks (32)
-%else
-		fill 8,0,db %7		;  else store supported units and fill with zeros
-%endif
-
-%if %0 >= 8				; if 8th parameter given
-%ifnidn %8,-
-		dw %8			;  then append word
-%endif
-%if %0 >= 9				; if 9th parameter given
-		dw %9			;  then append words
-%endif
+		fill 8,32,db %7		;  then store name filling to 8
+ %if %0 >= 8				; if 8th parameter given
+		dw %8
+  %if %0 >= 9
+		dw %9
+  %endif
+ %endif
+%else					; Else it's a block device
+		db %7			;  then store supported units
+ %if %0 < 8
+  %error "devheader: Missing 8th parameter. Expected name for block device"
+ %endif
+ %ifnidn %8,-
+		fill 7,32,db %8		; and store name filling to 7
+ %endif
+ %if %0 >= 9
+		dw %9
+ %endif
 %endif
 	%endmacro
 

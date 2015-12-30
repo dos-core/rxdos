@@ -72,7 +72,7 @@ Size argument is optional and is in KiB
 
 		; Device Header
 	devheader rxvdisk, -1, -1, (DEV_BLOCK| DEV_OUTPUTTILLBUSY), \
-		RxVDISK_Strategy, RxVDISK_Interrupt, 1
+		RxVDISK_Strategy, RxVDISK_Interrupt, 1, "RXVDISK"
 
 		; RxVDISK Dispatch Table
 %if 1

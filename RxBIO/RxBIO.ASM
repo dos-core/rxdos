@@ -1097,7 +1097,7 @@ Comm_LookAhead:		times 4 db 0			; COM1, COM2, COM3, COM4
 
 		; Block Device, pre-initialized to three devs
 	devheader block, -1, 0, (DEV_REMOVABLEMEDIA+ DEV_LOGICALMAPPING+ DEV_IOCTL), \
-		_DevStrategy, block_interrupt, 3, block_servicetable, 0
+		_DevStrategy, block_interrupt, 3, "RXBLOCK", block_servicetable, 0
 
 block_servicetable:	db (.max - $ - 1) / 2
 
@@ -1221,6 +1221,7 @@ clock_interrupt:	push word [ cs:clock + devLogicalUnit ]
 prn_interrupt:		push word [ cs:prn + devLogicalUnit ]
 			push word [ cs:prn + devTablePtr ]
 			jmp _DevInterrupt
+
 
 lpt1_interrupt:		push word [ cs:lpt1 + devLogicalUnit ]
 			push word [ cs:lpt1 + devTablePtr ]
