@@ -900,6 +900,8 @@ RxBIO_InitDeviceChain:
 	cmp si, byte -1
 	jnz RxBIO_InitDeviceChain
 
+	call SaveInterruptVectors
+
 		; Set Interrupt Vectors
 	xor ax, ax
 	mov es, ax
@@ -917,7 +919,6 @@ RxBIO_InitDeviceChain:
 	mov cx, 6
 	mov bx, 0001 * 4				; int 01h - int 07h
 	call InitInterruptVectors
-	call SaveInterruptVectors
 
 	; order important
 	mov word [ es:_segment + 19h * 4 ], cs
