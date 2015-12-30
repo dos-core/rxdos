@@ -1962,19 +1962,11 @@ devNext:		resd 1				; 00h -> next device header (unless pointer 0FFFFh)
 devAttributes:		resw 1				; 04h device attributes
 devStrategy:		resw 1				; 06h -> device strategy far entry, same segment
 devInterrupt:		resw 1				; 08h -> device interrupt far entry, same segment
-devUnit:
 devUnits:						; 0Ah number of block device units
 devNameChar:						; 0Ah name of character device (8 byte)
 devName:		resb 1				;
 devNameBlock:		resb 7				; 0Bh name of block device (7 byte, optional)
-%if 1
-		; extended definition, for RxBIO devices (non-standard)
-		;
-		; RxDOS 7.30:	Vanished, now stored at device strategies.
-devTablePtr:		resw 1
-devLogicalUnit:		resw 1
-%endif
-	endstruc
+	endstruc					; 12h
 
 
 		; Device Definition Flags
