@@ -633,6 +633,7 @@ InitInterruptVectors:
 		; Save Interrupt Vectors
 		;
 		; INP:	ds = kernel segment
+		; CHG:	ax, es, si, bx, dx
 SaveInterruptVectors:
 
 	xor ax, ax
@@ -802,16 +803,13 @@ RxBIO_InitHalt:
 		; 
 		; Everything above this line must reside in the first 600h
 		; bytes of the file. This is the minimal portion loaded by the
-		; bootstarp loader.
+		; bootstrap loader.
 		; 
 		; The code below causes an error message in compile if the
 		; file size at this location will exceed 600 hex bytes.
-
-%if 1
 %if $-$$ >= 600h
  %clear
  %error "RxBIO minimal section exceeds 600h bytes (3 sectors)."
-%endif
 %endif
 
 
@@ -920,7 +918,6 @@ RxBIO_InitDeviceChain:
 	mov bx, 0001 * 4				; int 01h - int 07h
 	call InitInterruptVectors
 
-	; order important
 	mov word [ es:_segment + 19h * 4 ], cs
 	mov word [ es:_pointer + 19h * 4 ], Interrupt_19
 
