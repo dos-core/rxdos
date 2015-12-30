@@ -32,15 +32,16 @@ Boot sequence is
  
 RxMBR (master boot record)
  loads at 0:7C00, relocated to 60:0
- located at physical address cyl: 0 head: 0 sector: 1
+ located at LBA 0 (cyl: 0 head: 0 sector: 1)
  
 RxBOOT (boot record)
  loads at 0:7C00
- located at start of partition (logical sector 0)
+ located at start of partition (in partition's logical sector 0)
 
 RxBIO
  loads initially at 70:0, relocated high
  boot record loads first three sectors (regardless of cluster size)
+ (this currently assumes that these three sectors are contiguous)
  initial part of RxBIO loads remainder of module high in low memory,
  then loads RxDOS
 
@@ -48,6 +49,7 @@ RxDOS
  loaded by RxBIO
  provides user-level DOS services
  sets up DOS memory management
+ currently the code segment and the DOS data segment are synonymous
 
 RxCMD
  loaded by RxDOS if not otherwise instructed
@@ -101,9 +103,7 @@ BootDrive_BPB:
 RxBIO_INITBLOCK:		times sizeSYSINIT db 0
 
 		; Hardware Configuration Tables and Data
-_floppyDrives:
 _FloppyDrives:			dw 0			; # floppy drives
-_fixedDrives:
 _FixedDrives:			dw 0			; # fixed drives
 RxDOS_LoadSegment:		dd 0			; where RxDOS loaded
 
@@ -113,7 +113,7 @@ diskParameterTable:		dd 0			; disk parameter table
 RootDirSector:			dd 0			; root directory sector
 ReservedBeforeDataSector:	dd 0			; first data sector
 
-RXDOSBIO_ClusterAddr:		dw 0			; cluster address of RxDOSBIO.SYS
+RXDOSBIO_ClusterAddr:		dw 0			; cluster address of RxBIO.SYS
 RXDOS_ClusterAddr:		dw 0			; cluster address of RxDOS.SYS
 
 _FATbuffer_SectorNumber:	dd -1			; allocated FAT sector
@@ -818,7 +818,7 @@ RxBIO_initialize:
 		; Hardware Evaluation and Startup
 RxBIO_EvaluateHardware:
 
-	mov dl, byte [BootDrive]			; physical drive
+	mov dl, byte [BootDrive]			; int13 unit
 	mov byte [ RxBIO_INITBLOCK + initBootDrive ], dl
 
 	mov word [ RxBIO_INITBLOCK + initDeviceChain + _segment ], cs
@@ -834,7 +834,7 @@ RxBIO_EvaluateHardware:
 	int 13h
 
 	int 11h						; read hardware configuration
-	mov word [ _floppyDrives ], 0000		; number of floppy disks
+	mov word [ _FloppyDrives ], 0000		; number of floppy disks
 
 	test ax, 1					; floppy disks listed ?
 	jz RxBIO_EvalHardware_08			; if no -->
@@ -860,30 +860,24 @@ RxBIO_EvalHardware_08:
 	xor ax, ax
 
 RxBIO_EvalHardware_12:
-	mov word [ _floppyDrives ], ax			; number of floppy disks
+	mov word [ _FloppyDrives ], ax			; number of floppy disks
 
 		; Determine number of hard disk drives
-	xor bx, bx
 	mov ax, 40h
 	mov es, ax
-%if 1
-	mov al, byte [ es:bx + _BIOS_NumFixedDrives ]
-%else
 	mov al, byte [ es:_BIOS_NumFixedDrives ]
-%endif
-
-	mov word [ _fixedDrives ], ax			; number of fixed drives
+	mov word [ _FixedDrives ], ax			; number of fixed drives
 
 		; determine (manufacture) floppy drives
-	mov ax, word [ _fixedDrives ]			; get number of fixed drives
+	mov ax, word [ _FixedDrives ]			; get number of fixed drives
 	or ax, ax					; if no hard disk, total is fine
 	jnz RxBIO_EvalHardware_20			; make sure we add 2 floppy drives -->
 
-	cmp word [ _floppyDrives ], byte 0000		; number of floppy disks
+	cmp word [ _FloppyDrives ], byte 0000		; number of floppy disks
 	jz RxBIO_EvalHardware_22			; if diskless system -->
 
 RxBIO_EvalHardware_20:
-	mov word [ _floppyDrives ], 2			; if hard disk or one floppy
+	mov word [ _FloppyDrives ], 2			; if hard disk or one floppy
 
 		; Setup remainder of INIT Block
 RxBIO_EvalHardware_22:
@@ -931,8 +925,8 @@ RxBIO_InitDeviceChain:
 
 		; Initialize Disk Parameter Tables
 	setds cs
-	mov cx, word [ _fixedDrives ]			; number of fixed drives
-	mov dx, word [ _floppyDrives ]			; number of floppy disks
+	mov cx, word [ _FixedDrives ]			; number of fixed drives
+	mov dx, word [ _FloppyDrives ]			; number of floppy disks
 	call initDiskParameterBlocks			; returns actual # devices
 	mov word [ RxBIO_INITBLOCK + initTotalDrives ], cx
 	mov byte [ block + devUnits ], cl		; block device header
@@ -968,7 +962,7 @@ RxBIO_InitDeviceChain:
 
 	push cs
 	pop es
-	mov dl, byte [BootDrive]			; physical drive
+	mov dl, byte [BootDrive]			; storage unit
 	mov di, RxBIO_INITBLOCK
 	jmp far [ cs:RxDOS_LoadSegment ]
 
@@ -2675,28 +2669,26 @@ _hdRemovableMedia_12:
 	retn
 
 
-		; Convert Log Sector Address To Physical
+		; Convert LBA to CHS address
 		; 
 		; Input:
-		; ds:di	disk parameter block address
-		; ax:dx	logical sector address
-		; 
-		; Output:
-		; ds:di	disk parameter block address
-		; cx	cl = sector/ ch = track
-		; dx	dl = unit/ dh = head
-
-
-ConvertLogSectorToPhysical:
+		; INP:	ds:di-> disk parameter block address
+		;	ax:dx	= LBA
+		; OUT:	ds:di-> disk parameter block address
+		;	ch = track
+		;	cl = sector
+		;	dh = head
+		;	dl = unit
+ConvertLBAtoCHS:
 
 	add ax, word [ di + _dskBPB + _bpbHiddenSectors + _low ]
 	adc dx, word [ di + _dskBPB + _bpbHiddenSectors + _high ]
 
 	mov cx, word [ di + _dskBPB + _bpbSectorsPerTrack ]
-	call _div32
-
-	inc cx
+	call _div32		; dx:ax = track number, cx = sector in track
+	inc cx			; CHS sector-in-track is one-based
 	push cx					 	; sector
+
 	mov cx, word [ di + _dskBPB + _bpbHeads ]
 	call _div32
 
@@ -2745,7 +2737,7 @@ _NonLBARead_12:
 	setds cs
 	getarg di, _diskparameters
 	getdarg dx, ax, _logSector
-	call ConvertLogSectorToPhysical
+	call ConvertLBAtoCHS
 
 	test byte [ di + _dskBPB + _dskPhysDriveNumber ], RxBIOS_FIXEDDRIVEMASK
 	jnz _NonLBARead_14				; read contiguous -->
@@ -2865,7 +2857,7 @@ _NonLBAWrite_12:
 	setds cs
 	getarg di, _diskparameters
 	getdarg dx, ax, _logSector
-	call ConvertLogSectorToPhysical
+	call ConvertLBAtoCHS
 
 	test byte [ di + _dskBPB + _dskPhysDriveNumber ], RxBIOS_FIXEDDRIVEMASK
 	jnz _NonLBAWrite_14				; read contiguous -->
