@@ -340,10 +340,7 @@ _RxDOS_bNumBlockDev	db 0			; number of block devices
 _RxDOS_bLastDrive	db 0			; lastdrive from RXCONFIG.SYS, CDS size
 
 		; NULL Device Driver
-		;
-		; Note:	MS-DOS's NUL device doesn't have the "Fast Character I/O" bit set. (Though
-		;	I agree I/O with NUL _is_ rather fast, compared to the other devices.)
-		devheader _RxDOS_NULLDev, -1, -1, (DEV_CHAR| DEV_NULL| DEV_FASTCHARIO), \
+		devheader _RxDOS_NULLDev, -1, -1, (DEV_CHAR | DEV_NULL), \
 			null_strategy, null_interrupt, 'NUL'
 
 		; Installable File System Parameters
