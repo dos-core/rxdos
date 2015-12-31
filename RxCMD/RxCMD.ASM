@@ -2965,8 +2965,8 @@ _loadProgram_20:
 	setES ss
 	lea bx, [ _ExecBlock + bp ]
 	getdarg ds, dx, _progname
-
 	mov cl, 0					; mode: execute
+	stc
 	Int21 LFNExecuteProgram
 	mov ax, cs
 	mov ds, ax
