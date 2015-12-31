@@ -2986,6 +2986,7 @@ _loadProgram_20:
 .error:
 	mov dx, msg.error_load_program
 	call DisplayErrorMessage
+	mov word [ RxDOS_ExecReturnCode ], 127
 	jmp short .return
 
 
