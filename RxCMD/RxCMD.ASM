@@ -2886,15 +2886,15 @@ _findProgram_56:
 	or dx, 2020h
 
 	mov ax, _BAT					; _bat
-	cmp dx, 'ab'
+	cmp dx, 'ba'
 	jz _findProgram_62
 
 	mov ax, _COM					; _com
-	cmp dx, 'oc'
+	cmp dx, 'co'
 	jz _findProgram_62
 
 	mov ax, _EXE					; _exe
-	cmp dx, 'xe'
+	cmp dx, 'ex'
 	jz _findProgram_62
 
 	mov ax, _UNKNOWN
