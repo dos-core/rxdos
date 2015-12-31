@@ -652,13 +652,7 @@ _SplitArgs_12:
 
 		; insert arg
 _SplitArgs_16:
-%if 1
-	mov ax, word [ arglength + di ]
-	sub ax, cx					; length of arg
-	mov word [ arglength + di ], ax			; save length
-%else
 	sub word [ arglength + di ], cx			; subtract from length of current arg
-%endif
 
 	dec si						; arg pointer
 	add di, sizeArgCmd				; insert after current arg
@@ -876,11 +870,11 @@ _assignGetCurrHandle:
 
 	pop si						; restore handle offset
 	mov es, bx					; PSP address
-%if 0
+
 	mov al, -1					; in case of error
 	cmp si, [ es:pspFileHandleCount ]
 	jae _assignGetCurrHandle_08			; If handle doesn't point into the PSP handle table -->
-%endif
+
 	les bx, [ es:pspFileHandlePtr ]			; point to file handles
 	mov al, byte [ es:bx + si ]			; recover existing handle
 
@@ -934,24 +928,20 @@ _CloseRedirectedDevice:
 	Entry
 	def	RestoreValue, ax
 	def	Handle, bx
-
 	push es
+
 	cmp al, -1					; Std device redirected ?
 	jz _closeRedirect_42				; no -->
 
 	Int21 GetPSPAddress
 	mov es, bx					; PSP address
 
-%if 0
 	mov bx, word [ _Handle + bp ]
 	cmp bx, [ es:pspFileHandleCount ]
 	jae _closeRedirect_42				; If handle doesn't point into the PSP handle table -->
 	les si, [ es:pspFileHandlePtr ]			; point to file handles
 	add si, bx					; add offset
-%else
-	les si, [ es:pspFileHandlePtr ]			; point to file handles
-	add si, word [ _Handle + bp ]			; add offset
-%endif
+
 	cmp al, byte [ es:si ]				; same as existing handle ?
 	jz _closeRedirect_42				; yes, no need to close -->
 
@@ -962,11 +952,7 @@ _CloseRedirectedDevice:
 
 	pop si
 	pop es						; point to file handles
-%if 1
 	mov ax, word [ _RestoreValue + bp ]		; restore handle
-%else
-	mov al, byte [ _RestoreValue + bp ]		; restore handle
-%endif
 	mov byte [ es:si ], al
 
 _closeRedirect_42:
@@ -1329,18 +1315,10 @@ _TooManyArguments:
 
 	cmp ax, dx
 	jz _TooManyArguments_16				; if expected number of arguments -->
-%if 1
-	jg _TooManyArguments_06				; if greater than expected -->
-%else
 	ja _TooManyArguments_06				; if greater than expected -->
-%endif
 
 	cmp ax, cx
-%if 1
-	jge _TooManyArguments_16			; if within min/max
-%else
 	jae _TooManyArguments_16			; if within min/max
-%endif
 
 	mov dx, CmndError_ParametersMissing		; if not enough, just display message
 	jmp short _TooManyArguments_08
@@ -1410,11 +1388,7 @@ ConsolidateArgs:
 	cmp dx, 1					; maximal one argument ?
 	jne _consolidateArgs_24				; no, skip consolidation -->
 	cmp ax, 1					; more than one argument passed ?
-%if 1
-	jle _consolidateArgs_24				; no, nothing to consolidate -->
-%else
 	jbe _consolidateArgs_24				; no, nothing to consolidate -->
-%endif
 
 		; loop through arguments
 _consolidateArgs_08:
@@ -1866,11 +1840,7 @@ _saveBatchArguments:
 		; if file accessible ?
 _saveBatchArguments_08:
 	cmp word [ RxDOS_StackFrameNumEntries ], 0
-%if 1
-	jg _saveBatchArguments_10			; don't close if nested call -->
-%else
 	ja _saveBatchArguments_10			; don't close if nested call -->
-%endif
 
 	mov bx, word [ RxDOS_BatchFile + batchFileHandle ]
 	or bx, bx					; batch file in progress ?
@@ -1965,11 +1935,7 @@ _replaceTempVar_08:
 
 	xor ah, ah
 	cmp ax, word [ RxDOS_BatchFile + batchNumArgs ]	; argument number available ?
-%if 1
-	jge _replaceTempVar_16				; just delete arg -->
-%else
 	jae _replaceTempVar_16				; just delete argument -->
-%endif
 
 	add ax, ax					; index pointer
 	mov di, ax
@@ -2063,21 +2029,10 @@ ReplaceForVariables:
 	Entry
 	def	stringPointer, si
 	def	replaceText, bx
-%if 1
-	def	replaceVar
-
-	push di
-	push si
-
-	_lowerCase al
-	mov word [ _replaceVar + bp ], ax		; replace variable
-%else
 	_lowercase al
 	def	replaceVar, ax
-
 	push di
 	push si
-%endif
 
 		; scan for % argument
 _replaceForVar_08:
@@ -2128,21 +2083,12 @@ deleteString:
 	push ax
 	push si
 	push cx
-%if 1
-	or cx, cx					; if null call
-	jz deleteString_36				; nothing to do -->
-%else
 	jcxz deleteString_36				; nothing to do -->
-%endif
 
 deleteString_08:
 	lodsb						; test for null term
 	or al, al
-%if 1
-	jz deleteString_32
-%else
 	jz deleteString_36
-%endif
 	loop deleteString_08
 
 	pop cx
@@ -2343,21 +2289,8 @@ _lowerCaseString_16:
 		; Returns:
 		; ZR if string at [ds:si] matches sub-string at [ds:di] case-insensitive
 _compareSubString:
-
-%if 1
-	mov bl, byte [ si ]
-	or bl, bl
-	jz _compareSubString_08
-
-	inc si
-	_lowerCase bl
-
-	mov al, byte [ di ]
-	inc di
-	_lowerCase al
-%else
 	lodsb
-%if 0
+%if 1
 		; Same si returned as with old code.
 	dec si
 	or al, al
@@ -2373,7 +2306,6 @@ _compareSubString:
 
 	_lowerCase al
 	_lowerCase bl
-%endif
 
 	cmp al, bl
 	jz _compareSubString
@@ -2505,9 +2437,7 @@ searchEnvVariable_Next:
 
 		; item not found
 searchEnvNotFound:
-%if 0
 	xor dx, dx
-%endif
 	mov ax, es
 	or ax, ax					; not zero means not found
 	jmp short searchEnvReturn
@@ -2598,11 +2528,7 @@ insertEnvVariable:
 	mov es, word [ ss:_EnvSegment ]			; point to env segment
 	mov cx, word [ ss:_EnvSize ]
 	sub cx, di					; bytes available
-%if 1
-	jle insertEnvVariable_36			; if none -->
-%else
 	jbe insertEnvVariable_30			; if not enough -->
-%endif
 
 insertEnvVariable_08:
 	lodsb
@@ -2701,10 +2627,9 @@ _findProgram_12:
 	dec di
 	cmp byte [ di ], '\'				; path character ?
 	jz _findProgram_16				; yes, path found -->
-%if 0
 	cmp byte [ di ], '/'				; path character ?
 	jz _findProgram_16				; yes, path found -->
-%endif
+
 	dec cx						; more to scan ?
 	jz _findProgram_18				; if no extension -->
 
@@ -2729,25 +2654,20 @@ _findProgram_18:
 
 		; search through current directory first
 _findProgram_24:
-%if 0
 	cmp word [ _extensionFlag + bp ], False		; extension included ?
 	jnz _findProgram_30				; no, search for program appending extension -->
-%endif
+
 	getarg dx, __pathArg				; pointer to path argument
 	lea di, [ _finddata + bp ]
 	FileAttrib ATTR_NORMAL
 	call CheckFile					; find file
 	jnc _findProgram_50				; if found -->
-%if 0
 	jmp short _findProgram_40			; not found -->
-%endif
 
 		; search within directory appending different extensions (.BAT, .COM, .EXE)
 _findProgram_30:
-%if 1
 	cmp word [ _extensionFlag + bp ], True		; extension already in name ?
 	jz _findProgram_40				; disable extension search -->
-%endif
 
 	mov si, RxDOS_ExecOrder				; look for names in order, current dir
 	storarg _extensionsearchorder, si
@@ -3076,15 +2996,15 @@ DisplayErrorCode:
 
 	push bx
 	cmp ax, CmndError_RefTableEntries
-	jnc DisplayErrorCode_08
+	jae DisplayErrorCode_08
 
 	mov bx, ax
 	add bx, bx
 	add bx, CmndError_TextReferenceTable
 	mov dx, word [ cs:bx ]			; get address of message
-	cmp dx, 0000					; error not defined ?
-	jz DisplayErrorCode_08
-	call DisplayErrorMessage			; display message
+	cmp dx, byte 0000			; error not defined ?
+	je DisplayErrorCode_08
+	call DisplayErrorMessage		; display message
 
 DisplayErrorCode_08:
 	pop bx
@@ -3244,11 +3164,7 @@ _Paginate_14:
 setPagingMode:
 
 	mov byte [ PageLines ], 00			; paging mode
-%if 1
-	and ax, SW_SWITCHSET
-%else
 	test ax, SW_SWITCHSET
-%endif
 	jz setPagingMode_08
 
 	mov byte [ PageLines ], -1			; paging mode
@@ -3327,14 +3243,8 @@ _sprintf:
 	def	fieldflags
 
 		; scan/copy buffer
-%if 1
-	lea di, [ _format + bp ]
-	add di, 2					; point to previous arg
-	storarg _varg, di				; save variable argument(s) pointer
-%else
 	lea di, [ _format + bp +2 ]			; point to previous arg
 	storarg _varg, di				; save variable argument(s) pointer
-%endif
 
 	mov si, word [ _format + bp ]
 	mov di, word [ _output + bp ]
@@ -3491,20 +3401,10 @@ _sprintf_38:
 	or al, al					; null terminator ?
 	jz _sprintf_40					; yes -->
 	stosb
-%if 1
-	or cx, cx					; fixed count ?
-	jz _sprintf_38
-%else
-	jcxz _sprintf_38
-%endif
+	jcxz _sprintf_38				; fixed count ?
 	loop _sprintf_38
 
 _sprintf_40:
-%if 1
-	or cx, cx					; still more length to go ?
-	jz _sprintf_42					; no -->
-		; RxDOS 7.20N:	Adds zero to di else.
-%endif
 	add di, cx					; advance field length
 
 _sprintf_42:
@@ -3580,11 +3480,8 @@ _sprintfNum_10:
 
 	mov dx, word [ _fieldwidth + bp ]
 	sub dx, cx					; bytes to fill
-%if 1
-	jg _sprintfNum_12
-%else
 	ja _sprintfNum_12
-%endif
+
 	xor dx, dx
 
 _sprintfNum_12:
@@ -3608,12 +3505,7 @@ _sprintfNum_16:
 
 	mov al, ' '
 	getarg cx, _fill				; bytes to fill
-%if 1
-	or cx, cx
-	jz _sprintfNum_32
-%else
 	jcxz _sprintfNum_32
-%endif
 
 	test word [ _decimalflag + bp ], SPRINTF_ZEROFIELDFILL
 	jz _sprintfNum_18				; if no zero fill -->
@@ -3650,12 +3542,7 @@ _sprintfNum_32:
 		;
 		; CHG:	-
 _sprintfInitField:
-%if 1
-	or cx, cx					; fixed count ?
-	jz _sprintfInitField_08				; no -->
-%else
-	jcxz _sprintfInitField_08
-%endif
+	jcxz _sprintfInitField_08			; no fixed count -->
 
 	push di
 	push cx
@@ -3673,11 +3560,6 @@ _sprintfInitField_08:
 
 		; Pad Field
 _sprintfPadField:
-%if 1
-	or cx, cx					; still more length to go ?
-	jz _sprintfPadField_08				; no -->
-		; RxDOS 7.20N:	cx = 0 doesn't hurt. In this case, nothing is added to di.
-%endif
 	add di, cx					; advance field length
 
 _sprintfPadField_08:
@@ -3693,14 +3575,8 @@ _sprintfPadField_08:
 		;	cx = remainder
 		;	dx:ax = result
 _div32:
-%if 1
-	or cx, cx					; protect from zero divisor
-	stc						; in case of error
-	jz _div32_return				; if so, just return with carry
-%else
 	stc
-	jcxz _div32_return
-%endif
+	jcxz _div32_return		; in case of zero divisor --> (CY)
 
 	push bx
 	mov bx, dx
@@ -3709,7 +3585,7 @@ _div32:
 	div cx
 
 	xchg ax, bx
-	div cx						; remainder will be in dx
+	div cx				; remainder will be in dx
 	mov cx, dx
 	mov dx, bx
 	pop bx
@@ -3732,31 +3608,26 @@ _mul32:
 	jnz _mul32_12					; not really -->
 
 	mul cx
-%if 0
 	clc
-%endif
 	retn
 
 _mul32_12:
 	push bx
-%if 0
 	push di
-%endif
 	mov bx, ax
 	mov ax, dx
 	mul cx
 	xchg ax, bx
-%if 0
 	mov di, dx
-%endif
 
 	mul cx
 	add dx, bx
-%if 0
+	jc .ret
+
 	cmp di, byte 1
 	cmc
+.ret:
 	pop di
-%endif
 	pop bx						; restore bx
 	retn
 
@@ -3772,16 +3643,11 @@ GetScreenLines:
 	push bx
 	xor bx, bx
 	mov ds, bx
-%if 1
-	mov bx, 484h
-	mov al, byte [ bx ]				; Video Rows
-	cbw						; extend to full word
-	inc al						; correct number
-%else
+
 	mov al, byte [ 484h ]				; number of screen lines -1
 	xor ah, ah					; extend to full word
 	inc ax						; number of screen lines
-%endif
+
 	pop bx
 	pop ds
 	retn
@@ -4002,7 +3868,7 @@ _changeDir_18:
 	_lowerCase dl
 	sub dl, 'a'					; drive maps to 0, ...
 	mov byte [ _disk + bp ], dl			; save driver
-%if 0
+%if 1
 	Int21 CurrentDisk
 	mov byte [ _disk + 1 + bp ], al			; save current drive
 		; RxDOS 7.20N:	Probably it was intended that CD changes the disk. The
@@ -4012,7 +3878,7 @@ _changeDir_18:
 %endif
 	Int21 SelectDisk				; can we select that drive ?
 	Int21 CurrentDisk				; get current drive
-%if 0
+%if 1
 	push ax
 	mov dl, byte [ _disk + 1 + bp ]			; get actual current drive
 	Int21 SelectDisk				; restore it
@@ -4046,11 +3912,7 @@ _Cls:
 
 	mov dl, 'L'-40h					; to a file we'll pipe a top of forms
 	Int21 DisplayOutput
-%if 1
-	jmp short _cls_36
-%else
 	retn
-%endif
 
 
 		; see how many lines
@@ -4069,10 +3931,6 @@ _clsScreen:
 ;.ansicls:	asciz 27,"[2J"				; Escape, "Clear screen" sequence
 %endif
 	call PhysClearScreen
-
-%if 1
-_cls_36:
-%endif
 	retn
 
 
@@ -4198,8 +4056,6 @@ _Delete_42:
 		; ss:di	Arg Array
 		; ax	Number of arguments in array
 _DiskSelect:
-
-%if 0
 	push di
 	add di, sizeArgCmd				; check for no arguments
 	jc _diskSelect_32				; if error -->
@@ -4208,7 +4064,7 @@ _DiskSelect:
 
 	pop di						; restore pointer to argument 0
 		; RxDOS 7.20N:	This check is not done by some COMMAND.COMs.
-%endif
+
 	push di
 	mov si, word [ argpointer + di ]		; point to lead argument
 	cmp byte [ si+1 ], ':'				; drive ?
@@ -4222,15 +4078,12 @@ _DiskSelect:
 	Int21 SelectDisk				; can we select a drive ?
 	Int21 CurrentDisk				; get current disk
 
-%if 0
-	inc si
-	inc si						; point [si] past drive
-%endif
 	cmp al, byte [ _disk + bp ]			; disk changed ?
-	jz _diskSelect_32				; yes -->
+	jz _diskSelect_32				; yes --> (NC)
 
 	mov dx, CmndError_InvalidDrive
 	call DisplayErrorMessage			; display message
+	stc
 
 _diskSelect_32:
 	pop di
@@ -4278,10 +4131,9 @@ _Echo:
 
 		; test for ON/OFF
 _echo_OnOffTest:
-%if 0
 	cmp word [ bp + _args ], byte 1
 	ja _echo_printline				; if more than one argument -->
-%endif
+
 	mov si, word [ argpointer + di ]		; get arg pointer
 	mov cx, word [ arglength + di ]			; get arg length
 	mov di, RxDOS_OnOff
@@ -4444,25 +4296,12 @@ _goto_16:
 	mov byte [ di + bx ], 0
 	mov si, word [ _labelPtr + bp ]
 
-%if 1
-_goto_18:
-	cmp byte [ di ], ' '
-	jz _goto_22
-	cmp byte [ di ], ':'
-	jnz _goto_26
-
-_goto_22:
-	inc di
-	jmp short _goto_18
-
-_goto_26:
-%else
 	mov al, 32
 	repz scasb					; skip spaces in front of possible label
 
 	cmp byte [ di-1 ], ':'				; first character is colon ?
 	jne _goto_16					; no -->
-%endif
+
 	call _compareSubString				; label matches ?
 	jnz _goto_16					; no -->
 	jmp short _goto_36				; yes, leave fseek position behind line -->
@@ -4542,11 +4381,7 @@ _If_16:
 	cmp word [ bx + _ARGTYPE ], IF_NOT		; not argument ?
 	jnz _If_20					; no -->
 	add bx, 4					; then we'll use next as base
-%if 1
-	storarg _notflag, -1				; if not
-%else
-	not [ _notflag + bp ]				; toggle flag
-%endif
+	not word [ _notflag + bp ]			; toggle flag
 
 _If_20:
 	cmp word [ bx + _ARGTYPE ], IF_ERRORLEVEL
@@ -4803,18 +4638,9 @@ _Path_Return:
 		; ax	Number of arguments in array
 _Pause:
 	mov dx, _PressAnyKeyToContinue
-%if 0
 	call DisplayLine
-%else
-	Int21 DisplayString
-%endif
 	Int21 ClearBufferedKeyboardInput, KeyboardInput
-
 	call CRLF
-%if 1
-	retn
-%endif
-
 
 		; Remark (Rem)
 _Rem:
@@ -5568,15 +5394,13 @@ _DefaultCreateEnvironment:
 
 	mov es, bx					; current segment
 	xor di, di					; byte offset
-%if 1
-	cmp word [ es:di ], 0				; empty env block ?
-%else
 		; RxDOS 7.20N:	The environment is empty if that byte (!) is zero.
+		; Actually it's unclear how many bytes are needed to indicate
+		; an empty environment block.
 	cmp byte [ es:di ], 0				; empty env block ?
-%endif
 	jnz _crEnvironment_36				; no, leave alone -->
 
-	add di, 4					; skip over # strings word
+	add di, 3					; skip over # strings word
 	stordarg _pgmName, es, di			; save ptr to orig pgm name
 
 		; allocate environment segment
@@ -5705,7 +5529,6 @@ _getStdinLine_28:
 		; read directly if device
 _getStdinLine_32:
 %if 0
-%if 0
 	mov ax, 4800h
 	push es
 	int 2Fh						; DOSKey (or CMDEDIT, etc.) installation check
@@ -5714,13 +5537,15 @@ _getStdinLine_32:
 	or al, al					; ax is AA02h (MS), AACE (CMDEDIT), etc.
 	jz .nodoskey
 		; We don't have to use the installation check. Int2F.4810 sets ax = 0000h on success.
+%else
+	pop dx
 %endif
 	mov ax, 4810h
 	int 2Fh						; DOSKey buffered input
 	or ax, ax
 	jz _getStdinLine_34				; got line from DOSKey compatible -->
 
-%if 0
+%if 1
 		; Possibly this DOSKey only supports buffers of 128 byte size!
 		; If the buffer is larger than 128 byte, we can shrink it to that
 		; size and try it again.
@@ -5746,19 +5571,14 @@ _getStdinLine_32:
 	jz _getStdinLine_34				; got up to 128 byte line from MS DOSKey -->
 %endif	
 .nodoskey:
-%else
-	pop dx						; buffer address
-%endif
 	Int21 GetLine					; read direct from device
 
 _getStdinLine_34:
-%if 0
 	call CRLF
 		; RxDOS 7.20N:	Make a line break after prompting for programs that start
 		;		their output without one (even our ECHO command!).
 		; RxDOS 7.20N:	This should possibly move to somewhere later. Blank lines
 		;		(that don't execute anything) don't make this line break.
-%endif
 	getarg dx, _buffer
 	pop bx
 	pop di
@@ -5776,9 +5596,6 @@ _getStdinLine_34:
 		; ax	actual length not incl cr.
 _ReadLine:
 	entry
-%if 1
-	def	Handle, bx
-%endif
 	ddef	buffer, ss, si
 
 	or bx, bx					; process from batch file ?
@@ -5878,7 +5695,7 @@ _ReadBatch_26:
 
 	mov dx, di
 	call DisplayLine				; echo line
-%if 1
+%if 0
 	call CRLF
 %endif
 
@@ -6123,21 +5940,13 @@ CommandBegin:
 
 		; init screen
 	setES ds					; restore es
-%if 1
-	call PhysClearScreen				; start with a clear screen
-%else
 	call CRLF
-%endif
 
 	mov dx, RxDOS_Version
 	call DisplayLine				; print startup version
 
 	mov dx, RxDOS_VersionCopyright
 	call DisplayLine				; print startup version
-
-%if 0
-	call CRLF
-%endif
 
 		; execute RXAUTO.BAT
 	ExOpenFile RXAUTO_BAT, OPEN_ACCESS_READONLY	; try RXAUTO.BAT first
@@ -6356,7 +6165,6 @@ _asciz_bat:		asciz ".bat"
 RxDOS_OnOff:
 	cmnd 1,		"on"
 	cmnd 0,		"off"
-%if 0
 	cmnd 1,		"1"
 	cmnd 0,		"0"
 	cmnd 1,		"true"
@@ -6367,7 +6175,6 @@ RxDOS_OnOff:
 	cmnd 0,		"inactive"
 	cmnd 1,		"yes"
 	cmnd 0,		"no"
-%endif
 
 	dw -1
 
@@ -6478,14 +6285,8 @@ PageLines			db 00			; paging mode
 
 
 		; Prompt
- %if 1
-RxDOS_DefaultPrompt		asciz "$n$g"		; "D>" where D is the current drive
-RxDOS_Prompt			asciz "$n$g"
-				times 128 db 0
- %else
 RxDOS_DefaultPrompt		asciz "$P$G"		; "D:\>" where D:\ is the current drive and directory
 RxDOS_Prompt			fill 128,0,asciz "$P$G"
- %endif
 
 		; Special command separators
 _UnixStyle			db 0			; non-zero if Unix style commands enabled
