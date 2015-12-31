@@ -145,11 +145,7 @@ _Copy:
 	jz _Copy_14					; if only one arg, then same as drive: case ->
 
 	dec ax						; may not have more than two args
-%if 1
-	mov cx, sizeArgCmd
-%else
 	mov cl, sizeArgCmd
-%endif
 	mul cl						; ignore dx
 	add di, ax					; point to last argument
 
@@ -188,11 +184,7 @@ _Copy_14:
 
 	lea di, [ _destFilename + bp ]			; destination path
 	call _endofString				; locate end
-%if 1
-	cmp byte [ di ], '\'				; already a trailing \ ?
-%else
 	cmp byte [ di-1 ], '\'				; already a trailing \ ?
-%endif
 	jz _Copy_30					; yes -->
 
 	mov word [ di ], '\'				; add trailing \ + null char
@@ -351,12 +343,7 @@ _Copy_74:
 	ifc _copyReadErrorAbort				; if error -->
 
 	mov cx, ax					; bytes read
-%if 1
-	or cx, cx					; null chars returned ?
-	jz _Copy_82					; must be end of file -->
-%else
 	jcxz _Copy_82					; if zero, end of file -->
-%endif
 
 	push ds
 	getdarg ds, dx, _pBuffer			; allocated buffer
@@ -490,11 +477,6 @@ _copyDisplayError:
 
 _copyErrorCleanUp:
 	mov bx, word [ _destCluster + handle + bp ]
-%if 1
-	cmp bx, -1					; if not assigned,
-	jz _copyErrorCleanUp_08				; don't delete -->
-		; RxDOS 7.20N:	_CopyCloseFile does that check already.
-%endif
 	call _CopyCloseFile
 
 _copyErrorCleanUp_08:
@@ -506,18 +488,10 @@ _copyErrorCleanUp_08:
 		; Inputs:
 		; bx = file Handle
 _CopyCloseFile:
-
-%if 1
-	cmp bx, byte -1					; if not assigned,
-	je _CopyClose_Exit				; exit -->
-	or bx, bx
-	jz _CopyClose_Exit				; exit -->
-%else
 	inc bx						; if not assigned,
 	jz _CopyClose_Exit				; exit -->
 	dec bx
 	jz _CopyClose_Exit				; exit -->
-%endif
 
 	Int21 IoControl, 00				; is source a char device ?
 	test dx, sftIsDevice				; test device flag
@@ -544,9 +518,7 @@ _PtrTo_Filename:
 	mov cx, -1
 	repne scasb					; scan for null terminator
 	not cx						; actual size in cx
-%if 0
 	jz _PtrTo_Filename_10
-%endif
 
 _PtrTo_Filename_08:
 	cmp byte [ ss:di - 1 ], '\'			; previous char a '\' ?
@@ -574,14 +546,7 @@ isitJustDriveLetter:
 
 	cmp byte [ di ], 00				; null string ?
 	jz isitJustDriveLetter_20			; yes, say yes to just drive -->
-
-%if 1
-	cmp byte [ di + 1 ], ':'			; only drive/colon entered ?
-	jnz isitJustDriveLetter_20			; no -->
-	cmp byte [ di + 2 ], 0				; must be followed by null
-%else
 	cmp word [ di + 1 ], byte ':'			; only colon followed by zero ?
-%endif
 
 isitJustDriveLetter_20:
 	retn
@@ -780,53 +745,28 @@ _compareClusters:
 
 	mov ax, word [ ss:si + clusterValue + _low ]
 	or ax, word [ ss:si + clusterValue + _high ]	; device ?
-%if 1
-	jz _compareClusters_NotEqual			; not equal -->
-%else
 	jz .return_incax				; not equal -->
-%endif
 
 	mov ax, word [ ss:di + clusterValue + _low ]
 	or ax, word [ ss:di + clusterValue + _high ]	; device ?
-%if 1
-	jz _compareClusters_NotEqual			; not equal -->
-%else
 	jz .return_incax				; not equal -->
-%endif
 
 	mov ax, word [ ss:si + clusterValue + _high ]
 	cmp ax, word [ ss:di + clusterValue + _high ]	; high word of cluster matches ?
-%if 1
-	jne _compareClusters_NotEqual			; no -->
-%else
-	jne .return					; no -->
-%endif
+	jne .return					; no --> (NZ)
 
 	mov ax, word [ ss:si + clusterValue + _low ]
 	cmp ax, word [ ss:di + clusterValue + _low ]	; full cluster matches ?
-%if 1
-	jne _compareClusters_NotEqual			; no -->
-%else
-	jne .return					; no -->
-%endif
+	jne .return					; no --> (NZ)
 
 	mov ax, word [ ss:si + clusterDrive ]
 	cmp ax, word [ ss:di + clusterDrive ]		; drive also matches ?
-%if 1
-	jne _compareClusters_NotEqual			; no -->
-%else
-	jne .return					; no -->
-%endif
+	jne .return					; no --> (NZ)
 	retn
 
-%if 1
-_compareClusters_NotEqual:
-	or si, si					; say not equal
-%else
 .return_incax:
-	inc ax
+	inc ax				; = 1, NZ
 .return:
-%endif
 	retn
 
 
@@ -851,7 +791,7 @@ _copyArgument:
 
 
 		; RxDOS 7.20N:	Following code is never called.
-%if 1
+%if 0
 		; Replace with real name
 		;
 		; Input:
@@ -909,25 +849,21 @@ seeIfDirectoryName:
 
 	mov bx, ax					; search handle
 
-		; handle . or .. special cases
+		; handle (skip) dot or dotdot special cases
 seeIfDirectoryName_16:
 	getarg di, _finddata
 	test byte [ findDataAttributes + di ], ATTR_DIRECTORY
 	jz seeIfDirectoryName_20			; if not a dir entry -->
 
-%if 1
-	cmp byte [ findDataLongFilename + di ], '.'
-	jne seeIfDirectoryName_20			; if dir and not . or .. -->
-%else
 	cmp word [ findDataLongFilename + di ], byte '.'
 	je seeIfDirectoryName_18			; if dot entry (including zero) -->
 
 	cmp word [ findDataLongFilename + di + 1 ], byte '.'
 	jne seeIfDirectoryName_20			; if not dotdot entry (including zero) -->
 							; only dot entries end with a dot
-		; RxDOS 7.20N:	The former code is incorrect and skips any entry that
-		;		starts with a dot. An usual LFN can start with a dot.
-%endif
+	cmp byte [ findDataLongFilename + di ], byte '.'; check for first dot anyway
+	jne seeIfDirectroyName_20			; -->
+
 seeIfDirectoryName_18:
 	mov si, FINDDATA_MSDOSDATEFORMAT
 	lea di, [ _finddata + bp ]
@@ -941,3 +877,4 @@ seeIfDirectoryName_20:
 
 seeIfDirectoryName_24:
 	Return
+

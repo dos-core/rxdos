@@ -69,11 +69,7 @@ _For:
 		; get variable arg letter
 	call CountArgs					; must have min of 8 args
 	cmp ax, 8					; min args 
-%if 1
-	jge _For_08					; if at leats 8 -->
-%else
 	jae _For_08					; if at least 8 -->
-%endif
 	jmp _ForError					; else if less, syntax error -->
 
 _For_08:

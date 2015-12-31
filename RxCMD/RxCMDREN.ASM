@@ -90,11 +90,7 @@ _Rename:
 
 		; simple case (no wild card case)
 	mov ax, word [ _srcfile + parsewildcharflag + bp ]
-%if 1
-	add ax, word [ _destfile + parsewildcharflag + bp ]
-%else
 	or ax, word [ _destfile + parsewildcharflag + bp ]
-%endif
 	jnz _rename_14					; wild chars in either filename -->
 
 	getarg di, __argarray

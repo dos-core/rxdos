@@ -105,15 +105,12 @@ DisplayPrompt_06:
 	lea di, [ _buffer + bp ]
 	mov byte [ di ], 0				; terminate if not displaying prompt
 
-%if 0
 	cmp word [ RxDOS_BatchFile + batchEchoStatus ], NO
 	jz DisplayPrompt_48				; if ECHO switched off, don't display -->
 
 	mov ax, 10<<8|13
 	stosw
 		; RxDOS 7.20N:	A line break is displayed before the prompt.
-%endif
-
 
 		; scan prompt
 DisplayPrompt_08:
@@ -151,13 +148,11 @@ DisplayPrompt_10:
 	Translate 'l', '<', DisplayPrompt_18
 	Translate 'b', '|', DisplayPrompt_18
 	Translate 'e', 27, DisplayPrompt_18
-%if 0
 	Translate 'a', '&', DisplayPrompt_18
 	Translate 'c', '(', DisplayPrompt_18
 	Translate 'f', ')', DisplayPrompt_18
 	Translate 's', ' ', DisplayPrompt_18
 		; RxDOS 7.30:	Some additional NT CMD.EXE values.
-%endif
 %else
 	translate 'q', '='
 	translate '$', '$'
@@ -207,32 +202,21 @@ DisplayPrompt_Backspace:
 DisplayPrompt_08_01:
 	jmp short DisplayPrompt_08
 
-
 		; line break
 DisplayPrompt_CRLF:
 	mov ax, 10<<8|13
 	stosw
-%if 1
-	jmp DisplayPrompt_08
-%else
 	jmp short DisplayPrompt_08_01
-%endif
-
 
 		; time
 DisplayPrompt_Time:
 	call formatCurrentTime
 	jmp DisplayPrompt_08
 
-
 		; date
 DisplayPrompt_Date:
 	call formatCurrentDate
-%if 1
-	jmp DisplayPrompt_08
-%else
 	jmp short DisplayPrompt_08_01
-%endif
 
 
 		; path
@@ -268,11 +252,7 @@ DisplayPrompt_Path_08:
 %endif
 
 	pop si
-%if 1
-	jmp DisplayPrompt_08
-%else
 	jmp short DisplayPrompt_08_01
-%endif
 
 
 		; version
@@ -282,11 +262,7 @@ DisplayPrompt_Version:
 	call CopyString
 	dec di						; point to terminating zero
 	pop si
-%if 1
-	jmp DisplayPrompt_08
-%else
 	jmp short DisplayPrompt_08_01
-%endif
 
 
 		; drive letter
@@ -295,11 +271,7 @@ DisplayPrompt_Drive:
 	add al, 'A'					; get drive
  %if 1
 	stosb
-%if 1
-	jmp DisplayPrompt_08
-%else
 	jmp short DisplayPrompt_08_01
-%endif
  %else
 	jmp DisplayPrompt_10
  %endif
@@ -329,38 +301,25 @@ ConvTo2CharDecimal:
 
 
 		; Convert ax to 4 character decimal
+		;
+		; RxDOS 7.30: Still wrong for numbers >= 10000.
 ConvTo4CharDecimal:
 
 	push cx
-%if 0
 	mov cx, 4
 	add di, cx
-%else
-	add di, 4
-%endif
 	push di
 __4CharDecimal_04:
 	xor dx, dx
-%if 0
 	push cx
-%endif
 	mov cx, 10
 	div cx
-%if 0
 	pop cx
-%endif
 
 	dec di
 	or dl, '0'
 	mov byte [ di ], dl
-
-%if 1
-	or ax, ax
-	jnz __4CharDecimal_04
-		; RxDOS 7.20N:	This only works if ax is at least 1000.
-%else
 	loop __4CharDecimal_04
-%endif
 
 	pop di
 	pop cx
@@ -751,11 +710,8 @@ _checkSeparator_06:
 
 _checkSeparator_10:
 	cmp byte [ _HOURS + bp ], 12
-%if 1
-	jge _checkSeparator_12
-%else
 	jae _checkSeparator_12
-%endif
+
 	add byte [ _HOURS + bp ], 12
 
 _checkSeparator_12:

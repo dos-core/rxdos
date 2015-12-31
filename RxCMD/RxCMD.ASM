@@ -240,7 +240,7 @@ _CommandParser:
 	lea di, [ __argarray + bp ]
 	call _executeCommandArray
 
-%if 1
+%if 0
 	cmp word [ RxDOS_BatchFile + batchEchoStatus ], No
 	jz _CommandParser_36				; if no echo -->
 	call CRLF					; append CR+LF after the command executed
@@ -5182,7 +5182,8 @@ LFNReturnPreferedFilenamePtr:
 
 _lfnPref_08:
 	retn
-		; RxDOS 7.20N:	This code is wrong. If there is no long name, the short name		;		field is empty and the long name field holds the short name!
+		; RxDOS 7.20N:	This code is wrong. If there is no long name, the short name
+		;		field is empty and the long name field holds the short name!
 
 
 		; Build Expanded Filename
@@ -5691,6 +5692,7 @@ _ReadBatch_24:
 
 		; echo this line
 _ReadBatch_26:
+	call CRLF
 	call DisplayPrompt				; display prompt
 
 	mov dx, di

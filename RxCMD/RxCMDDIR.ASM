@@ -237,32 +237,6 @@ _makePath_32:
 		;	ax = number of arguments in array
 _Dir:
 	entry
-%if 1
-	def	currdisk
-	def	maxdisk
-	def	filesread
-	def	dirhandle, -1
-	def	extensionFlag
-	def	_argarray, di				; argument array
-	def	summaryline
-	def	freespaceFraction
-	ddef	freespace
-	ddef	totalfilespace
-
-	defbytes	asciiFileTime, 20
-	defbytes	asciiFileDate, 20
-	defbytes	pathname, sizeLFNPATH		; search pathname
-	defbytes	filename, sizeLFNPATH		; search filename
-	defbytes	parsedfilename, sizeParsedFilename
-	defbytes	finddata, sizeFINDDATA
-	defbytes	printbuffer, 1400
-	defbytes	extendedfreespace, sizeEXTENDEDFREESPACE
-
-	xor ax, ax
-	mov word [ _filesread + bp ], ax
-	mov word [ _totalfilespace + _low + bp ], ax
-	mov word [ _totalfilespace + _high + bp ], ax
-%else
 	xor ax, ax
 	def	currdisk
 	def	maxdisk
@@ -283,7 +257,11 @@ _Dir:
 	defbytes	finddata, sizeFINDDATA
 	defbytes	printbuffer, 1400
 	defbytes	extendedfreespace, sizeEXTENDEDFREESPACE
-%endif
+
+	xor ax, ax
+	mov word [ _filesread + bp ], ax
+	mov word [ _totalfilespace + _low + bp ], ax
+	mov word [ _totalfilespace + _high + bp ], ax
 
 	mov cx, 0000					; min args
 	mov dx, 0001					; max args
@@ -333,11 +311,7 @@ _dir_10:
 	jz _dir_12					; no drive specified -->
 	mov ax, word [ _maxdisk + bp ]			; get max disk letter
 	cmp ax, word [ _parsedfilename + parsedrive + bp ]
-%if 1
-	jg _dir_12					; drive is acceptable
-%else
 	ja _dir_12					; drive is acceptable
-%endif
 	jmp _dir_DriveError				; else invalid drive selected -->
 
 _dir_12:
@@ -497,10 +471,6 @@ _dir_54:
 	call _dirDateToAscii
 	push di
 
-%if 1
-	cmp byte [ _finddata + findDataShortFilename + bp ], '.'
-		; RxDOS 7.20N:	Useless compare ?
-%endif
 	test byte [ _finddata + findDataAttributes + bp ], ATTR_DIRECTORY
 	jnz _dir_60					; if a directory -->
 

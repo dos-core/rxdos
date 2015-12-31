@@ -101,21 +101,18 @@ SPRINTF_ZEROFIELDFILL	equ SPRINTF_ZEROFILL		; obsolete. do not use
 		; File Attributes
 	%imacro fileattrib 0-2.nolist
 %if %0 == 0
-		xor cx,cx
+		xor cx, cx
 %else
-
-%if %1 == 0
-		xor cx,cx
-%else
-		mov ch,%1
-%endif
-
-%if %0 == 1
-		mov cl,ch
-%else
-		mov cl,%2
-%endif
-
+ %if %1 == ATTR_NORMAL		; 0
+		xor cx, cx
+ %else
+		mov ch, %1
+ %endif
+ %if %0 == 1
+		mov cl, ch
+ %else
+		mov cl, %2
+ %endif
 %endif
 	%endmacro
 
