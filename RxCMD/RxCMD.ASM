@@ -35,9 +35,6 @@ shell which is accessible by Int2E.
 %include "RXCSTRUC.MAC"
 
 
-		; RxDOS 7.20N:	Structs moved into RXCSTRUC.MAC
-
-
 	global CommandBegin
 
 	global CheckOptOneArg
@@ -218,12 +215,7 @@ _CommandParser:
 	lodsb
 	mov cl, al					; length
 	xor ch, ch
-%if 1
-	or cx, cx					; any command ?
-	jz _CommandParser_36				; if no command -->
-%else
 	jcxz _CommandParser_36				; if no command -->
-%endif
 
 	setES cs
 	lea di, [ _commandLine + bp ]
@@ -264,28 +256,19 @@ _CommandParser_36:
 
 		; Control-C interrupt service routine
 _ControlC_ISR:
-
-%if 0
-		; RxDOS 7.20N:	Rather buggy behaviour. The Int23 handler should preserve
-		;		all registers even if it returns only to abort the program.
 	push ax
 	push bx
-%endif
+
 	Int21 GetPSPAddress
 	cmp bx, word [ cs:_PSPSegment ]			; this instance of RxCMD active ?
-	jz _ControlC_ISR_12				; yes, accept Ctrl-C -->
+	je _ControlC_ISR_12				; yes, accept Ctrl-C -->
 
-%if 0
 	pop bx
 	pop ax
-%endif
 	stc
-%if 1
-	retf 2						; cause abort
-%else
-	retf
+	retf						; cause abort
 		; RxDOS 7.20N:	Refer to the comment below CtrlC_CheckCallBack in RxDOS.ASM.
-%endif
+
 
 		; abort current command, batch files
 _ControlC_ISR_12:
@@ -1286,11 +1269,7 @@ CheckOneArg:
 	jmp short PreProcessCmndLine			; check
 
 CheckOptOneArg:
-%if 1
-	mov cx, 0					; allowed to have no arguments
-%else
 	xor cx, cx					; allowed to have no arguments
-%endif
 	mov dx, 1					; or one argument
 	xor bx, bx					; no switches
 							; fall through to check
@@ -1568,31 +1547,18 @@ _matchSwitch:
 	_lowerCase al
 
 _matchSwitch_04:
-%if 0
-		; RxDOS 7.20N:	Check if at end of switch table before comparing
-		;		to al.
 	cmp byte [ cs:bx ], -1				; end of table ?
 	jnz _matchSwitch_06				; not yet -->
 	stc
-	jmp short _matchSwitch_08
-
-_matchSwitch_06:
-%endif
-
-	cmp al, byte [ cs:bx ]
-	jz _matchSwitch_08
-
-	add bx, sizeSWITCHENTRY				; next entry
-%if 1
-	cmp byte [ cs:bx ], -1				; end of table ?
-	jnz _matchSwitch_04				; not yet -->
-	stc
-%else
-	jmp short _matchSwitch_04
-%endif
-
 _matchSwitch_08:
 	retn
+
+_matchSwitch_06:
+	cmp al, byte [ cs:bx ]
+	je _matchSwitch_08				; match --> (NC)
+
+	add bx, sizeSWITCHENTRY				; next entry
+	jmp short _matchSwitch_04
 
 
 		; Init switch table
@@ -1834,12 +1800,8 @@ fixDoubleQuote_08:
 	pop cx
 	dec cx						; cx = (number of characters remaining)-1
 							;  if at least one character remains, check it (cx >= 0)
-%if 1
-	jg fixDoubleQuote_08
-%else
-		; RxDOS 7.20N:	"jg"/"ja" don't really make sense here.
+
 	jns fixDoubleQuote_08				; if !cx&8000h (cx >= 0) -->
-%endif
 
 fixDoubleQuote_16:
 	getarg di, __argarray
@@ -2050,14 +2012,7 @@ _replaceEnvVariable08:
 
 	lea si, [ _tempVar + bp ]
 	call searchEnvVariable				; environment string found ?
-%if 1
-	jnz _replaceEnvVariable36			; not found -->
-		; RxDOS 7.30:	Jumping to 36 caused inexistant environment variables to stay
-		;		in the command line. This jump can however be just removed
-		;		because searchEnvVariable points di and di+dx to an empty
-		;		string if the searched environment variable wasn't in the
-		;		environment.
-%endif
+
 	pop cx
 	push cx						; length to delete
 	mov si, word [ _deleteFrom + bp ]		; delete from
@@ -3010,21 +2965,27 @@ _loadProgram_20:
 	setES ss
 	lea bx, [ _ExecBlock + bp ]
 	getdarg ds, dx, _progname
+	
 	Int21 LFNExecuteProgram, 00
-		; RxDOS 7.20N:	This should really check for CY!
-
-		; get return status when done
 	mov ax, cs
 	mov ds, ax
 	mov es, ax					; restore registers
+	jc .error
 
+		; get return status when done
 	Int21 GetReturnCode				; get return value (errorlevel)
 	and ax, 255					; only errorlevel, not type of termination
 	mov word [ RxDOS_ExecReturnCode ], ax		; save return code
 
+.return:
 	pop di
 	pop es
 	return
+
+.error:
+	mov dx, msg.error_load_program
+	call DisplayErrorMessage
+	jmp short .return
 
 
 		; initialize an FCB data structure
@@ -3060,7 +3021,7 @@ returnVolumeName:
 	push bx
 	push di
 	cmp al, 'Z'-40h
-	jnc returnVolumeName_08
+	jnb returnVolumeName_08
 
 	or al, al					; default disk ?
 	jnz returnVolumeName_06				; no -->
@@ -3072,7 +3033,7 @@ returnVolumeName_06:
 	add al, 'a'-1
 
 returnVolumeName_08:
-	mov bx, RxDOS_RootDirectory - 2
+	mov bx, RxDOS_RootDirectoryDriveLetter
 	mov byte [ bx ], al
 	mov dx, bx
 
@@ -3149,10 +3110,10 @@ DisplayOutEnvSpace_08:
 
 		; Display Error Message
 		;
-		; Usage:
-		; cs:dx	points to error message
+		; INP:	ds = es
+		;	es:dx-> error message, ASCIZ
+		; OUT:	CY
 DisplayErrorMessage:
-
 	call DisplayLine				; print line
 	call CRLF					; new line
 	stc
@@ -3898,11 +3859,7 @@ _Break:
 _BreakError:
 	mov dx, CmndError_MustSpecifyOnOff
 	call DisplayErrorMessage
-%if 1
-	return
-%else
 	jmp short _BreakExit
-%endif
 
 
 		; display current state
@@ -3919,29 +3876,12 @@ _BreakExit:
 	return
 
 
-%if 1
 		; Call batchfile arguments
 		;
 		; Usage:
 		; ss:di	Arg Array
 		; ax	Number of arguments in array
 _Call:
-_Loadhigh:
-%else
-
-_Loadhigh:
-	mov dx, msg.notimplemented
-	call DisplayErrorMessage
-	retn
-
-
-		; Call batchfile arguments
-		;
-		; Usage:
-		; ss:di	Arg Array
-		; ax	Number of arguments in array
-_Call:
-%endif
 	entry
 	def	_argarray, di
 	def	_tempargptr
@@ -4020,27 +3960,16 @@ _ChangeDir:
 	Int21 CurrentDisk				; get current disk
 
 	mov dl, al					; save drive number
-%if 1
-	or al, 'a'					; drive
-		; RxDOS 7.20N:	This or opcode results in a wrong letter.
-		;		The case doesn't matter for this problem.
-%else
 	add al, 'A'					; make letter
-%endif
 	lea di, [ _tempstring + 3 + bp ]
 	mov byte [ di - 3 ], al
-%if 1
-	mov byte [ di - 2 ], ':'
-	mov byte [ di - 1 ], '\'
-%else
 	mov word [ di - 2 ], ":\"
-%endif
 
 	inc dl
 	mov si, di
 	Int21 LFNGetCurrentDirectory			; get current directory
 
-%if 1
+%if 0
 	push ss
 	push si						; where string
 	call _lowerCaseString
@@ -5319,15 +5248,13 @@ _Ctty:
 
 
 		; Other commands
-%if 1
-		; RxDOS 7.20N:	Although present, this code is unused?
 _Help:
 _History:
 _Move:
+_Loadhigh:
 	mov dx, CmndError_NotSupportedYet
 	call DisplayErrorMessage
 	retn
-%endif
 
 
 		; Not a valid command
@@ -6211,16 +6138,11 @@ CommandBegin:
 %endif
 
 		; execute RXAUTO.BAT
-%if 1
-	ExOpenFile AUTOEXEC_BAT, OPEN_ACCESS_READONLY
-	jc CommandBegin_22				; if not found -->
-%else
 	ExOpenFile RXAUTO_BAT, OPEN_ACCESS_READONLY	; try RXAUTO.BAT first
 	jnc CommandBegin_16
 	ExOpenFile AUTOEXEC_BAT, OPEN_ACCESS_READONLY	; if not found, try AUTOEXEC.BAT
 	jc CommandBegin_22
 		; RxDOS 7.30:	Should move to RxDOS's initialization code. (Paramater: /D /K {filename})
-%endif
 
 CommandBegin_16:
 	mov word [ RxDOS_BatchFile + batchFileHandle ], ax
@@ -6305,29 +6227,21 @@ _startupSwitches_SingleCommand:
 _startupSwitches_EnvSize:
 	xor dx, dx					; accum value
 
-%if 1
-	inc si						; skip through ':' or other delim
-	; cmp al, ':'					; expect separator
-	; jz _startupSwitches_20			; ok -->
-%else
-	lodsb
+	lodsb						; skip through a delim
+	cmp al, ' '
+	je _startupSwitches_20
 	cmp al, ':'					; separator follows "/E" ?
 	je _startupSwitches_20				; yes -->
 	cmp al, '='
 	je _startupSwitches_20				; yes -->
 	dec si						; go back
-%endif
 
 _startupSwitches_20:
 	lodsb						; get character
 	cmp al, '0'
 	jb _startupSwitches_26				; if not a digit -->
 	cmp al, '9'
-%if 1
-	jg _startupSwitches_26				; if not a digit -->
-%else
 	ja _startupSwitches_26				; if not a digit -->
-%endif
 
 	and ax, 15					; strip down value
 	mov cx, dx
@@ -6342,11 +6256,7 @@ _startupSwitches_26:
 	cmp dx, DEFAULT_MINENVIRONMENT
 	jb _startupSwitches_12
 	cmp dx, DEFAULT_MAXENVIRONMENT
-%if 1
-	jnc _startupSwitches_12
-%else
 	ja _startupSwitches_12
-%endif
 
 	mov word [ ss:_EnvSize ], dx			; environment size
 	jmp short _startupSwitches_12			; continue processing -->
@@ -6477,22 +6387,12 @@ RxDOS_ForArgs:
 
 
 		; Version number
-		;
-		; RxDOS 7.20N:	Changed version from "RxDOS Version 7.1.5", changed
-		;		copyright string.
-
-RxDOS_Version:			asciz "RxCMD version 7.20N"
+RxDOS_Version:	asciz RXCMDLONG_S, " version ", RXCMDVERSIONLONG_S
 
 RxDOS_VersionCopyright:
-%if 1
-				db " ALPHA",13
-%endif
-				db 13,10
-				db "    Copyright (C) 1990-1999 Mike Podanoffsky",13,10
-%if 1
-				db 13,10
-%endif
-				asciz
+		db 13,10
+		db " Copyright (C) 1990-1999 Mike Podanoffsky",13,10
+		asciz
 
 		; Error Table
 	align 2, db 0
@@ -6549,12 +6449,13 @@ CmndError_InvalidNumberArguments:	asciz "invalid number of arguments"
 CmndError_OutOfEnvironmentSpace:	asciz "out of environment space"
 CmndError_ReadErrorAbort:		asciz "error reading file"
 
+msg:
+.error_load_program:	asciz "Error loading program."
 
 		; Other Variables
 RxDOS_NewLine:			asciz 13,10
 
-				db "c:"
-					; For what is the former used?
+RxDOS_RootDirectoryDriveLetter	db "c:"
 RxDOS_RootDirectory		asciz "\*.*"		; root directory
 RxDOS_AllFiles			db "*"			; combines with next
 RxDOS_AllExtensions		asciz ".*"
@@ -6563,15 +6464,15 @@ RxDOS_TruenameCurrDir		asciz "."		; current directory
 
 
 		; Control-C Handling
-	align 2, db 0
+	align 4, db 0
 
 		; RxDOS 7.20N:	Will move into IISP entry.
 _Int23_Original		 dd 0
 
 
 		; Echo/Paging
-PageLines			db 00			; paging mode
 LinesDisplayed			dw 00			; number of lines displayed, curr page
+PageLines			db 00			; paging mode
 
 
 		; Prompt
@@ -6605,19 +6506,9 @@ RxDOS_BatchFile			times sizeBATCH_ARGS db 0
 RxDOS_PrevStackFrame		dw 0			; end call stack frame
 RxDOS_StackFrameNumEntries	dw 0			; number of entries in stack
 
-		; This should move to RxDOS's initialization code.
-%if 1
-
-%ifndef RxDOS_DEBUG
-AUTOEXEC_BAT		asciz "\autoexec.bat"
-%else
-AUTOEXEC_BAT		asciz "\autoexec.tst"
-%endif
-
-%else
+		; RxDOS 7.30: This should move to RxDOS's initialization code.
 RXAUTO_BAT		asciz "\RXAUTO.BAT"
 AUTOEXEC_BAT		asciz "\AUTOEXEC.BAT"
-%endif
 
 
 		; Restore Original Parameters
@@ -6671,11 +6562,7 @@ _Copy_FilesCopied:	asciz "    %5d file(s) copied",13,10
 
 
 		; Pause/Continue
- %if 1
-_PressAnyKeyToContinue:	asciz "Press any key to continue . . . ",36
- %else
 _PressAnyKeyToContinue:	asciz "Press any key to continue . . . "
- %endif
 _Dir_Continuing:	asciz "(continuing %s)",13,10
 
 
@@ -6715,11 +6602,7 @@ _LfnforState:		asciz "LFNFOR"
 
 		; Delete all files in a directory
 _DeleteAllFiles:	db    "All files in directory will be deleted!",13,10
-%if 1
-			asciz "Are you sure (Y/N)?"
-%else
 			asciz "Are you sure (Y/N)? "
-%endif
 
 
 		; Display and prompt for date
