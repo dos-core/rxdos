@@ -128,11 +128,7 @@ _loadProgram_04:
 
 _loadProgram_08:
 	getarg si, _ptrDirAccess
-%if 1
-	lea si, [ word fileAcExpandedName + si ]	; program to load
-%else
 	lea si, [ byte fileAcExpandedName + si ]	; program to load
-%endif
 	mov cx, si
 
 _loadProgram_12:
@@ -142,12 +138,8 @@ _loadProgram_12:
 
 	sub cx, si
 	neg cx						; length command line
-%if 1
-	add cx, byte 4					; overhead bytes
-	add cx, byte (PARAGRAPH - 1)			; round up
-%else
-	add cx, byte 4+15
-%endif
+							; 4 = overhead bytes
+	add cx, byte 4 + 15				; 15 = round up paragraphs
 	add cx, word [ _loadEnvelope + loadEnvExtraEnvSizeParas + bp ]
 
 	shr cx, 1
@@ -178,11 +170,7 @@ _loadProgram_22:
 	mov cx, word [ fileAcCluster + _high + bx ]	; cluster (high)
 	mov dx, word [ fileAcCluster + _low + bx ]	; cluster (low)
 
-%if 1
-	lea bx, [ word _diskAccess + bp ]		; build access control block
-%else
 	lea bx, [ byte _diskAccess + bp ]		; build access control block
-%endif
 	call initdiskAccess				; ax is drive, cx:dx is cluster
 	call checkEXEHeader				; EXE file ?
 	jnz _loadProgram_30				; no, COM or SYS type -->
@@ -231,11 +219,7 @@ _loadProgram_30:
 _loadProgram_34:
 	xor di, di					; es:di == es:0000
 	mov es, word [ _loadEnvelope + loadEnvStartSegment + bp ]
-%if 1
-	lea bx, [ word _diskAccess + bp ]		; build access control block
-%else
 	lea bx, [ byte _diskAccess + bp ]		; build access control block
-%endif
 	mov word [ ss:bx + diskAcPosition + _high ], di
 	mov word [ ss:bx + diskAcPosition + _low ], di	; zero
 
@@ -252,27 +236,14 @@ _loadProgram_36:
 	mov cx, ax					; exact bytes to read
 
 _loadProgram_38:
-%if 1
-	or cx, cx					; more to read ?
-	jz _loadProgram_44				; if no more to read -->
-%else
 	jcxz _loadProgram_44				; if no more to read -->
-%endif
 
 	mov dx, word [ ss:diskAcPosition + _high + bx ]	
 	mov ax, word [ ss:diskAcPosition + _low + bx ]
-%if 1
-	lea bx, [ word _diskAccess + bp ]		; build access control block
-%else
 	lea bx, [ byte _diskAccess + bp ]		; build access control block
-%endif
+
 	call readLogicalBuffer				; ss:bx-> access buffer
-%if 1
-	or cx, cx					; bytes actually read
-	jz _loadProgram_44				; if no more to read -->
-%else
 	jcxz _loadProgram_44				; if no more to read -->
-%endif
 
 	push cx
 	shr cx, 1
@@ -299,16 +270,14 @@ _loadProgram_44:
 
 	call _getSizeOfEnvString			; get size of env string
 
-	xor si, si
-%if 0
-		; RxDOS 7.20N:	Former commented.
+	xor si, si					; 0 = 1_0000h with overflow
 	cmp cx, (1024 /PARAGRAPH) * 64			; greater than 64 KiB ?
-	jnc _loadProgram_46				; yes, use max value for seg
+	jae _loadProgram_46				; yes, use max value for seg
 	mov si, cx
 	shl si, 1
 	shl si, 1
-	shl si, 1					; actual words
-%endif
+	shl si, 1
+	shl si, 1					; -> top of stack
 
 _loadProgram_46:
 	mov word [ es:si - 2 ], 0			; place a null return address at top of stack
