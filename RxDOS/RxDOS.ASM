@@ -699,6 +699,7 @@ sizeInvFnChars		equ ($ - _invalidFnCharacters)
 RxDOS_CMDLINE:		asciz 'CMDLINE='
 
 
+	align 2
 		; Dispatch table for all DOS Int21 functions
 		;
 		; Items marked by (*) are undocumented DOS functions
@@ -826,6 +827,7 @@ _RxDOS_maxFunctionCode equ ($ - _RxDOS_functions)/2
 
 		; Critical Section Patch Area
 _RxDOS_CritSectPatches	times 5 dw 0
+
 
 		; Interrupt 21
 		;
@@ -3710,8 +3712,8 @@ _GetDOSVersion_16:
 
 		; 31h Terminate but stay resident
 		;
-		; al	return value
-		; dx	keep memory size
+		; INP:	al = return value
+		;	dx = memory size to keep (in paragraphs)
 _TerminateStayResident:
 
 	entry
@@ -3746,7 +3748,7 @@ _TerminateStayResident:
 	mov dx, word [ es:pspTerminateVect + _segment ]
 	stordarg _returnVector, dx, ax
 
-	mov bx, ( intCONTROLC * 4 )		; Int23 control-C vector
+	mov bx, ( intCONTROLC * 4 )			; Int23 control-C vector
 	mov ax, word [ es:pspControlCVect + _pointer ]
 	mov dx, word [ es:pspControlCVect + _segment ]
 	mov word [ _pointer + bx ], ax
@@ -5209,7 +5211,7 @@ _TerminateProcess_00:
 
 		; 4Ch Terminate Process
 		;
-		; al	return value (errorlevel)
+		; INP:	al = return value (errorlevel)
 _TerminateProcess:
 
 	entry
@@ -5264,11 +5266,9 @@ _TerminateProcess:
 
 	pop ds
 
-%if 0
 	getarg ax, _parentPSP
 	cmp ax, word [ ss:_RxDOS_CurrentPSP ]		; is its own parent ?
 	je _TerminateProcess_16				; yes, don't free memory or release files -->
-%endif
 
 		; free allocated memory and release files
 	call _SFTCloseAllFiles				; close/commit all files
