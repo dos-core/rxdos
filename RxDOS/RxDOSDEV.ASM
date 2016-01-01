@@ -235,13 +235,8 @@ chkDevName_20:
 	test word [ es:devAttributes + bx ], ( DEV_CHAR )
 	jz chkDevName_24				; not a character device ->
 
-%if 1
-	lea si, [ word _tempdevname + bp ]
-	lea di, [ word devName + bx ]
-%else
 	lea si, [ byte _tempdevname + bp ]
 	lea di, [ byte devName + bx ]
-%endif
 	mov cx, sizedevName
 	repz cmpsb					; compare names
 	jnz chkDevName_24				; if not equal, go to next -->
@@ -295,11 +290,7 @@ findBlockedDev_08:
 
 	sub cl, byte [ es:bx + devUnits ]		; # units supported
 	cmp al, cl					; compare against drive code
-%if 1
-	jl findBlockedDev_14				; if not device of interest -->
-%else
 	jb findBlockedDev_14				; if not device of interest -->
-%endif
 
 	or ax, ax					; clear carry
 	jmp short findBlockedDev_16			; return -->
@@ -369,11 +360,7 @@ DevMediaRequest:
 	SaveRegisters es, di, bx, ax
 
 	mov ah, MEDIAREQUEST
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock
 
 	mov byte [ _reqBlock + mrMediaID + bp ], ah
@@ -411,19 +398,11 @@ incorrectDiskMedia:
 	defbytes	reqBlock, sizeMaxReqHeader
 
 	mov ah, MEDIAREQUEST
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock
 
 	mov ax, devErrInvalidDiskChange
-%if 1
-	lea bx, [ word _reqBlock + bp ]
-%else
 	lea bx, [ byte _reqBlock + bp ]
-%endif
 	call _callCriticalError
 	Return
 
@@ -447,11 +426,7 @@ DevRemovableRequest:
 	SaveRegisters es, di, bx, ax
 
 	mov ah, REMOVABLEMEDIA
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock
 
 	getarg ax, _drive				; restore drive
@@ -496,11 +471,7 @@ DevRead:
 	push word [ es:bx + _dpbMediaDescriptor ]
 
 	mov ah, DEVICEREAD
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock
 
 	getarg ax, _sectors
@@ -514,30 +485,21 @@ DevRead:
 	mov word [ _reqBlock + rwrBuffer + _segment + bp ], dx
 	mov word [ _reqBlock + rwrBuffer + _pointer + bp ], ax
 
-%if 1
-	lea di, [ word _volumeID + bp ]
-%else
 	lea di, [ byte _volumeID + bp ]
-%endif
 	mov word [ _reqBlock + rwrVolumeID + _pointer + bp ], di
 	mov word [ _reqBlock + rwrVolumeID + _segment + bp ], ss
 
 
 		; if address is huge, store in huge request area
 	getdarg cx, dx, _sector
-%if 1
-	or cx, cx					; if huge address
-	jz DevRead_08					; must save in huge, else skip -->
-%else
 	jcxz DevRead_08					; skip if no huge address -->
-%endif
 
 	mov word [ _reqBlock + rwrHugeStartSec + _high + bp ], cx
 	mov word [ _reqBlock + rwrHugeStartSec + _low + bp ], dx
 	mov dx, -1
 
 DevRead_08:
-	mov word [ _reqBlock + rwrStartSec + bp ], dx ; sector (or -1 if huge)
+	mov word [ _reqBlock + rwrStartSec + bp ], dx	; sector (or -1 if huge)
 	getarg ax, _drive				; restore drive
 	call BlockedDevRequest				; call blocked device
 
@@ -579,11 +541,7 @@ DevCharReadLine:
 
 	mov al, -1					; not a block device
 	mov ah, NONDESTRREAD
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock				; (returns es:bx request block)
 
 	call ClockTimer					; dx: ax
@@ -592,11 +550,7 @@ DevCharReadLine:
 	setds ss
 	getarg cx, _maxread
 	getdarg dx, ax, _bufferPtr
-%if 1
-	lea di, [ word _lineEdit + bp ]
-%else
 	lea di, [ byte _lineEdit + bp ]
-%endif
 	call _lineEditorInit				; init line editor control block
 
 	getarg dx, _backupbytes	
@@ -604,11 +558,7 @@ DevCharReadLine:
 
 
 		; init block
-%if 1
-	lea di, [ word _tempBuffer + bp ]
-%else
 	lea di, [ byte _tempBuffer + bp ]
-%endif
 	mov word [ _reqBlock + rwrBuffer + _segment + bp ], ss
 	mov word [ _reqBlock + rwrBuffer + _pointer + bp ], di
 	mov word [ _reqBlock + rwrBytesReq + bp ], 1
@@ -1257,10 +1207,6 @@ initReqBlock_08:
 	pop di
 	mov al, sizeMaxReqHeader			; if unknown function, use maximal length
 	cmp ah, sizeDevDefaultLength
-%if 1
-	nop
-		; RxDOS 7.20N:	I don't know why but MASM generated a filler byte here.
-%endif
 	jnc initReqBlock_12
 
 %if _386
@@ -1443,9 +1389,9 @@ DefineDPB:
 	getdarg ds, di, _biosParamBlock
 	getdarg es, bx, _dosDiskParamBlock
 
-	call defineDPB32				; if FAT32 logical drive
+	call DefineDPB32				; if FAT32 logical drive
 	jz DefineDPB_24					; if FAT32 -->
-	call defineDPB16				; all other standard drives
+	call DefineDPB16				; all other standard drives
 
 DefineDPB_24:
 	or ax, ax
@@ -1463,7 +1409,6 @@ DefineDPB_24:
 		; NOTE:	expects to only be called from DefineDPB
 		;
 		; See DefineDPB32 for FAT32 drives.
-defineDPB16:
 DefineDPB16:
 
 	mov ax, word [ di + _bpbBytesPerSector ]
@@ -1541,12 +1486,8 @@ DefineDPB16_08:
 	pop cx						; restore shift value
 
 DefineDPB16_12:
-%if 1
-	or cx, cx
-	jz DefineDPB16_14
-%else
 	jcxz DefineDPB16_14
-%endif
+
 	shr dx, 1
 	rcr ax, 1
 	loop DefineDPB16_12
@@ -1573,7 +1514,6 @@ DefineDPB16_14:
 		; NOTE:	expects to only be called from DefineDPB
 		;
 		; See DefineDPB16 for FAT12/FAT16 drives.
-defineDPB32:
 DefineDPB32:
 
 	cmp word [ _bpbSectorsPerFat + di ], byte 0
@@ -1633,14 +1573,8 @@ DefineDPB32_08:
 
 	mov ax, word [ di + _bpbHugeSectors + _low ]
 	mov dx, word [ di + _bpbHugeSectors + _high ]
-%if 0
-		; RxDOS 7.20N:	This section was commented in former releases.
-	sub ax, word [ di + _bpbHiddenSectors + _low ]
-	sbb dx, word [ di + _bpbHiddenSectors + _high ]
-%else
 	sub ax, word [ es:bx + _dpbxFirstSector + _low ]
 	sbb dx, word [ es:bx + _dpbxFirstSector + _high ]
-%endif
 
 	xor cx, cx
 	mov cl, byte [ di + _bpbSectorsPerCluster ]
@@ -1730,18 +1664,10 @@ initDriveParameters:
 initDriveParameters_10:
 	getarg ax, _drive				; restore drive
 	mov ah, BUILDBPB
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock				; initialize
 
-%if 1
-	lea di, [ word _sectorBuffer + bp ]
-%else
-	lea di, [ byte _sectorBuffer + bp ]
-%endif
+	lea di, [ _sectorBuffer + bp ]
 	mov word [ es:bx + bbrFATSector + _pointer ], di
 	mov word [ es:bx + bbrFATSector + _segment ], ss
 
@@ -1813,13 +1739,8 @@ _GetDriveCode_22:
 		; dx	TRUE if end of file
 		; ZR	if end of file
 SetExit_IfControlC:
+	mov dx, TRUE					; assume end of file
 
-%if 1
-	mov dl, TRUE					; assume end of file. set TRUE
-%else
-		; RxDOS 7.20N:	Set full dx.
-	mov dx, TRUE
-%endif
 	cmp ax, byte ControlZ				; Ctrl-Z ? (CP/M EOF)
 	jz SetExit_IfControlC_08			; yes, success -->
 	cmp ax, byte ControlC				; Ctrl-C ? (Break)
@@ -1866,11 +1787,7 @@ _callCriticalError:
 	mov byte [ _allowed + bp ], ah			; save value
 	call _GetDriveCodeFromUnitCode			; drive code
 
-%if 1
-	cmp di, word sizeDevAllowedTable		; is error within device allowed errors ?
-%else
 	cmp di, byte sizeDevAllowedTable		; is error within device allowed errors ?
-%endif
 	jb _callCriticalError_06			; if ok -->
 	mov ah, CRITERROR_IGNOREALLOWED + CRITERROR_RETRYALLOWED + CRITERROR_FAILALLOWED
 
@@ -2019,14 +1936,8 @@ ClockTimer:
 
 	xor bx, bx
 	mov ds, bx
-%if 1
-	mov ax, word [ bx + 46Ch ]
-	mov dx, word [ bx + 46Eh ]
-%else
-		; RxDOS 7.20N:	Unused offset with bx.
 	mov ax, word [ 46Ch ]
 	mov dx, word [ 46Eh ]
-%endif
 
 	pop bx
 	pop ds
@@ -2128,12 +2039,7 @@ _lineEditor_04:
 		; lookup character
 _lineEditor_08:
 	cmp al, ' '
-%if 1
-	jge _lineEditor_16				; if character ->
-%else
-		; RxDOS 7.20N:	Should compare unsigned.
 	jae _lineEditor_16				; if character ->
-%endif
 
 	Goto	'C'-40h, _editorControlC		; if ctrl-C (03) -->
 	Goto	'H'-40h, _editorBackspaceDelete		; if bs/del (08) -->
@@ -2146,12 +2052,7 @@ _lineEditor_08:
 _lineEditor_16:
 	mov cx, word [ editMaxBuffer + di ]		; max buffer
 	cmp cx, word [ editMaxAvail + di ]		; characters so far 
-%if 1
-	jl _lineEditor_60				; if can't insert -->
-%else
-		; RxDOS 7.20N:	Must compare unsigned.
 	jb _lineEditor_60				; if can't insert -->
-%endif
 
 	test word [ editFlags + di ], editInsertFlag
 	jz _lineEditor_Store				; if not insert mode -->
@@ -2265,21 +2166,13 @@ _editorLeft_08:
 _editorRight:
 	mov cx, word [ editMaxAvail + di ]		; get max chars
 	cmp cx, word [ editTemplateCharsAvailable + di ]
-%if 1
-	jge _editorRight_08
-%else
 	jae _editorRight_08
-%endif
+
 	mov cx, word [ editTemplateCharsAvailable + di ]
 
 _editorRight_08:
 	cmp cx, word [ editCursor + di ]		; at max end of line ?
-	; ifz _lineEditor_60				; yes, can't go right -->
-	jz _lineEditor_60
-%if 1
-	times 2 nop
-		; RxDOS 7.20N:	Doesn't require near jump (ifz) and MASM did optimize it (it's backward).
-%endif
+	jz _lineEditor_60				; yes, can't go right -->
 
 	mov al, byte [ es:bx ]
 	jmp short _lineEditor_46
@@ -2299,11 +2192,7 @@ _editorDelete:
 	mov cx, word [ editTemplateCharsAvailable + di ]
 	sub cx, word [ editCursor + di ]		; at max end of line ?
 	dec cx						; at end of buffer ?
-%if 1
-	jle _editorDelete_08				; yes, echo rubout space -->
-%else
-	jbe _editorDelete_08
-%endif
+	jbe _editorDelete_08				; yes, echo rubout space -->
 
 _editorDelete_06:
 	mov al, byte [ es:bx + 1 ]
@@ -2315,11 +2204,7 @@ _editorDelete_08:
 	mov cx, word [ editMaxAvail + di ]
 	sub cx, word [ editCursor + di ]		; at max end of line ?
 	dec cx						; at end of buffer ?
-%if 1
-	jle _editorDelete_16				; yes, echo rubout space -->
-%else
-	jbe _editorDelete_16
-%endif
+	jbe _editorDelete_16				; yes, echo rubout space -->
 
 _editorDelete_12:
 	mov al, byte [ es:bx ]
@@ -2336,21 +2221,15 @@ _editorDelete_16:
 
 	mov ax, word [ editMaxAvail + di ]		; is max chars
 	cmp ax, word [ editCursor + di ]		; greater than current position ?
-%if 1
-	jle _editorDelete_20				; no -->
-%else
 	jbe _editorDelete_20				; no -->
-%endif
+
 	dec word [ editMaxAvail + di ]			; adjust max chars
 
 _editorDelete_20:
 	mov ax, word [ editTemplateCharsAvailable + di ]
 	cmp ax, word [ editCursor + di ]		; greater than current position ?
-%if 1
-	jle _editorDelete_22				; no -->
-%else
 	jbe _editorDelete_22				; no -->
-%endif
+
 	dec word [ editTemplateCharsAvailable + di ]
 
 _editorDelete_22:
@@ -2361,11 +2240,7 @@ _editorDelete_22:
 _editorF3CopyTemplate:
 	mov cx, word [ editTemplateCharsAvailable + di ]
 	sub cx, word [ editCursor + di ]
-%if 1
-	jle _editorF3CopyTemplate_12			; if can't echo -->
-%else
 	jbe _editorF3CopyTemplate_12			; if can't echo -->
-%endif
 
 	mov word [ editMaxAvail + di ], cx		; get max chars
 	mov word [ editCursor + di ], cx		; set cursor
@@ -2393,11 +2268,7 @@ _editorF2SearchTemplate:
 
 	mov cx, word [ editTemplateCharsAvailable + di ]
 	sub cx, word [ editCursor + di ]		; chars to copy
-%if 1
-	jle _editorF2SearchTemplate_28			; if can't echo -->
-%else
 	jbe _editorF2SearchTemplate_28			; if can't echo -->
-%endif
 
 	push cx
 	push bx
@@ -2486,11 +2357,7 @@ _lineEditor_displayCharacter:
 
 	mov ah, 0Eh					; echo character in AL
 	cmp al, ' '					; if control character, echo ^(control letter)
-%if 1
-	jge _lineEditorDisplayChar_12			; else just echo character
-%else
 	jae _lineEditorDisplayChar_12			; else just echo character
-%endif
 
 	push ax
 	mov al, '^'
@@ -2502,3 +2369,4 @@ _lineEditorDisplayChar_12:
 	int 10h
 	pop bx
 	retn
+
