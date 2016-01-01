@@ -57,6 +57,7 @@ shell which is accessible by Int2E.
 	global CmndLookup
 	global _Copy_FilesCopied
 	global CountArgs
+	global RxDOS_BatchFile
 
 	global insertarg
 	global deletearg
@@ -3441,7 +3442,7 @@ _sprintfNum:
 
 	entry
 	defbytes	decDisplay, 16
-	def	fill
+	def	_fill
 	def	decimalflag, bx
 	def	fieldwidth, cx
 	def	spacing, 3				; set spacing
@@ -3485,7 +3486,7 @@ _sprintfNum_10:
 	xor dx, dx
 
 _sprintfNum_12:
-	storarg _fill, dx				; bytes to fill
+	storarg __fill, dx				; bytes to fill
 
 	pop di
 	push di						; where to begin right justify
@@ -3504,7 +3505,7 @@ _sprintfNum_16:
 	loop _sprintfNum_16
 
 	mov al, ' '
-	getarg cx, _fill				; bytes to fill
+	getarg cx, __fill				; bytes to fill
 	jcxz _sprintfNum_32
 
 	test word [ _decimalflag + bp ], SPRINTF_ZEROFIELDFILL
@@ -6287,8 +6288,8 @@ PageLines			db 00			; paging mode
 
 
 		; Prompt
-RxDOS_DefaultPrompt		asciz "$P$G"		; "D:\>" where D:\ is the current drive and directory
-RxDOS_Prompt			fill 128,0,asciz "$P$G"
+RxDOS_DefaultPrompt:		asciz "$P$G"		; "D:\>" where D:\ is the current drive and directory
+RxDOS_Prompt:			fill 128, 0, asciz "$P$G"
 
 		; Special command separators
 _UnixStyle			db 0			; non-zero if Unix style commands enabled

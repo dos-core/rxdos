@@ -862,7 +862,7 @@ seeIfDirectoryName_16:
 	jne seeIfDirectoryName_20			; if not dotdot entry (including zero) -->
 							; only dot entries end with a dot
 	cmp byte [ findDataLongFilename + di ], byte '.'; check for first dot anyway
-	jne seeIfDirectroyName_20			; -->
+	jne seeIfDirectoryName_20			; -->
 
 seeIfDirectoryName_18:
 	mov si, FINDDATA_MSDOSDATEFORMAT

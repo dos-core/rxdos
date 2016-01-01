@@ -55,6 +55,7 @@ the file LICENSE.TXT.
 	extern DisplayErrorMessage
 	extern DisplayOutEnvSpace
 
+	extern RxDOS_BatchFile
 	extern CRLF
 	extern RxDOS_Version
 	extern RxDOSIntl_DateTemplate
@@ -185,7 +186,7 @@ DisplayPrompt_10:
 	; jz DisplayPrompt_10				; no -->
 	; call uppercase				; uppercase, if still that letter
 %endif
-	jmp short DisplayPrompt_10
+	jmp DisplayPrompt_10
 
 
 %if 1
@@ -193,14 +194,14 @@ DisplayPrompt_10:
 DisplayPrompt_18:
 	mov al, ah
 	stosb						; translated value
-	jmp short DisplayPrompt_08
+	jmp DisplayPrompt_08
 %endif
 
 		; backspace
 DisplayPrompt_Backspace:
 	dec di
 DisplayPrompt_08_01:
-	jmp short DisplayPrompt_08
+	jmp DisplayPrompt_08
 
 		; line break
 DisplayPrompt_CRLF:

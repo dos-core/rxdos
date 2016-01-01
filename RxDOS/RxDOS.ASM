@@ -616,9 +616,9 @@ SDAPathNameLast		dw 0
 		;		not used by RxDOS at all.
 
 SDAExtendedSwapArea:
+			align 2
 
-
-		; System Default Handle Table (use if no PSP loaded)
+		; System Default Handle Table (used if no PSP loaded)
 		; RxDOS 7.20N:	Could be smaller. 5 handles should be enough.
 pspSysHandleTable:	db 0, 0, 0
 			times 17 db 0FFh
@@ -627,16 +627,8 @@ sizepspSysHandleTable equ $-pspSysHandleTable
 		; RxDOS Product Identification
 
 _RxDOS_DOSROMStatusFlag:
-%if 1
-_RxDOS_DOSLocation	db ROM_IDENTIFICATION	; ROM DOS and DOS moved to HMA status
-%else
 _RxDOS_DOSLocation	db RXDOS_DOSLOCATION	; DOS in ROM and DOS moved to HMA status
-%endif
-%if 1
-_RxDOS_DOSVersion	db 7, 00		; DOS version (7.00)
-%else
 _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
-%endif
 
 	; ** ROMABLE BEYOND THIS ADDRESS **
 
@@ -1239,13 +1231,8 @@ null_interrupt:
 		;
 		; RxDOS 7.20N:	See comment at CtrlC_CheckCallBack
 _Interrupt_23:
-%if 1
-	stc
-	retf 2						; returns to application (iret without flags)
-%else
 	stc
 	retf						; indicate to terminate current application
-%endif
 
 
 		; Interrupt 24 - Critical Error Handler
@@ -1519,6 +1506,9 @@ _Int25_08:
 		;
 		; INP:	(cs = PSP)
 		;	dx = number of bytes to keep resident
+		; OUT:	ax = 3100h
+		;	dx = number of paragraphs to keep
+		;	jumps to interrupt 21h handler
 _Interrupt_27:
 	mov cl, 4
 	mov ax, dx
@@ -1558,38 +1548,22 @@ _IRet:
 	iret
 
 
-		; System Functions
-
-		; Get Current PSP
-		;
-		; Output:
-		; NZ if PSP loaded
-		;  es = PSP address
-		; ZR if no PSP loaded
-		;  es unchanged
-getPSP:
-	push ax
-	mov ax, word [ ss:_RxDOS_CurrentPSP ]
-	or ax, ax
-	jz getPSP_08
-
-	mov es, ax
-
-getPSP_08:
-	pop ax
-	retn
-
 		; Get Current Handle Table (Job File Table)
 		;
-		; Output:
-		; NZ if PSP loaded
-		;  es:bx-> Handle table
-		; ZR if no PSP loaded
-		;  es:bx unchanged
+		; OUT:	NC if PSP loaded
+		;	 es:bx-> Handle table
+		;	CY if no PSP loaded
+		;	 es:bx-> internal handle table
+		; CHG:	es, bx
 getHandleTable:
-	call getPSP
-	jz getHandleTable_08
+	call getpsp
+	mov es, bx
 	les bx, [ es:pspFileHandlePtr ]
+	jnc getHandleTable_08
+
+	push ss
+	pop es
+	mov bx, pspSysHandleTable
 
 getHandleTable_08:
 	retn
@@ -3701,19 +3675,6 @@ _GetDiskTransferAddress:
 		; bh	OEM identification number
 		; 	or version flag
 _GetDOSVersion:
-
-%if 1
-	mov bh, byte [ ss:_RxDOS_DOSOEMVersion ]	; always 94 for RxDOS
-
-	cmp al, 1					; ROM version status ?
-	jnz _GetDOSVersion_08				; no -->
-
-	mov bh, byte [ ss:_RxDOS_DOSLocation ]
-
-_GetDOSVersion_08:
-	mov cx, word [ ss:_RxDOS_UserSerialNumber ]
-	mov bl, byte [ ss:_RxDOS_UserSerialNumber + 2 ]
-%else
 	mov cx, word [ ss:_RxDOS_UserSerialNumber ]
 	mov bx, word [ ss:_RxDOS_UserSerialNumber + 2 ]	; (_UserSerialNumber + 3) is _DOSOEMVersion
 
@@ -3723,31 +3684,22 @@ _GetDOSVersion_08:
 	mov bh, byte [ ss:_RxDOS_DOSLocation ]
 
 _GetDOSVersion_08:
-%endif
 	mov ax, word [ ss:_RxDOS_DOSVersion ]		; pre-DOS 5 (see 3306h)
 
-%if 1
-	mov dx, word [ ss:_RxDOS_CurrentPSP ]		; get PSP
-	or dx, dx					; during device load ?
-	jz _GetDOSVersion_12				; yes -->
-%else
 	xchg bx, dx
-	call getpsp
+	call getpsp					; get PSP
 	xchg bx, dx
 	jc _GetDOSVersion_12				; invalid -->
-%endif
+
 	mov es, dx					; current PSP
 	mov ax, word [ es:pspVersion ]			; SETVER version (or same as DOSVersion)
-
 _GetDOSVersion_12:
 
-%if 0
 	or ax, ax					; zero ?
 	jnz _GetDOSVersion_16				; no -->
 	mov ax, RXDOS_MS_VERSION			; means to use true reported version
-
 _GetDOSVersion_16:
-%endif
+
 	RetCallersStackFrame ds, si
 	mov word [ _AX + si ], ax
 	mov word [ _BX + si ], bx
@@ -3936,16 +3888,10 @@ _CtrlBreakCheck:
 
 		; Get true DOS version
 .gettrueversion:
-%if 1
-	mov bx, word [ ss:_RxDOS_DOSVersion ]
-	mov word [ es:_BX + si ], bx
-	mov word [ es:_DX + si ], 0
-%else
 	mov word [ si + _BX ], RXDOS_MS_TRUEVERSION
 	mov byte [ si + _DX + _DL ], RXDOS_MS_REVISION
 	mov dh, byte [ ss:_RxDOS_DOSLocation ]
 	mov byte [ si + _DX + _DH ], dh
-%endif
 	retn
 
 .getextendedversion:
@@ -3967,22 +3913,13 @@ patch_rxbio_version equ $-2
 	retn
 
 .capabilities:
-		; ax = Feature byte,
-		; b00:	Utilises seperated System FCB tables for FCB operations (else SFTs)
-		; b01:	Supports FAT32 partitions & Provides FAT32 services (Int21.7302-.7305)
-		; b02:	Supports LBA partitions, 28 bit adressing (disks up to 128 GiB)
-		; b03:	Supports LBA partitions, 32 bit adressing (disks up to 2 TiB)
-		; b03:	Supports LBA partitions, 48 bit adressing (disks up to 128 PiB)
-		;  Note: LBA28 or LBA48 services have to be provided by the ROM-BIOS.
-		; b02:	Provides LFN services for local discs (Int21.71xx excluding .71AA and .7142)
-		; b03:	Supports 64-bit file sizes & Provides Int21.7142
-		; b03:	Reentrant DOS stack allocation
+		; ax = DOS capability flags (refer to RXDSTRUC.MAC)
 		; bh = bytes per SFT entry
 		; bl = bytes per CDS entry
 		; dh = bytes per DPB
 		; dl = reserved
 		; cx = reserved
-	mov word [ si + _AX ], 0000_0000_0001_0110b
+	mov word [ si + _AX ], DOSCAP_FAT32 | DOSCAP_REENTRANT
 	mov word [ si + _CX ], 0
 	mov word [ si + _DX ], sizeDPB<<8|0
 	mov word [ si + _BX ], sizeSFT<<8|sizeCDS
@@ -5493,7 +5430,6 @@ _FindNextFile_08:
 		;
 		; Does not change stack frame and can be called by DOS directly.
 _SetPSPAddress:
-
 	mov word [ _RxDOS_CurrentPSP ], bx		; Set current PSP
 	retn
 
@@ -5501,19 +5437,14 @@ _SetPSPAddress:
 		;
 		; bx	PSP value returned
 _GetPSPAddress:
-
-%if 1
-	mov bx, word [ _RxDOS_CurrentPSP ]		; Seg Pointer of current PSP
-%else
 	call getpsp
 	clc
-%endif
 
-	RetCallersStackFrame es, si
-	mov word [ es:si + _BX ], bx
+	RetCallersStackFrame ds, si
+	mov word [ si + _BX ], bx
 	retn
 
-%if 0
+
 		; Get PSP address
 		;
 		; OUT:	bx = PSP address
@@ -5527,7 +5458,7 @@ getpsp:
 	cmp bx, byte 1					; CY if PSP = 0
 .return:
 	retn
-%endif
+
 
 		; 52h Get DOS list of lists
 		;

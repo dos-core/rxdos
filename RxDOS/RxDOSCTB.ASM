@@ -520,7 +520,7 @@ RxDOS_COUNTRYInfo:
 	dw COUNTRY_GERMANY				; country
 	dw CODEPAGE_UNITEDSTATES			; code page
 	dw DATE_DDMMYY					; date format
-%if 1
+%if 0
 	db 'D', 'M', 0, 0, 0				; DM
 %else
 	db 'E', 'U', 'R', 0, 0				; EUR
@@ -529,12 +529,7 @@ RxDOS_COUNTRYInfo:
 	dw ','						; decimal sep
 	dw '.'						; date sep
 	dw ':'						; time sep
-%if 1
-	db CURRENCY_BEFORE				; currency format
-%else
-		; RxDOS 7.20N:	We placed even "DM" after the value ;)
-	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER
-%endif
+	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
 	dd RxDOS_USA_DefaultUpperCaseFunction
@@ -700,25 +695,6 @@ RxDOS_COUNTRYInfo:
 	dd RxDOS_USA_DefaultUpperCaseFunction
 	dw ';'						; data sep
 
-%if 1
-		; RxDOS 7.20N:	Completely the same as above?
-
-		; Iceland
-	dw sizeCOUNTRYINFO				; length
-	dw COUNTRY_ICELAND				; country
-	dw CODEPAGE_ICELAND				; code page
-	dw DATE_DDMMYY					; date format
-	db 0A5h, 4Bh, 72h, 0, 0				; %Kr..
-	dw '.'						; thousands sep
-	dw ','						; decimal sep
-	dw '.'						; date sep
-	dw ':'						; time sep
-	db CURRENCY_SPACEBETWEEN			; currency format
-	db 2						; decimal places
-	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
-	dw ';'						; data sep
-%endif
 
 		; Finland
 	dw sizeCOUNTRYINFO				; length

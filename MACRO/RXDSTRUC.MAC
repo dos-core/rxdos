@@ -89,19 +89,25 @@ numdef RXDOS720N, 1
 %unmacro temp_ 1.nolist
 
 		; DOS capability flags
-DOSCAP_LBA28		equ b00			; supports LBA28 disk access
-DOSCAP_LBA48		equ b01			; supports LBA48 disk access
-DOSCAP_IRT0		equ b02			; provides interrupt restoration table at 70h:100h
-						; (count of entries at 70h:FFh); restored on Int19
-DOSCAP_DISKCHANGE	equ b03			; supports changing logical device for A: on
-						; single floppy system; uses the byte at 0h:504h
-DOSCAP_LPT4		equ b04			; provides LPT4 device
-DOSCAP_LONGLSEEK	equ b08			; provides long lseek (Int21.7142)
-DOSCAP_LFNAWARE		equ b09			; excludes LFN entries from SFN functions
-DOSCAP_LFNSUPPORT	equ b10			; provides LFN functions (Int21.71)
-DOSCAP_64KIBCLUSTER	equ b11			; supports FAT cluster sizes of 64 KiB
-DOSCAP_128KIBCLUSTER	equ b12			; supports FAT cluster sizes of 128 KiB
-DOSCAP_FAT32		equ b13			; supports FAT32 partitions
+		; for Int21.3360
+DOSCAP_LBA28		equ b00	; supports LBA28 disk access (<= 128 GiB)
+DOSCAP_LBA32		equ b01	; supports LBA32 disk access (<= 2 TiB)
+DOSCAP_LBA48		equ b02	; supports LBA48 disk access (<= 128 PiB)
+		;  Note: The LBA services have to be provided by the ROM-BIOS.
+DOSCAP_IRT0		equ b03	; provides interrupt restoration table at 70h:100h
+				; (count of entries at 70h:FFh); restored on Int19
+DOSCAP_DISKCHANGE	equ b04	; supports changing logical device for A: on
+				; single floppy system; uses the byte at 0h:504h
+DOSCAP_REENTRANT	equ b05	; Reentrant DOS stack allocation
+DOSCAP_LONGLSEEK	equ b08	; provides long lseek (Int21.7142)
+DOSCAP_LFNAWARE		equ b09	; excludes LFN entries from SFN functions
+DOSCAP_LFNSUPPORT	equ b10	; provides LFN functions (Int21.71)
+DOSCAP_64KIBCLUSTER	equ b11	; supports FAT cluster sizes of 64 KiB
+DOSCAP_128KIBCLUSTER	equ b12	; supports FAT cluster sizes of 128 KiB
+DOSCAP_FAT32		equ b13	; supports FAT32 partitions
+				; & provides FAT32 services (Int21.7302-.7305)
+DOSCAP_FCB_TABLE	equ b14	; Utilises seperated System FCB tables for FCB operations (else SFTs)
+
 
 
 		; DOS Functions

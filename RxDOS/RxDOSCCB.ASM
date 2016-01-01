@@ -282,22 +282,12 @@ locateCCBPHeader:
 locateCCBPHeader_04:
 	mov cx, si
 	sub cx, di					; how far from start of buffer
-%if 1
-	jl locateCCBPHeader_08				; go to next -->
-	cmp cx, sizeCCB					; within a CCB buffer ?
-	jg locateCCBPHeader_08				; go to next -->
-%else
-		; RxDOS 7.20N:	This must compare unsigned.
+
 	jb locateCCBPHeader_08				; go to next -->
 	cmp cx, sizeCCB					; within a CCB buffer ?
 	ja locateCCBPHeader_08				; go to next -->
-%endif
 
-%if 1
-	or cx, cx					; no carry (leave offset alone )
-%else
 	clc
-%endif
 	retn
 
 locateCCBPHeader_08:

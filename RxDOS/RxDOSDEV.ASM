@@ -194,11 +194,7 @@ checkforDeviceName:
 
 		; init by creating a blank filled upper case mask
 	mov si, di
-%if 1
-	lea di, [ word _tempdevname + bp ]
-%else
 	lea di, [ byte _tempdevname + bp ]
-%endif
 	mov cx, sizedevName
 
 chkDevName_08:
@@ -206,13 +202,8 @@ chkDevName_08:
 	_upperCase al
 
 	cmp al, ' ' + 1					; null or special character ?
-%if 1
-	jle chkDevName_12
-%else
-		; RxDOS 7.20N:	Two bugs. Must compare unsigned and
-		;		' '+1 itself ('!') is allowed.
 	jb chkDevName_12
-%endif
+
 	cmp al, ':'					; colon ?
 	jz chkDevName_12
 
@@ -626,20 +617,10 @@ DevCharReadLine:
 		; wait for character
 DevCharReadLine_12:
 	setes ss
-%if 1
-	lea bx, [ word _reqBlock + bp ]
-%else
 	lea bx, [ byte _reqBlock + bp ]
-%endif
 
-%if 1
-	mov byte [ bx + rwrFunction ], NONDESTRREAD
-	mov word [ bx + rwrStatus ], 0
-%else
-		; RxDOS 7.20N:	Must use ss: segment override!
 	mov byte [ ss:bx + rwrFunction ], NONDESTRREAD
 	mov word [ ss:bx + rwrStatus ], 0
-%endif
 
 	push word [ _device + _segment + bp ]
 	push word [ _device + _pointer + bp ]
@@ -663,12 +644,8 @@ DevCharReadLine_18:
 
 		; get character, see if end of buffer or CR
 DevCharReadLine_20:
-%if 1
-	mov byte [ bx + rwrFunction ], DEVICEREAD
-%else
-		; RxDOS 7.20N:	Must use segment override!
 	mov byte [ ss:bx + rwrFunction ], DEVICEREAD
-%endif
+
 	push word [ _device + _segment + bp ]
 	push word [ _device + _pointer + bp ]
 	call CharDevRequest				; get character
@@ -679,11 +656,7 @@ DevCharReadLine_20:
 	mov ah, 0					; else clearly pad fill with null
 
 DevCharReadLine_22:
-%if 1
-	lea di, [ word _lineEdit + bp ]
-%else
 	lea di, [ byte _lineEdit + bp ]
-%endif
 	call _lineEditor				; store character/ line editor
 
 	cmp ax, byte ControlC				; Ctrl-C ?
@@ -693,12 +666,7 @@ DevCharReadLine_22:
 
 	mov cx, word [ ss:editMaxAvail + di ]		; get max chars
 	cmp cx, word [ ss:editMaxBuffer + di ]		; at max end of line ?
-%if 1
-	jl DevCharReadLine_12				; else, continue -->
-%else
-		; RxDOS 7.20N:	Must compare unsigned.
 	jb DevCharReadLine_12				; else, continue -->
-%endif
 
 
 		; exit
@@ -736,11 +704,7 @@ DevCharRead:
 
 	mov al, -1					; not a block device
 	mov ah, IOCTLREAD
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock
 
 	mov dx, word [ _bufferPtr + _segment + bp ]
@@ -799,11 +763,7 @@ DevWrite_02:
 	mov ah, DEVICEWRITEVERIFY			; if verify writes
 
 DevWrite_06:
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock				; al contains [logical unit]
 
 	getarg ax, _sectors
@@ -817,23 +777,14 @@ DevWrite_06:
 	mov word [ _reqBlock + rwrBuffer + _segment + bp ], dx
 	mov word [ _reqBlock + rwrBuffer + _pointer + bp ], ax
 
-%if 1
-	lea di, [ word _volumeID + bp ]
-%else
 	lea di, [ byte _volumeID + bp ]
-%endif
 	mov word [ _reqBlock + rwrVolumeID + _pointer + bp ], di
 	mov word [ _reqBlock + rwrVolumeID + _segment + bp ], ss
 
 
 		; if address is huge, store in huge request area
 	getdarg cx, dx, _sector
-%if 1
-	or cx, cx
-	jz DevWrite_08
-%else
 	jcxz DevWrite_08				; skip if no huge address -->
-%endif
 
 	mov word [ _reqBlock + rwrHugeStartSec + _high + bp ], cx
 	mov word [ _reqBlock + rwrHugeStartSec + _low + bp ], dx
@@ -842,31 +793,6 @@ DevWrite_06:
 DevWrite_08:
 	getarg ax, _drive				; restore drive
 	mov word [ _reqBlock + rwrStartSec + bp ], dx
-
-%if 1
-	or ax, ax					; zero ?
-%if 0
-	jnz DevWrite_36					; WRITE PROTECT DURING DEBUG -->
-		; RxDOS 7.20N:	I don't know for what this was used. The "or ax, ax"
-		;		tests wether the used drive was drive A:. It'll skip
-		;		any writes to drives other than A:.
-%endif
-
-	mov ax, cx
-	or ax, dx					; zero sector ?
-		; RxDOS 7.20N:	This tests wether the boot sector is written (sector 0).
-	jz DevWrite_DebugBreak				; yes, problem -->
-	cmp dx, byte 1
-		; RxDOS 7.20N:	This tests wether sector 1 (??) is written.
-	jnz DevWrite_24
-
-DevWrite_DebugBreak:
-	nop
-
-DevWrite_24:
-	getarg ax, _drive				; restore drive
-		; RxDOS 7.20N:	ax still holds _drive if we remove the debug stuff above.
-%endif
 
 	call BlockedDevRequest				; call blocked device
 
@@ -904,11 +830,7 @@ DevCharWriteLine:				; intentional alias
 
 	mov al, -1					; not a block device
 	mov ah, DEVICEWRITE
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock
 
 	mov dx, word [ _bufferPtr + _segment + bp ]
@@ -916,11 +838,7 @@ DevCharWriteLine:				; intentional alias
 	mov word [ _reqBlock + rwrBuffer + _segment + bp ], dx
 	mov word [ _reqBlock + rwrBuffer + _pointer + bp ], ax
 
-%if 1
-	lea di, [ word _volumeID + bp ]
-%else
 	lea di, [ byte _volumeID + bp ]
-%endif
 	mov word [ _reqBlock + rwrVolumeID + _pointer + bp ], di
 	mov word [ _reqBlock + rwrVolumeID + _segment + bp ], ss
 
@@ -955,11 +873,7 @@ getSysDate:
 
 	mov al, -1					; not a block device
 	mov ah, DEVICEREAD
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock
 
 	mov word [ _reqBlock + rwrBytesReq + bp ], sizeCLOCKDATA
@@ -990,11 +904,7 @@ setSysDate:
 
 	mov al, -1					; not a block device
 	mov ah, DEVICEWRITE
-%if 1
-	lea di, [ word _reqBlock + bp ]
-%else
 	lea di, [ byte _reqBlock + bp ]
-%endif
 	call initReqBlock
 
 	mov word [ _reqBlock + rwrBytesReq + bp ], sizeCLOCKDATA
@@ -1024,11 +934,7 @@ getExpandedDateTime:
 	saveRegisters es, di
 
 	setes ss
-%if 1
-	lea di, [ word _datedef + bp ]
-%else
 	lea di, [ byte _datedef + bp ]
-%endif
 	call getSysDate					; get system date
 
 	mov cx, word [ _datedef + cl_minutes + bp ]
@@ -1053,11 +959,7 @@ getExpandedDate:
 	saveRegisters es, di
 
 	setES ss
-%if 1
-	lea di, [ word _datedef + bp ]
-%else
 	lea di, [ byte _datedef + bp ]
-%endif
 	call getSysDate					; get system date
 
 	mov dl, byte [ bp + _datedef + cl_day ]
@@ -1155,23 +1057,16 @@ BlockedDevRequest:
 	call getAddrDPB					; (es:bx) Device Parameter Block
 	ifc BlockedDevRequest_28			; no device info -->
 	
-%if 1
-	cmp word [ es:bx + _dpbptrDeviceDriver + _segment ], byte 0
-	ifz BlockedDevRequest_28			; no device info -->
-%endif
-
 	les bx, [ es:bx + _dpbptrDeviceDriver ]
 
-%if 0
 	push es
 	push bx
-%if _VALIDATEDEV
+%if _VERIFYDEV
 	call validate_device
 %else
 	call validate_address
 %endif
 	ifc BlockedDevRequest_28			; invalid device address -->
-%endif
 
 	mov ax, word [ es:bx + devStrategy ]
 	stordarg _strategy, es, ax
@@ -1194,15 +1089,9 @@ BlockedDevRequest_06:
 	push bp
 	getdarg es, bx, _packet
 
-%if 1
-	nop
-%endif
 	mov ds, word [ bp + _strategy + _segment ]
 	call far [ bp + _interrupt ]			; interrupt
 
-%if 1
-	nop
-%endif
 	pop bp
 	pop ds
 
@@ -1251,15 +1140,10 @@ BlockedDevRequest_24:
 	call _TerminateProcess				; terminate curr process
 
 	cli
-%if 1
-	mov ax, -2
-	add ax, word [ ss:_RxDOS_StackLongJump ]
-%else
 	mov ax, word [ ss:_RxDOS_StackLongJump ]
 	dec ax
 	dec ax
-		; RxDOS 7.20N:	Shorter.
-%endif	
+
 	mov sp, ax					; cancel stack, return
 	xor ax, ax					; NC
 	sti
@@ -1274,7 +1158,8 @@ BlockedDevRequest_32:
 	restoreSegments ax, bx, bp
 	Return
 
-%if 0
+
+%if _VERIFYDEV
 		; INP:	dwo:stack-> device header
 		; OUT:	CY if it isn't a (linked) device
 		;	NC if it's a linked device,
@@ -1282,7 +1167,7 @@ BlockedDevRequest_32:
 		;	 NZ if it's a character device
 validate_device:
 
-	entry
+	entry 2
 	darg address
 	push ds
 	push ax
@@ -1312,13 +1197,14 @@ validate_device:
 	pop ax
 	pop ds
 	return
+%endif
 
 		; INP:	dwo:stack = address
 		; OUT:	CY if invalid address (segment 0000h or 0FFFFh; or pointer 0FFFFh)
 		;	NC if valid address
 validate_address:
 
-	entry
+	entry 2
 	darg address
 	push ax
 	stc						; assume invalid
@@ -1337,7 +1223,6 @@ validate_address:
 .return:
 	pop ax
 	return
-%endif
 
 
 		; Init request block
