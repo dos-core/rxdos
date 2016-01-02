@@ -53,9 +53,6 @@ the file LICENSE.TXT.
 	extern StringLength
 
 
-		; RxDOS 7.20N:	Struct moved into RXDSTRUC.MAC
-
-
 		; Load Program Image (COM, SYS, etc... )
 		;
 		; Input:
@@ -73,6 +70,7 @@ loadProgram:
 	def	ptrDirAccess, di
 	ddef	ExecBlock, es, bx
 	def	SizePara
+	def	process_block_allocated_paras
 
 	ddef	filesize
 	ddef	PrevInstance
@@ -214,6 +212,7 @@ _loadProgram_30:
 
 	mov word [ _loadEnvelope + loadEnvProgramPSP + bp ], ax
 	mov word [ _loadEnvelope + loadEnvStartSegment + bp ], es
+	mov word [ bp + process_block_allocated_paras ], cx
 
 		; load module (at es:0000)
 _loadProgram_34:
@@ -268,8 +267,9 @@ _loadProgram_44:
 	mov es, word [ _loadEnvelope + loadEnvProgramPSP + bp ]
 	mov word [ _RxDOS_CurrentPSP ], es		; change running PSP
 
-	call _getSizeOfEnvString			; get size of env string
+;	call _getSizeOfEnvString			; get size of env string
 
+	mov cx, word [ bp + process_block_allocated_paras ]
 	xor si, si					; 0 = 1_0000h with overflow
 	cmp cx, (1024 /PARAGRAPH) * 64			; greater than 64 KiB ?
 	jae _loadProgram_46				; yes, use max value for seg
@@ -286,7 +286,7 @@ _loadProgram_46:
 	mov word [ es:pspUserStack + _pointer ], si
 	mov word [ es:pspUserStack + _segment ], es	; child process psp
 
-	sub si, byte _Flags
+	sub si, byte _Flags				; -6
 	mov bx, word [ ss:_RxDOS_CurrentInstance ]
 	mov word [ ss:bx + _pointer ], si
 	mov word [ ss:bx + _segment ], es		; where new process' startup stack will exist (COM)
@@ -550,11 +550,7 @@ loadExe_Program08:
 	push ax						; save position in file
 
 	mov cx, word [ _SizePara + bp ]			; get paras to read
-%if 1
-	test cx, 0F000h					; over 64 KiB ?
-%else
-	test ch, 0F0h					; over 64 KiB
-%endif
+	test ch, 0F0h					; over 64 KiB ?
 	jz loadExe_Program12				; no, read whole file -->
 	mov cx, 0FFFh					; read as much as possible.
 
@@ -568,11 +564,7 @@ loadExe_Program12:
 	push cx						; save bytes actually to read
 
 	xor di, di					; load at _StartSeg:0000
-%if 1
-	lea bx, [ word _diskAccess + bp ]		; build access control block
-%else
 	lea bx, [ byte _diskAccess + bp ]		; build access control block
-%endif
 	call readLogicalBuffer				; ss:bx-> access buffer
 	call computeChecksum
 	add word [ _CheckSum + bp ], ax
@@ -596,11 +588,7 @@ loadExe_Program12:
 	and cx, byte (PARAGRAPH - 1)			; last 15 bytes
 	jz loadExe_Program20				; if none to read -->
 	
-%if 1
-	lea bx, [ word _diskAccess + bp ]		; build access control block
-%else
 	lea bx, [ byte _diskAccess + bp ]		; build access control block
-%endif
 	call readLogicalBuffer				; ss:bx-> access buffer
 	call computeChecksum
 	add word [ _CheckSum + bp ], ax
@@ -617,13 +605,9 @@ loadExe_Program28:
 	mov cx, 4
 	xor dx, dx
 	mov ax, word [ _exeHeader + exeRelocTable + bp ]
-%if 1
-	lea di, [ word _relocitem + bp ]
-	lea bx, [ word _diskAccess + bp ]		; build access control block
-%else
+
 	lea di, [ byte _relocitem + bp ]
 	lea bx, [ byte _diskAccess + bp ]		; build access control block
-%endif
 	call readLogicalBuffer				; ss:bx-> access buffer
 	call computeChecksum
 	add word [ _CheckSum + bp ], ax
@@ -1147,11 +1131,13 @@ incrRefCount_08:
 		; cx = additional env variable paras required
 		; dx = max requested paragraphs
 		;
-		; Output:
-		; ax = PSP segment address
-		; es = Data segment address
-		; cx = size in paras of area allocated
-		; CY if cannot create
+		; OUT:	NC if successful,
+		;	 ax = PSP segment address
+		;	 es:0 -> allocated segment (points to behind PSP)
+		;	 cx = size in paras of area allocated
+		;	 dx:0 -> environment block
+		;	CY if cannot create,
+		;	 ax = error code
 _LoaderAllocMemory:
 
 	entry
@@ -1177,12 +1163,8 @@ _LoaderAllocMemory:
 _loaderAllocMemory_04:
 	mov ax, word [ _requiredParas + bp ]
 	cmp ax, word [ _maxRequestedParas + bp ]
-%if 1
-	jc _loaderAllocMemory_08
-	jz _loaderAllocMemory_08
-%else
 	jbe _loaderAllocMemory_08
-%endif
+
 	mov word [ _maxRequestedParas + bp ], ax
 
 		; determine the size of the environment block, if any
@@ -1276,11 +1258,7 @@ _loaderAllocMemory_42:
 		; insure parent's handle is set for both blocks
 	mov dx, es					; PSP address
 	mov ax, es
-%if 1
-	sub ax, byte (sizeMEMBLOCK /PARAGRAPH)
-%else
-	dec ax
-%endif
+	dec ax						; -> PSP block's MCB
 	mov es, ax					; point to allocation block
 	mov word [ es:_memParent ], dx			; assign parent
 
@@ -1288,11 +1266,7 @@ _loaderAllocMemory_42:
 	or ax, ax					; none required ?
 	jz _loaderAllocMemory_56			; no -->
 
-%if 1
-	sub ax, byte (sizeMEMBLOCK /PARAGRAPH)
-%else
-	dec ax
-%endif
+	dec ax						; -> environment block's MCB
 	mov es, ax					; point to allocation block
 	mov word [ es:_memParent ], dx			; assign parent
 	jmp short _loaderAllocMemory_56			; if everything is ok -->
@@ -1303,6 +1277,7 @@ _loaderAllocMemory_50:
 	getarg es, _AllocEnv
 	call _freeMemBlock
 	SetError pexterrNotEnoughMemory
+	jmp short _loaderAllocMemory_66
 
 
 		; return 
@@ -1598,18 +1573,8 @@ getSizeEnv_10:
 	scasb						; test if double null
 	jne getSizeEnv_10
 
-%if 1
-	mov cx, di					; get length
-%if 1
-	add cx, byte (sizeEXPANDNAME +15)/2		; include size of trailing filename
-%else
-	add cx, byte (sizeEXPANDNAME +15)		; include size of trailing filename
-		; RxDOS 7.20N:	Bug?
-%endif
-	add cx, byte 2					; include count word
-%else
 	lea cx, [ di +sizeEXPANDNAME +2 +15 ]		; get length (including filename, count word and rounding)
-%endif
+
 	shr cx, 1					; size to paragraphs
 	shr cx, 1
 	shr cx, 1
