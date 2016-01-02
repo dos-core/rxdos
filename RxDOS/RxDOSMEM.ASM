@@ -75,24 +75,20 @@ _allocateMinMaxMemBlock:
 
 	mov cx, dx					; try for max
 	call allocateMemBlock				; will probably fail
-	jnc _allocateMinMaxMemBlock_20			; if ok -->
+	jnc .gotalloc					; if ok -->
 
 	cmp cx, word [ _minParag + bp ]			; largest available will fit ?
-	jnc _allocateMinMaxMemBlock_12			; yes, go for max -->
-	SetError pexterrNotEnoughMemory, _allocateMinMaxMemBlock_20
+	jae .alloc					; yes, go for max -->
+	SetError pexterrNotEnoughMemory, .error
 
-_allocateMinMaxMemBlock_12:
+.alloc:
 	call allocateMemBlock				; allocate largest available
+	jc .error
+.gotalloc:
 	mov es, ax					; segment address
-%if 1
-	sub ax, (sizeMEMBLOCK/PARAGRAPH)
-	or ax, ax
-%else
 	dec ax
 	clc
-%endif
-
-_allocateMinMaxMemBlock_20:
+.error:
 	Return
 
 
@@ -196,22 +192,13 @@ _collectMemoryBlocks_12:
 	cmp word [ es:_memParent ], byte 0		; is next block free ?
 	jnz _collectMemoryBlocks_08			; no, go to next -->
 
-%if 0
 	mov al, byte [ es:_memSignature ]		; last signature is passed to current block
 	mov byte [ _memSignature ], al
-%endif
 
 	mov ax, word [ es:_memAlloc ]			; get next allocation
 	inc ax						; kill interim Mem block as well
 	add word [ _memAlloc ], ax			; add to current block
 
-%if 1
-	mov al, byte [ es:_memSignature ]		; last signature is passed to current block
-	mov byte [ _memSignature ], al			;
-		; RxDOS 7.20N:	Move the signature byte _before_ adjusting the size. A 'Z' signature
-		;		on a smaller block doesn't hurt much, but a wrong size (in an 'M' block,
-		;		followed by 'Z') does.
-%endif
 	jmp short _collectMemoryBlocks_12
 
 		; go to next
@@ -270,12 +257,7 @@ _freeMemBlock:
 	or ax, ax
 	jz _freeMemBlock_16
 
-%if 1
-	sub ax, ( sizeMEMBLOCK / PARAGRAPH )
-%else
-	dec ax
-		; RxDOS 7.20N:	Don't cry for portability. DOS is _not_ portable.
-%endif
+	dec ax						; -> MCB
 	mov es, ax
 	cmp byte [ es:_memSignature ], _RxDOS_MEMSIGNATURE
 	jz _freeMemBlock_12
@@ -308,27 +290,15 @@ _freeMemBlock_16:
 		; to create a huge block, which can then be split.
 _modifyMemBlock:
 	entry
-%if 1
-	def	modifyBlock, es
-%else
 	def	modifyBlock
-%endif
 	def	modifySize, bx
 
 	call _collectMemoryBlocks			; collect free blocks
 
 	mov ax, es
-%if 1
-	sub ax, ( sizeMEMBLOCK / PARAGRAPH )
-%else
 	dec ax
-%endif
 	mov es, ax
-%if 1
-	storarg _modifyBlock, es
-%else
 	storarg _modifyBlock, ax
-%endif
 
 	cmp byte [ es:_memSignature ], _RxDOS_MEMSIGNATURE
 	jz _modifyMemBlock_12
@@ -356,12 +326,7 @@ _modifyMemBlock_12:
 
 	add dx, word [ es:_memAlloc ]			; total expansion space
 	cmp bx, dx					; is extra block enough to expand ?
-%if 1
-	jb _modifyMemBlock_18				; yes, ok to try to expand -->
-	je _modifyMemBlock_18				; yes, ok to try to expand -->
-%else
 	jbe _modifyMemBlock_18				; yes, ok to try to expand -->
-%endif
 
 _modifyMemBlock_14:
 	mov bx, dx					; available size
@@ -398,11 +363,7 @@ _modifyMemBlock_32:
 	mov byte [ es:_memSignature ], dl
 
 _modifyMemBlock_42:
-%if 1
-	xor bx, bx					; clear carry
-%else
 	clc
-%endif
 	return
 
 		; return with error ax, set caller's bx to bx

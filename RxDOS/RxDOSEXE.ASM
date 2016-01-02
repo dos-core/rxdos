@@ -292,11 +292,8 @@ _loadProgram_46:
 	mov word [ ss:bx + _segment ], es		; where new process' startup stack will exist (COM)
 
 	or si, si
-%if 0
-		; RxDOS 7.20N:	Possible already set by Int21 dispatcher?
 	sti
 	cld
-%endif
 	pushf
 	pop word [ es:si + _Flags ]			; Flags are: NZ, NC, UP, EI
 
