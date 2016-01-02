@@ -382,17 +382,11 @@ _loadProgram_62:
 
 	SaveSegments
 	mov es, word [ _RxDOS_CurrentPSP ]		; new PSP
-%if 1
-	mov dx, word [ es:pspUserStack + _segment ]
-	mov ax, word [ es:pspUserStack + _pointer ]
-		; RxDOS 7.20N:	Doesn't make any sense to fill them here.
-		;		ax and dx got overwritten below anyway.
-%endif
+
 
 		; get CS:IP
 	mov es, word [ _RxDOS_CurrentPSP ]		; new PSP
-	mov bx, word [ es:pspUserStack + _pointer ]
-	mov es, word [ es:pspUserStack + _segment ]	; es:bx = current stack
+	les bx, word [ es:pspUserStack ]		; es:bx = current stack
 	mov dx, word [ es:bx + _CS ]			; get new prog cs:ip
 	mov ax, word [ es:bx + _IP ]
 
@@ -469,11 +463,7 @@ loadExe_Program:
 	mov dx, word [ fileAcCluster + _low + di ]
 	mov cx, word [ fileAcCluster + _high + di ]
 
-%if 1
-	lea bx, [ word _diskAccess + bp ]		; build access control block
-%else
 	lea bx, [ byte _diskAccess + bp ]		; build access control block
-%endif
 	call initdiskAccess				; ax is drive, cx:dx is cluster
 
 	les si, [ fileAcBufferPtr + di ]
@@ -491,11 +481,7 @@ loadExe_Program:
 	xor dx, dx
 	xor ax, ax					; position to beg of file
 	setES ss
-%if 1
-	lea di, [ word _exeHeader + bp ]
-%else
 	lea di, [ byte _exeHeader + bp ]
-%endif
 	mov cx, sizeEXEHEADER
 	call readLogicalBuffer				; Access buffer: ss:bx
 	call computeChecksum
@@ -651,11 +637,8 @@ loadExe_Program32:
 	mov word [ ss:bx + _segment ], dx		; where new process' startup stack will exist
 
 	or si, si
-%if 0
-		; RxDOS 7.20N:	Possible already set by Int21 dispatcher?
 	sti
 	cld
-%endif
 	pushf
 	pop word [ es:si + _Flags ]			; flags: NC, NZ, UP, EI
 
@@ -702,21 +685,13 @@ checkEXEHeader:
 	xor dx, dx
 	xor ax, ax					; file pointer to beg of file
 	mov cx, sizeEXEHEADER
-%if 1
-	lea di, [ word _exeHeader + bp ]
-%else
 	lea di, [ byte _exeHeader + bp ]
-%endif
 	call readLogicalBuffer				; ss:bx-> access buffer
 
-%if 1
-	cmp word [ _exeHeader + exeSignature + bp ], EXE_SIGNATURE
-%else
 		; RxDOS 7.20N:	Both "MZ" and "ZM" are accepted as EXE signature.
 	cmp word [ _exeHeader + exeSignature + bp ], "MZ"
 	je checkEXEHeader_08
 	cmp word [ _exeHeader + exeSignature + bp ], "ZM"
-%endif
 
 checkEXEHeader_08:
 	Return
@@ -727,7 +702,7 @@ checkEXEHeader_08:
 		; Usage:
 		; es = PSP segment address to update
 		;
-		; Returns: (only RxDOS 7.30+):
+		; Returns:
 		; ZR = No parent PSP, not copied
 		; NZ = Parent PSP found and copied
 copyCurrentPSP:
@@ -778,22 +753,12 @@ copyCurrentPSP_12:
 
 copyCurrentPSP_14:
 	inc bx
-%if 1
-	cmp bx, word (pspHandleTable + sizePSPHandleTable)
-%else
 	cmp bx, byte (pspHandleTable + sizePSPHandleTable)
-%endif
-%if 1
-	jl copyCurrentPSP_08
-%else
-		; RxDOS 7.20N:	Must compare unsigned!
 	jb copyCurrentPSP_08
-%endif
 
-%if 0
 		; RxDOS 7.20N:	Set NZ
 	or bx, bx
-%endif
+
 		; done
 copyCurrentPSP_36:
 	RestoreSegments
@@ -1035,12 +1000,7 @@ createPSP_06:
 
 
 		; copy command line
-%if 1
-	mov di, pspCommandTail				; build dummy command line
-	mov word [ ss:di ], 0D00h			; pre-init command line
-%else
 	mov word [ ss:pspCommandTail ], 0D00h		; pre-init empty command line
-%endif
 
 	mov ax, word [ _ExecBlock + _segment + bp ]
 	or ax, word [ _ExecBlock + _pointer + bp ]
