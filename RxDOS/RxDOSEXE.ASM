@@ -1000,7 +1000,7 @@ createPSP_06:
 
 
 		; copy command line
-	mov word [ ss:pspCommandTail ], 0D00h		; pre-init empty command line
+	mov word [ es:pspCommandTail ], 0D00h		; pre-init empty command line
 
 	mov ax, word [ _ExecBlock + _segment + bp ]
 	or ax, word [ _ExecBlock + _pointer + bp ]
