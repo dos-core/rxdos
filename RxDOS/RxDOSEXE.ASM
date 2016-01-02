@@ -366,11 +366,7 @@ _loadProgram_56:
 
 	setDS ss
 	getarg bx, _ptrDirAccess			; build access control block
-%if 1
-	lea dx, [ word fileAcExpandedName + bx ]	; expanded name
-%else
 	lea dx, [ byte fileAcExpandedName + bx ]	; expanded name
-%endif
 	call appendProgramNametoEnv
 	pop ds		
 
@@ -1267,20 +1263,14 @@ _loaderAllocMemory_66:
 computeChecksum:
 	push di
 	push cx
-%if 0
 	inc cx
-%endif
 	shr cx, 1
 	xor ax, ax
 
 computeChecksum_04:
 	add ax, word [ es:di ]
-%if 1
-	add di, byte 2
-%else
 	inc di
 	inc di
-%endif
 	loop computeChecksum_04
 
 	pop cx
@@ -1558,11 +1548,7 @@ _setProgramNameInMemBlock:
 	or ax, ax					; no destination mem block ?
 	jz _setProgName_22				; ignore set name -->
 
-%if 1
-	sub ax, byte (sizeMEMBLOCK/ PARAGRAPH)
-%else
 	dec ax
-%endif
 	push ax						; save seg address
 
 	mov ax, ss
@@ -1588,12 +1574,7 @@ _setProgName_12:
 	mov dx, di					; save filename 
 	pop es						; restore memblock seg address
 
-%if 1
-	mov ax, 2020h
-%else
-		; RxDOS 7.20N:	Gets filled with null, not blank
 	xor ax, ax
-%endif
 	mov di, _memPgmName				; where to init
 	mov cx, sizefnName / 2				; size filename in words
 	repz stosw					; initialize to blanks
@@ -1622,16 +1603,6 @@ _setProgName_22:
 		; al = mode flag
 		; cx:dx = file size to return
 ifOverlayLoader:
-%if 1
-	push es
-	push si
-	RetCallersStackFrame es, si			; save size only if non-Overlay
-	mov word [ es:si + _CX ], dx
-	mov word [ es:si + _BX ], cx
-	mov word [ es:si + _AX ], 0
-	pop si
-	pop es
-%else
 	push ds
 	push si
 	RetCallersStackFrame ds, si			; save size only if non-Overlay
@@ -1640,7 +1611,6 @@ ifOverlayLoader:
 	mov word [ si + _AX ], 0
 	pop si
 	pop ds
-%endif
 
 	cmp al, execLoadOverlay				; load overlay ?
 	clc
