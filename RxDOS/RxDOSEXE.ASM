@@ -1404,33 +1404,38 @@ RemoveEnvString_44:
 
 .loop:
 	pop si
+		; INP:	ax = 0
+		;	es:di-> next variable
+		;	ds:si-> variable name terminated by '=' equals sign
 	push si
 	scasb						; end of environment ?
 	jz .done					; yes -->
 	dec di						; point back di
 .loopcharacter:
 	cmpsb
-	jnz .next
-	cmp byte [ es:di-1 ], '='
-	jnz .loopcharacter
+	jnz .next					; mismatch, skip to next -->
+	cmp byte [ es:di-1 ], '='			; end of name?
+	jnz .loopcharacter				; not yet -->
 .remove:
-	pop bx						; original si
+	pop bx						; original si, ds:bx -> name
 	sub si, bx					; si will contain length of key word
-	xchg si, bx					; si points to lookup key
+	xchg si, bx					; si points to variable's name
 	push si
 
-	mov si, di
-	sub si, bx					; must delete from
+	mov si, di					; -> content of variable
+	sub si, bx					; -> variable's name in environment
 	mov cx, -1
-	repne scasb					; scan to end of key
-	xchg si, di
+	repne scasb					; scan to end of key, (di - 1) -> zero byte
+	xchg si, di					; si -> start of next, di -> start of this
 
 	push di
+.nextcharacter2:
 	inc di						; fix down by one
 .nextcharacter:
 	dec di						; fix up by one while looping
 	movsb						; copy down
 	dec di						; byte just copied
+	jz .nextcharacter2
 	dec di						; one byte before; last copied word
 	scasw						; zero word ?
 	jnz .nextcharacter				; no, more bytes to copy -->
