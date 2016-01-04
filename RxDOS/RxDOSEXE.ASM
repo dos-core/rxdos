@@ -1408,40 +1408,40 @@ RemoveEnvString_44:
 		;	es:di-> next variable
 		;	ds:si-> variable name terminated by '=' equals sign
 	push si
-	scasb						; end of environment ?
-	jz .done					; yes -->
-	dec di						; point back di
+	scasb				; end of environment ?
+	jz .done			; yes -->
+	dec di				; point back di
 .loopcharacter:
 	cmpsb
-	jnz .next					; mismatch, skip to next -->
-	cmp byte [ es:di-1 ], '='			; end of name?
-	jnz .loopcharacter				; not yet -->
+	jnz .next			; mismatch, skip to next -->
+	cmp byte [ es:di-1 ], '='	; end of name?
+	jnz .loopcharacter		; not yet -->
 .remove:
-	pop bx						; original si, ds:bx -> name
-	sub si, bx					; si will contain length of key word
-	xchg si, bx					; si points to variable's name
+	pop bx				; original si, ds:bx -> name
+	sub si, bx			; si will contain length of key word
+	xchg si, bx			; si points to variable's name
 	push si
 
-	mov si, di					; -> content of variable
-	sub si, bx					; -> variable's name in environment
+	mov si, di			; -> content of variable
+	sub si, bx			; -> variable's name in environment
 	mov cx, -1
-	repne scasb					; scan to end of key, (di - 1) -> zero byte
-	xchg si, di					; si -> start of next, di -> start of this
+	repne scasb			; scan to end of key, (di - 1) -> zero byte
+	xchg si, di			; si -> start of next, di -> start of this
 
 	push di
 .nextcharacter2:
-	inc di						; fix down by one
+	inc di				; fix down by one
 .nextcharacter:
-	dec di						; fix up by one while looping
-	movsb						; copy down
-	dec di						; byte just copied
+	dec di				; fix up by one while looping
+	movsb				; copy down
+	dec di				; byte just copied
 	jz .nextcharacter2
-	dec di						; one byte before; last copied word
-	scasw						; zero word ?
-	jnz .nextcharacter				; no, more bytes to copy -->
+	dec di				; one byte before; last copied word
+	scasw				; zero word ?
+	jnz .nextcharacter		; no, more bytes to copy -->
 
-	pop di						; where removed variable was
-	jmp short .loop					; check for another matching variable
+	pop di				; where removed variable was
+	jmp short .loop			; check for another matching variable
 
 .next:
 	mov cx, -1
