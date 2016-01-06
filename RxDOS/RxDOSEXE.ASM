@@ -1333,6 +1333,8 @@ RemoveEnvString:
 
 %if 1
 RemoveEnvString_08:
+	cmp byte [ es:di ], 0				; at end of env space ?
+	je RemoveEnvString_24
 	push si
 
 RemoveEnvString_12:
@@ -1358,9 +1360,9 @@ RemoveEnvString_20:
 RemoveEnvString_22:
 	pop si
 	inc di
-	cmp byte [ es:di ], 0				; at end of env space ?
-	jnz RemoveEnvString_08				; no -->
+	jmp RemoveEnvString_08				; no -->
 
+RemoveEnvString_24:
 	retn
 
 RemoveEnvString_36:
