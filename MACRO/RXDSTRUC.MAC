@@ -311,7 +311,7 @@ intIDLELOOP			equ 28h		; let other applications run
 
 
 		; Standard I/O definitions
-		; This are the AHT index of these default application handles.
+		; These are the PHT index of these default process handles.
 STDIN				equ 00h
 STDOUT				equ 01h
 STDERR				equ 02h
@@ -1524,12 +1524,12 @@ pspInt22:		resd 1	; 000Ah Address to return to after terminate
 pspInt23:		resd 1	; 000Eh Control-C vector to restore when terminating
 pspInt24:		resd 1	; 0012h Critical error vector to restore when terminating
 pspParent:		resw 1	; 0016h PSP of parent
-pspAHT:			resb 20	; 0018h default Application Handle Table
- endarea pspAHT
+pspPHT:			resb 20	; 0018h default Application Handle Table
+ endarea pspPHT
 pspEnvironment:		resw 1	; 002Ch address of environment block
 pspUserStack:		resd 1	; 002Eh address of user stack frame on Int21 entry
-pspAHTsize:		resw 1	; 0032h number of Application Handles (default: 20)
-pspAHTaddress:		resd 1	; 0034h address of AHT (default: PSP:pspAHT)
+pspPHTsize:		resw 1	; 0032h number of Application Handles (default: 20)
+pspPHTaddress:		resd 1	; 0034h address of PHT (default: PSP:pspPHT)
 pspShareChain:		resd 1	; 0038h Share chain pointer (next PSP)
 pspSaveDTA:			; 003Ch DOS-C <= 2027: saved DTA to avoid DTABUG
 pspReserved2:		resb 4	; 003Ch unused (DBCS flag, APPEND)
@@ -1545,9 +1545,6 @@ pspCommandTail:		resb 128 ; 0080h command tail (one byte length, cr-terminated c
 	endstruc 1
 
 
-pspPHT			equ pspAHT
-pspPHTsize		equ pspAHTsize
-pspPHTaddress		equ pspAHTaddress
 		; Labels from RxDOS <= 7.20N
 pspInt20		equ pspCALL0
 pspDispatcher		equ pspCALL5
@@ -1555,9 +1552,9 @@ pspTerminateVect	equ pspInt22
 pspControlCVect		equ pspInt23
 pspCritErrorVect	equ pspInt24
 pspParentId		equ pspParent
-pspHandleTable		equ pspAHT
-pspFileHandleCount	equ pspAHTsize
-pspFileHandlePtr	equ pspAHTaddress
+pspHandleTable		equ pspPHT
+pspFileHandleCount	equ pspPHTsize
+pspFileHandlePtr	equ pspPHTaddress
 
 
 		; .EXE file header
@@ -2446,7 +2443,7 @@ sizeFINDDATA_MIN	equ (FINDDATA_size) - 274
 
 sizeMEMBLOCK		equ MEMBLOCK_size
 sizePSP			equ PSP_size
-sizePSPHandleTable	equ pspAHT_size
+sizePSPHandleTable	equ pspPHT_size
 sizepspHandleTable	equ sizePSPHandleTable
 
 
