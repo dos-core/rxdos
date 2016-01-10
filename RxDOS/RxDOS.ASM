@@ -89,7 +89,6 @@ Performs the actual disk (Int13) access.
 	global _RetCallersStackFrame
 	global saveStackFrame
 	global stdDeviceAssignTable
-	global _DebugInterruptTrap
 	global _TerminateProcess
 
 	global _CreateFile

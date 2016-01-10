@@ -29,6 +29,7 @@ the file LICENSE.TXT.
 	extern LocateFile
 	extern ExpandFileName
 	extern initdiskAccess
+	extern validate_address
 	extern readLogicalBuffer
 	extern allocateMemBlock
 	extern _allocateMinMaxMemBlock
@@ -45,6 +46,7 @@ the file LICENSE.TXT.
 	extern _RxDOS_MaxMemory
 	extern _RxDOS_DOSVersion
 	extern _RxDOS_pDTA
+	extern _RxDOS_pSETVERList
 	extern _CallDOS
 	extern RxDOS_CMDLINE
 
@@ -168,7 +170,7 @@ _loadProgram_22:
 	mov cx, word [ fileAcCluster + _high + bx ]	; cluster (high)
 	mov dx, word [ fileAcCluster + _low + bx ]	; cluster (low)
 
-	lea bx, [ byte _diskAccess + bp ]		; build access control block
+	lea bx, [ _diskAccess + bp ]			; build access control block
 	call initdiskAccess				; ax is drive, cx:dx is cluster
 	call checkEXEHeader				; EXE file ?
 	jnz _loadProgram_30				; no, COM or SYS type -->
@@ -212,13 +214,13 @@ _loadProgram_30:
 
 	mov word [ _loadEnvelope + loadEnvProgramPSP + bp ], ax
 	mov word [ _loadEnvelope + loadEnvStartSegment + bp ], es
-	mov word [ bp + process_block_allocated_paras ], cx
+	mov word [ bp + _process_block_allocated_paras ], cx
 
 		; load module (at es:0000)
 _loadProgram_34:
 	xor di, di					; es:di == es:0000
 	mov es, word [ _loadEnvelope + loadEnvStartSegment + bp ]
-	lea bx, [ byte _diskAccess + bp ]		; build access control block
+	lea bx, [ _diskAccess + bp ]			; build access control block
 	mov word [ ss:bx + diskAcPosition + _high ], di
 	mov word [ ss:bx + diskAcPosition + _low ], di	; zero
 
@@ -239,7 +241,7 @@ _loadProgram_38:
 
 	mov dx, word [ ss:diskAcPosition + _high + bx ]	
 	mov ax, word [ ss:diskAcPosition + _low + bx ]
-	lea bx, [ byte _diskAccess + bp ]		; build access control block
+	lea bx, [ _diskAccess + bp ]			; build access control block
 
 	call readLogicalBuffer				; ss:bx-> access buffer
 	jcxz _loadProgram_44				; if no more to read -->
@@ -269,7 +271,7 @@ _loadProgram_44:
 
 ;	call _getSizeOfEnvString			; get size of env string
 
-	mov cx, word [ bp + process_block_allocated_paras ]
+	mov cx, word [ bp + _process_block_allocated_paras ]
 	xor si, si					; 0 = 1_0000h with overflow
 	cmp cx, (1024 /PARAGRAPH) * 64			; greater than 64 KiB ?
 	jae _loadProgram_46				; yes, use max value for seg
@@ -379,7 +381,7 @@ _loadProgram_62:
 
 		; get CS:IP
 	mov es, word [ _RxDOS_CurrentPSP ]		; new PSP
-	les bx, word [ es:pspUserStack ]		; es:bx = current stack
+	les bx, [ es:pspUserStack ]			; es:bx = current stack
 	mov dx, word [ es:bx + _CS ]			; get new prog cs:ip
 	mov ax, word [ es:bx + _IP ]
 

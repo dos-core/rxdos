@@ -47,7 +47,6 @@ the file LICENSE.TXT.
 	extern CCBChanged
 	extern updateChangedCCB
 	extern updateAllChangedCCBBuffers
-	extern _DebugInterruptTrap
 	extern DevRead
 	extern _cmp32
 	extern _mul32

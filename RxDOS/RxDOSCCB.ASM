@@ -43,7 +43,6 @@ the file LICENSE.TXT.
 	extern getAddrDPB
 	extern _RxDOS_BufferList
 	extern _RxDOS_pCDS
-	extern _DebugInterruptTrap
 
 
 		; Selected Buffer

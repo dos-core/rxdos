@@ -68,6 +68,7 @@ Unfortunately there was never a December version.
 	global writeConsoleOut
 	global CharDevRequest
 	global _callCriticalError
+	global validate_address
 
 	extern _bitShiftTable
 	extern sizeShiftTable
@@ -1819,7 +1820,7 @@ _callCriticalError_10:
 
 	mov dx, es
 	mov ss, dx
-	lea sp, [ bx - byte sizeStackFrame ]		; adjust user stack ptr
+	lea sp, [ byte bx - sizeStackFrame ]		; adjust user stack ptr
 	sti
 
 	push word [ es:bx + _DS ]
