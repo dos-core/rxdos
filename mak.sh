@@ -3,10 +3,10 @@
 NASMENV="$@"
 
 function nasmbin() {
-	nasm -O0 -i../MACRO/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
+	nasm -Ox -i../MACRO/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
 }
 function nasmobj() {
-	nasm -O0 -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
+	nasm -Ox -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
 }
 
 cd "${0%/*}"
