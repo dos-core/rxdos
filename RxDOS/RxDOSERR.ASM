@@ -38,6 +38,7 @@ the file LICENSE.TXT.
 	global pexterrCurrentDirectory
 	global pexterrNoMoreFiles
 	global pexterrFileExists
+	global pexterrBadReqStruc
 
 	global GetExtErrorCodeValue
 	global GetAllExtErrorInfo
@@ -100,10 +101,11 @@ pexterrNoMoreFiles	EXTERRORCODE errNoMoreFiles, ERRLOC_UNK, ERRACT_USER, ERRCLAS
 
 pexterrFileExists	EXTERRORCODE errFileExists, ERRLOC_UNK, ERRACT_USER, ERRCLASS_NOTFND
 
+pexterrBadReqStruc	EXTERRORCODE errBadReqStruc, ERRLOC_UNK, ERRACT_USER, ERRCLASS_APPERR
+
 
 		; Get Extended Error Info
 GetExtErrorCodeValue:
-
 	mov ax, word [ cs:si + ExtErrorCodeValue ]	; get actual error value
 	retn
 
@@ -115,3 +117,4 @@ GetAllExtErrorInfo:
 	mov dl, byte [ cs:bx + SuggestedAction ]
 	mov dh, byte [ cs:bx + ErrorClass ]
 	retn
+
