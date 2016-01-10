@@ -47,9 +47,7 @@ the file LICENSE.TXT.
 	extern pexterrInvalidDrive
 	extern pexterrCurrentDirectory
 	extern pexterrNoMoreFiles
-%if 0
 	extern pexterrBadReqStruc
-%endif
 	extern pexterrFileExists
 
 
@@ -91,19 +89,9 @@ Get_ExtDPB:
 	ddef	ptrtoBuffer
 	def	size, cx
 
-%if 1
-	mov ax, pexterrInvalidFunction
-	cmp cx, byte sizeEXTDPB
-	stc
-	jnz Get_ExtDPB_return
-%else
-		; RxDOS 7.20N:	sizeExtDPB is two to less.
-		;		Buffers with larger size are allowed as well.
-		;		The error is 18h, "Bad request structure length".
 	mov ax, pexterrBadReqStruc
 	cmp cx, byte sizeEXTDPB + 2
 	jb Get_ExtDPB_return				; B == CY, so no need to do stc
-%endif
 
 	xor dh, dh
 	mov ax, dx
@@ -113,43 +101,27 @@ Get_ExtDPB:
 
 	RetCallersStackFrame es, bx
 	mov di, word [ es:bx + _DI ]
-%if 0
 	push es
-%endif
 	mov es, word [ es:bx + _ES ]			; buffer address
 
 	getdarg ds, si, _ptrtoBuffer			; get pointer
-%if 1
-	getarg cx, _size
-
-	sub cx, byte 2
-	mov word [ es:di ], cx				; set length in WORD
-	add di, byte 2					; bump pointer
-%else
-		; RxDOS 7.20N:	Store actual returned size, not (buffer length)-2!
 	mov ax, sizeEXTDPB
-	stosw
-%endif
-%if 0
+	stosw						; store used size
 	push di
-%endif
 	repe movsb					; copy DPB to return address
 
-%if 0
 	pop di						; es:di-> copied DPB (in user's buffer)
-		; RxDOS 7.20N:	MS-DOS relies on this signature!
 	pop ds						; now ds:bx-> User stack frame again
 	cmp word [ bx + _SI ], 0F1A6h			; check signature in si
 	je .signature_valid				; valid, return DPB as is -->
-	mov ax, -1					; invalid, overwrite Next DPB and driver address
+	xor ax, ax					; invalid, overwrite Next DPB and driver address
 	mov word [ es:di + _dpbNextDPB + _segment ], ax
 	mov word [ es:di + _dpbNextDPB + _pointer ], ax
 	mov word [ es:di + _dpbptrDeviceDriver + _segment ], ax
 	mov word [ es:di + _dpbptrDeviceDriver + _pointer ], ax
 
 .signature_valid:
-%endif
-	or ax, ax					; clear carry
+	clc
 
 Get_ExtDPB_return:
 	retn
@@ -254,8 +226,9 @@ SetDPB_Format:
 	jc SetDPB_Format_errordrive
 
 	RetCallersStackFrame ds, si
-	mov ds, word [ _ES + si ]
-	mov si, word [ _DI + si ]			; ds:si-> user's buffer
+	push word [ _ES + si ]
+	mov si, word [ _DI + si ]
+	pop ds						; ds:si-> user's buffer
 
 	lodsw
 	cmp ax, cx
@@ -303,8 +276,10 @@ SetDPB_Format_GetSetFreeCount:
 		; ds:si-> structure
 		; es:bx-> DPB
 		;
-		; freecount:	resd 1		; 0 to leave unchanged
-		; nextfree:	resd 1		; 0 to leave unchanged
+		; freecount:	resd 1	; 0 to leave unchanged, -1 = unknown
+		; nextfree:	resd 1	; 0 to leave unchanged, -1 = unknown
+
+		; RxDOS 7.30: Should -1 cause us to count the actual value?
 
 	cmp cx, 16
 	jb SetDPB_Format_errorbadstruc
@@ -366,7 +341,8 @@ SetDPB_Format_RebuildDPB:
 	push ax
 	push es
 	push bx						; push address to BPB and DPB buffer
-	jmp DefineDPB
+	call DefineDPB
+	retn
 
 
 SetDPB_Format_MediaChange:
@@ -382,6 +358,9 @@ SetDPB_Format_GetSetFAT32flags:
 		; ds:si-> structure
 		; es:bx-> DPB
 
+		; RxDOS 7.30:	This should likely fill in FAT copies when
+		;		 they're enabled.
+
 	cmp cx, 16
 	jb SetDPB_Format_errorbadstruc
 
@@ -394,10 +373,11 @@ SetDPB_Format_GetSetFAT32flags:
 	and ax, dx
 	inc ax
 	pop ax
+	push word [ es:bx + _dpbxFlags ]		; previous value to return
 	jz .get						; if the dword is -1 just get -->
 	mov word [ es:bx + _dpbxFlags ], ax
 .get:
-	mov ax, word [ es:bx + _dpbxFlags ]
+	pop ax
 
 .return:
 	mov word [ si + _low ], ax
@@ -413,6 +393,8 @@ SetDPB_Format_GetSetFAT32flags:
 SetDPB_Format_GetSetFAT32root:
 		; ds:si-> structure
 		; es:bx-> DPB
+
+		; RxDOS 7.30:	Missing implementation.
 
 	cmp cx, 16
 	jb SetDPB_Format_errorbadstruc
