@@ -1058,7 +1058,7 @@ BlockedDevRequest_06:
 		; Abort, Retry, Ignore ?
 BlockedDevRequest_08:
 	cmp word [ ss:_RxDOS_AbortInProgress ], byte 0	; already in critical error ?
-	jnz BlockedDevRequest_28			; ignore error -->
+	jnz BlockedDevRequest_28			; ignore error --> (fail)
 
 	mov ax, word [ es:bx + rhStatus ]		; get error report
 	call _callCriticalError				; switch context stack
@@ -1590,19 +1590,19 @@ DefineDPB32_08:
 		; Convert logical sector address to physical CHS
 		;
 		; Input:
-		; ds:di	disk parameter block address
-		; ax:dx	logical sector address
+		; ds:di	= disk parameter block address
+		; ax:dx	= logical sector address (within partition)
 
 		; Output:
-		; es:di	disk parameter block address
+		; ds:di	disk parameter block address
 		; cx	cl = sector/ch = track
 		; dx	dl = unit/dh = head
 ConvertLogSectorToPhysical:
 
 	add ax, word [ di + _bpbHiddenSectors + _low ]
 	adc dx, word [ di + _bpbHiddenSectors + _high ]
+		; dx:ax = LBA sector number in the unit
 
-		; RxDOS 7.20N:	Just for record: Now the LBA address is in dx:ax
 	mov cx, word [ _bpbSectorsPerTrack + di ]
 	call _div32
 
@@ -1813,12 +1813,13 @@ _callCriticalError_10:
 	mov word [ cs:SDAInt24_SPSave + _segment ], ss
 	mov word [ cs:SDAInt24_SPSave + _pointer ], sp
 		; RxDOS 7.20N:	This seems very ugly. Other DOS don't
-		;		use this fields for these values.
+		;		 use this fields for these values.
+		;		Actually, the field is used like this,
+		;		 but it is only a word, for SP only.
 
 	mov dx, es
 	mov ss, dx
-	mov sp, bx
-	sub sp, byte sizeStackFrame			; adjust user stack ptr
+	lea sp, [ bx - byte sizeStackFrame ]		; adjust user stack ptr
 	sti
 
 	push word [ es:bx + _DS ]

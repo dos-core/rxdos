@@ -36,17 +36,11 @@ RxDOS_USA_DefaultUpperCaseFunction:
 	cmp al, 128
 	jb _USA_Default08
 
-%if 1
-	push ds
-%endif
 	push bx
 	xor bx, bx
 	mov bl, al					; pointer to
 	mov al, byte [ cs:bx + _RxDOS_USA_UpperCaseTable ]
 	pop bx
-%if 1
-	pop ds
-%endif
 
 _USA_Default08:
 	retf
@@ -520,11 +514,7 @@ RxDOS_COUNTRYInfo:
 	dw COUNTRY_GERMANY				; country
 	dw CODEPAGE_UNITEDSTATES			; code page
 	dw DATE_DDMMYY					; date format
-%if 0
-	db 'D', 'M', 0, 0, 0				; DM
-%else
 	db 'E', 'U', 'R', 0, 0				; EUR
-%endif
 	dw '.'						; thousands sep
 	dw ','						; decimal sep
 	dw '.'						; date sep

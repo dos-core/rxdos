@@ -358,11 +358,7 @@ readSelBuffer:
 	mov byte [ es:di + ccbStatus ], 00		; kill entry's value, validity
 
 	mov bx, 0001
-%if 1
-	lea di, [ word ccbData + di ]			; buffer address
-%else
 	lea di, [ byte ccbData + di ]			; buffer address
-%endif
 	call DevRead					; read buffer
 
 	pop es
@@ -408,11 +404,7 @@ updateCCB_08:
 	mov cx, word [ es:di + ccbLBN + _high ]
 	mov al, byte [ es:di + ccbDrive ]		; get drive number
 	cbw						;  make ah = 0
-%if 1
-	lea di, [ word ccbData + di ]			; buffer address
-%else
 	lea di, [ byte ccbData + di ]			; buffer address
-%endif
 	call DevWrite					; write to disk 
 	jc updateCCB_12					; if error/ fail -->
 
@@ -470,11 +462,7 @@ updateAlternateFATTables_08:
 	mov cx, word [ es:di + ccbLBN + _high ]
 	mov al, byte [ es:di + ccbDrive ]		; get drive number
 	cbw						;  make ah = 0
-%if 1
-	lea di, [ word ccbData + di ]			; buffer address
-%else
 	lea di, [ byte ccbData + di ]			; buffer address
-%endif
 
 updateAlternateFATTables_12:
 	dec word [ _dpbNumberFat + bp ]

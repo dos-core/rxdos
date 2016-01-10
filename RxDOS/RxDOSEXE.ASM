@@ -749,8 +749,7 @@ copyCurrentPSP_14:
 	cmp bx, byte (pspHandleTable + sizePSPHandleTable)
 	jb copyCurrentPSP_08
 
-		; RxDOS 7.20N:	Set NZ
-	or bx, bx
+	or bx, bx					; set NZ
 
 		; done
 copyCurrentPSP_36:
@@ -766,7 +765,6 @@ copyCurrentPSP_36:
 		; dx:ax-> (if valid address) EXEC block
 		; bx:di-> (if valid address) ASCIZ filename of executable
 		;  (uppercased, no path)
-		; ds = ss (RxDOS 7.20N only)
 		;
 		; Output:
 		; es:0-> behind created PSP
@@ -775,9 +773,7 @@ createPSP:
 	entry
 	def	AllocSize, cx
 	ddef	ExecBlock, dx, ax
-%if 0
 	ddef	ProgramName, bx, di
-%endif
 
 	push ds
 	mov ax, es
@@ -785,14 +781,8 @@ createPSP:
 	push ax						; address of PSP to return
 
 	xor di, di
-%if 1
-	mov ax, word [ ss:_RxDOS_CurrentPSP ]
-	or ax, ax					; any parent ?
-	jnz createPSP_08				; yes, copy parent -->
-%else
 	call copyCurrentPSP				; copy current PSP if parent found
 	jnz createPSP_12				;  if parent found, NZ
-%endif
 
 		; else init a blank PSP
 	xor ax, ax
@@ -805,29 +795,15 @@ createPSP:
 	repz stosw					; init handle table
 
 	mov dx, 1
-%if 1
-	mov al, byte [ (stdRedirec_Aux * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-%else
 	mov al, byte [ ss:(stdRedirec_Aux * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-		; RxDOS 7.20N:	The RxDOS 7.1.5 source contains the ss: prefixes,
-		;		but MASM didn't assemble them. Bad ASSUMption.
-%endif
 	mov byte [ es:pspHandleTable + STDAUX ], al
 	call incrRefCount
 
-%if 1
-	mov al, byte [ (stdRedirec_Prn * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-%else
 	mov al, byte [ ss:(stdRedirec_Prn * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-%endif
 	mov byte [ es:pspHandleTable + STDPRN ], al
 	call incrRefCount
 
-%if 1
-	mov al, byte [ (stdRedirec_Con * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-%else
 	mov al, byte [ ss:(stdRedirec_Con * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-%endif
 	mov byte [ es:pspHandleTable + STDIN ], al
 	mov byte [ es:pspHandleTable + STDOUT ], al
 	mov byte [ es:pspHandleTable + STDERR ], al
@@ -848,18 +824,6 @@ createPSP:
 	mov word [ es:pspFileHandlePtr +_pointer ], pspHandleTable
 	mov word [ es:pspFileHandleCount ], sizepspHandleTable
 
-%if 1
-	mov ax, word [ _RxDOS_DOSVersion ]		; get DOS Version
-	mov word [ es:pspVersion ], ax			; Major, Minor version (VERS)
-%endif
-%if 1
-	jmp short createPSP_12
-
-		; copy an existing PSP
-createPSP_08:
-	call copyCurrentPSP				; copy current PSP
-%endif
-
 		; other specific initialization
 createPSP_12:
 	mov ax, word [ ss:_RxDOS_CurrentPSP ]
@@ -878,8 +842,6 @@ createPSP_12:
 	mov word [ es:pspDispatcher +1 +_pointer ], _CallDOS	; "CALL 5" entry
 	mov word [ es:pspShareChain +_pointer ], -1	; share vector 
 	mov word [ es:pspShareChain +_segment ], -1
-
-%if 0
 
 %if 0
 
@@ -947,33 +909,8 @@ wo:[????]	Version number to return if filename matched. (Located behind filename
 createPSP_06:
 	pop es						; ds and si left on stack
 	mov word [ es:pspVersion ], dx			; set default or SETVER version
-%endif
 
-%if 1
-	push ds
-	xor ax, ax
-	mov ds, ax
-
-	mov bx, ( intCONTROLC * 4 )			; Int23 control-C vector
-	mov ax, word [ _pointer + bx ]			; existing value copied to PSP
-	mov dx, word [ _segment + bx ]
-	mov word [ es:pspControlCVect + _pointer ], ax
-	mov word [ es:pspControlCVect + _segment ], dx
-
-	mov bx, ( intCRITICALERROR * 4 )		; Int24 criterror vector
-	mov ax, word [ _pointer + bx ]			; existing value copied to PSP
-	mov dx, word [ _segment + bx ]
-	mov word [ es:pspCritErrorVect + _pointer ], ax
-	mov word [ es:pspCritErrorVect + _segment ], dx
-
-	RetCallersStackFrame ds, bx			; Int22 terminate vector
-	mov dx, word [ _CS + bx ]			; return address to Int21 caller
-	mov ax, word [ _IP + bx ]
-	mov word [ es:pspTerminateVect + _pointer ], ax
-	mov word [ es:pspTerminateVect + _segment ], dx
-	pop ds
-%else
-	mov di, pspTerminateVect
+	mov di, pspInt22
 	RetCallersStackFrame ds, si
 	add si, byte _IP
 	movsw
@@ -988,9 +925,7 @@ createPSP_06:
 	movsw						; copy current Int24 vector to PSP
 
 	pop si
-	pop ds						; ds and si pushed above
-%endif
-
+	pop ds						; ds and si pushed above (before setver matching)
 
 		; copy command line
 	mov word [ es:pspCommandTail ], 0D00h		; pre-init empty command line

@@ -2297,11 +2297,7 @@ _CheckKeyboardInput:
 _checkkbdInput_22:
 	RetCallersStackFrame es, bx
 	mov byte [ es:bx + _AX + _AL ], al		; set chars available
-%if 1
-	or ax, ax
-%else
 	clc
-%endif
 	retn
 
 
@@ -3502,11 +3498,7 @@ _GetDate:
 	pop dx
 	pop cx
 	RetCallersStackFrame ds, si
-%if 1
-	mov word [ si + _AX ], ax
-%else
 	mov byte [ si + _AX + _AL ], al
-%endif
 	mov word [ si + _CX ], cx
 	mov word [ si + _DX ], dx			; return parameters
 	clc
@@ -3536,13 +3528,9 @@ _SetDate:
 	jnc _setdate_error
 
 	cmp cx, 1980
-%if 1
-	jl _setdate_error
-%else
 	jb _setdate_error
-%endif
 	cmp cx, 2100
-	jnc _setdate_error
+	jae _setdate_error
 
 	push dx
 	push cx
@@ -3696,6 +3684,7 @@ _GetDOSVersion_08:
 	mov es, dx					; current PSP
 	mov ax, word [ es:pspVersion ]			; SETVER version (or same as DOSVersion)
 _GetDOSVersion_12:
+
 
 	or ax, ax					; zero ?
 	jnz _GetDOSVersion_16				; no -->
@@ -5502,11 +5491,7 @@ _GetVerify:
 
 	RetCallersStackFrame ds, bx
 	mov byte [ _AX + _AL + bx ], al
-%if 1
-	or al, al
-%else
 	clc
-%endif
 	retn
 
 
@@ -5623,11 +5608,7 @@ _renameFile_38:
 	call updateDriveBuffers
 	mov ax, word [ _existfileAccess + fileAcDrive + bp ]
 	call updateDriveBuffers
-%if 1
-	or ax, ax					; no carry
-%else
 	clc
-%endif
 
 _renameFile_40:
 	return
@@ -5677,11 +5658,7 @@ _GetFileDateTime:
 	mov dx, word [ es:sftDate + di ]		; date
 	mov word [ _CX + bx ], cx
 	mov word [ _DX + bx ], dx
-%if 1
-	or ax, ax					; no carry
-%else
 	clc
-%endif
 
 _SetFileDateTime_20:
 	retn
@@ -6571,15 +6548,3 @@ _Unused_alFF:						; Set caller's al to 0FFh (FCB error but preserve CF)
 	mov al, 0FFh
 	jmp short _Unused_al
 
-
-		; Debug Interrupt Trap
-		;
-		; This code is called whenever one of the debug routines
-		;
-		; RxDOS 7.20N:	Part of comment missing?
-_Debug:
-_DebugInterruptTrap:
-%if 0
-	int 3						; Give control to DEBUG if any loaded.
-%endif
-	retn
