@@ -1429,6 +1429,7 @@ S_EXCLDDOS	equ 33h					; Excluded by DOS (usually 21.4B or 21.714B)
 						; Values F0h-FFh are defined by other software.
 						; _smcbLink then contains an address of either a
 						; valid MCB or PSP. Other software mustn't
+
 						; recognize an S MCB with _smcbType solely using
 						; this value, it must also insure that _smcbLink
 						; points to an owner known to the software.
@@ -1515,32 +1516,32 @@ ccb_isREMOTE		equ 80h
 		; Program Segment Prefix (PSP)
 		; Note that data at offset 0050h+ is re-used by various TSRs.
 	struc PSP
-pspCALL0:		resw 1				; 0000h "int 20h" instruction (to terminate on "call 0")
-pspNextParagraph:	resw 1				; 0002h address of next memory block
-pspReserved1:		resb 1				; 0004h unused
-pspCALL5:		resb 5				; 0005h calls a special Int21 dispatcher (on "call 5")
-pspInt22:		resd 1				; 000Ah Address to return to after terminate
-pspInt23:		resd 1				; 000Eh Control-C vector to restore when terminating
-pspInt24:		resd 1				; 0012h Critical error vector to restore when terminating
-pspParent:		resw 1				; 0016h PSP of parent
-pspAHT:			resb 20				; 0018h default Application Handle Table
+pspCALL0:		resw 1	; 0000h "int 20h" instruction (to terminate on "call 0")
+pspNextParagraph:	resw 1	; 0002h address of next memory block
+pspReserved1:		resb 1	; 0004h unused
+pspCALL5:		resb 5	; 0005h calls a special Int21 dispatcher (on "call 5")
+pspInt22:		resd 1	; 000Ah Address to return to after terminate
+pspInt23:		resd 1	; 000Eh Control-C vector to restore when terminating
+pspInt24:		resd 1	; 0012h Critical error vector to restore when terminating
+pspParent:		resw 1	; 0016h PSP of parent
+pspAHT:			resb 20	; 0018h default Application Handle Table
  endarea pspAHT
-pspEnvironment:		resw 1				; 002Ch address of environment block
-pspUserStack:		resd 1				; 002Eh address of user stack frame on Int21 entry
-pspAHTsize:		resw 1				; 0032h number of Application Handles (default: 20)
-pspAHTaddress:		resd 1				; 0034h address of AHT (default: PSP:pspAHT)
-pspShareChain:		resd 1				; 0038h Share chain pointer (next PSP)
-pspSaveDTA:						; 003Ch DOS-C <= 2027: saved DTA to avoid DTABUG
-pspReserved2:		resb 4				; 003Ch unused (DBCS flag, APPEND)
-pspVersion:		resw 1				; 0040h Major, minor version (returned from Int21.30)
-pspReserved3:		resb 14				; 0042h unused (Windows 3.x)
-pspDosCall:		resb 3				; 0050h "int 21h"\"retf" instructions (Int21 on "call PSP:50")
-pspReserved4:		resb 9				; 0053h unused
-pspFCB_1:		resb 16				; 005Ch First default FCB
-pspFCB_2:		resb 16				; 006Ch Second default FCB
-pspReserved5:		resb 4				; 007Ch unused
-pspDTA:							; 0080h default DTA and
-pspCommandTail:		resb 128			; 0080h command tail (one byte length, cr-terminated command line)
+pspEnvironment:		resw 1	; 002Ch address of environment block
+pspUserStack:		resd 1	; 002Eh address of user stack frame on Int21 entry
+pspAHTsize:		resw 1	; 0032h number of Application Handles (default: 20)
+pspAHTaddress:		resd 1	; 0034h address of AHT (default: PSP:pspAHT)
+pspShareChain:		resd 1	; 0038h Share chain pointer (next PSP)
+pspSaveDTA:			; 003Ch DOS-C <= 2027: saved DTA to avoid DTABUG
+pspReserved2:		resb 4	; 003Ch unused (DBCS flag, APPEND)
+pspVersion:		resw 1	; 0040h Major, minor version (returned from Int21.30)
+pspReserved3:		resb 14	; 0042h unused (Windows 3.x)
+pspDosCall:		resb 3	; 0050h "int 21h"\"retf" instructions (Int21 on "call PSP:50")
+pspReserved4:		resb 9	; 0053h unused
+pspFCB_1:		resb 16	; 005Ch First default FCB
+pspFCB_2:		resb 16	; 006Ch Second default FCB
+pspReserved5:		resb 4	; 007Ch unused
+pspDTA:				; 0080h default DTA and
+pspCommandTail:		resb 128 ; 0080h command tail (one byte length, cr-terminated command line)
 	endstruc 1
 
 
