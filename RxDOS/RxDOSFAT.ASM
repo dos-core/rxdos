@@ -197,13 +197,8 @@ _FAT16GetNextCluster_16Bits:
 
 	xor cx, cx
 	mov ax, dx
-%if 1
-	and ax, strict word 0FFF8h			; FAT value, 16 bit entries
-	cmp ax, strict word 0FFF8h			; end of chain ?
-%else
 	and al, 0F8h					; FAT value, 16 bit entries
 	cmp ax, byte 0FFF8h				; end of chain ?
-%endif
 	jnz _FAT16GetNextCluster_22			; no -->
 	mov dx, -1					; if end, set end value
 	mov cx, dx					;  (32 bit value)
@@ -496,21 +491,11 @@ _FAT16UpdateClusterValue:
 	cmp ax, byte MINCLUSTER				; invalid number
 	jc _FAT16UpdateClusterValue_04			; exit -->
 	cmp ax, word [ es:bx + _dpbMaxClusterNumber ]
-%if 1
-	jc _FAT16UpdateClusterValue_08			; if valid cluster # -->
-	jz _FAT16UpdateClusterValue_08			; if valid cluster # -->
-%else
-		; RxDOS 7.20N:	Does the same in one instruction.
 	jbe _FAT16UpdateClusterValue_08			; if valid cluster # -->
-%endif
 
 _FAT16UpdateClusterValue_04:
 	mov dx, -1
-%if 1
-	cmp dx, byte -1					; sets ZR (end of list)
-%else
 	cmp dl, dl					; set ZR
-%endif
 	stc						; set CY
 	jmp _FAT16UpdateClusterValue_Return
 
@@ -1012,9 +997,7 @@ amountFree12BitFAT_18:
 	dec word [ _maxclusters + bp ]			; more clusters to go ?
 	jnz amountFree12BitFAT				; yes -->
 	jmp short amountFreeSpace_Return
-%if 1
-	nop
-%endif
+
 		; FAT16
 amountFree16BitFAT:
 	mov cx, word [ es:bx + _dpbBytesPerSector ]
@@ -1036,11 +1019,7 @@ amountFree16BitFAT_08:
 	xor ax, ax
 	getarg cx, _entriesPerSector
 	mov di, word [ _buffer + _pointer + bp ]
-%if 1
-	lea di, [ word ccbData + di ]			; start of buffer
-%else
 	lea di, [ byte ccbData + di ]			; start of buffer
-%endif
 
 amountFree16BitFAT_12:
 	repne scasw					; search for null word
@@ -1104,30 +1083,23 @@ UpdateFreeSpace:
 	mov word [ es:bx + _dpbxFreeClusterCount + _high ], cx
 
 		; update FSINFO sector
-%if 0
-	cmp word [ es:bx + _dpbxFSINFOSector ], byte -1
-	je UpdateFreeSpace_Return			; invalid sector, no need to write -->
-	cmp word [ es:bx + _dpbxFSINFOSector ], 0
-	je UpdateFreeSpace_Return			; invalid sector, no need to write -->
-%endif
+	mov si, [ es:bx + _dpbxFSINFOSector ]		; check the FSINFO sector
+	inc si
+	jz UpdateFreeSpace_Return			; (was -1) invalid -->
+	dec si
+	jz UpdateFreeSpace_Return			; (was 0) invalid -->
 
 	push cx						; (high)
 	push dx						; (low ) free space value
 
 	xor cx, cx
-	mov dx, word [ es:bx + _dpbxFSINFOSector ]	; free space (FSINFO) sector
+	mov dx, si					; free space (FSINFO) sector
 	call readBuffer					; read sector
 
 	lea bx, [ di + ccbData + sizeSector - (BIGFATBOOTFSINFO_size) - 4 ]
 							; bx now points to the free cluster count structure
-%if 1
-	pop word [ si + _bfFSInfoFreeClusterCnt + _low ]
-	pop word [ si + _bfFSInfoFreeClusterCnt + _high ]
-%else
-		; RxDOS 7.20N:	si has a random value here. The above should use bx.
 	pop word [ bx + _bfFSInfoFreeClusterCnt + _low ]
 	pop word [ bx + _bfFSInfoFreeClusterCnt + _high ]
-%endif
 
 	call updateChangedCCB				; update changed buffer
 
@@ -1209,16 +1181,10 @@ allocateCluster_18:
 	call updateClusterValue				; update value at cluster cx:dx
 
 	getdarg es, bx, _dpb				; get _dpb address
-%if 1
-	cmp word [ es:bx + _dpbFreeCount + _high ], byte -1	; value initialized ?
-	jz allocateCluster_Return			; no -->
-%else
-		; RxDOS 7.20N:	Check both values!
 	mov ax, word [ es:bx + _dpbFreeCount + _low ]
 	and ax, word [ es:bx + _dpbFreeCount + _high ]	; if both values were FFFF, ax is now too
 	inc ax						; if ax were FFFF, it's zero now (and ZR set)
 	jz allocateCluster_Return			; value is 0xFFFFFFFF hence don't update it -->
-%endif
 
 	sub word [ es:bx + _dpbFreeCount + _low ], byte 1	; subtract allocated unit
 	sbb word [ es:bx + _dpbFreeCount + _high ], byte 0
@@ -1275,11 +1241,7 @@ AllocateInitCluster:
 
 	call SelBuffer					; allocate a buffer
 	push di						; pointer to header
-%if 1
-	lea di, [ word ccbData + di ]			; point to buffered data
-%else
 	lea di, [ byte ccbData + di ]			; point to buffered data
-%endif
 	clearMemory sizeCCBData				; clear to zeroes
 	pop di						; pointer to header
 
@@ -1392,12 +1354,6 @@ GetMaxClusters_20:
 		; CY if cluster number invalid (below 2 or above max)
 		;
 SeeIfMaxClusters:
-
-%if 1
-	Entry
-	ddef	clusters, cx, dx
-	ddef	maxclusters
-%endif
 		; Check if given cluster isn't below MINCLUSTER
 	or cx, cx
 	jnz SeeIfMaxClusters_08				; (could only be < 2 if cx zero) -->
@@ -1406,27 +1362,13 @@ SeeIfMaxClusters:
 
 SeeIfMaxClusters_08:
 		; Check if given cluster isn't above maximal cluster
-%if 0
 	push cx
 	push dx						; cx:dx on stack
-%endif
+
 	call GetMaxClusters
-%if 1
-	stordarg _maxclusters, cx, dx
-
-	cmp cx, word [ _clusters + _high + bp ]
-	jnz SeeIfMaxClusters_Return			; if NZ comparing dx not required ->
-	cmp dx, word [ _clusters + _low + bp ]
-
-SeeIfMaxClusters_Return:
-	getdarg cx, dx, _maxclusters
-	Return
-%else
-		; RxDOS 7.20N:	Shorter.
 	call _cmp32					; caller's cx:dx still on stack
 SeeIfMaxClusters_Return:
 	retn
-%endif
 
 
 		; Is cluster number end of FAT32 chain
@@ -1444,13 +1386,8 @@ isEndOfFAT32:
 	jnz isEndOfFAT32_Return				; no -->
 
 	mov ax, dx
-%if 1
-	and ax, strict word 0FFF8h			; mask off those different EOF bits
-	cmp ax, strict word 0FFF8h			; low value of FAT32 EOF ?
-%else
 	and al, 0F8h					; mask off those different EOF bits
 	cmp ax, byte 0FFF8h				; low value of FAT32 EOF ?
-%endif
 isEndOfFAT32_Return:
 	clc
 	pop ax
@@ -1548,10 +1485,7 @@ _FATReadRandom:
 	def	isnotFAT32				; zero means FAT32
 
 	saveRegisters ds, di, si, dx, ax
-%if 0
-		; RxDOS 7.20N:	Must insure this here!
 	setDS ss
-%endif
 	and word [ diskAcOptions + bx ], ~ (DISKAC_RESULT_READMULTIPLESECTORS)
 
 	mov ax, word [ diskAcDrive + bx ]
@@ -1571,12 +1505,7 @@ _FATReadRandom:
 
 	sub ax, word [ diskAcOffAtBegCluster + _low + bx ]
 	sbb dx, word [ diskAcOffAtBegCluster + _high + bx ]
-%if 1
-	jge _FATReadRandom_16
-%else
-		; RxDOS 7.20N:	Unsigned...
-	jae _FATReadRandom_16
-%endif
+	jae _FATReadRandom_16				; (same as jnb, jnc)
 
 	xor ax, ax
 	mov word [ diskAcOffAtBegBuffer + _low + bx ], ax
@@ -1749,11 +1678,7 @@ _FATReadRandom_52:
 	mov ax, word [ diskAcOptions + bx ]
 	or byte [ es:di + ccbStatus ], al		; type of block
 
-%if 1
-	lea di, [ word ccbData + di ]			; point to data
-%else
 	lea di, [ byte ccbData + di ]			; point to data
-%endif
 	mov word [ diskAcBufferPtr + _segment + bx ], es
 	mov word [ diskAcBufferPtr + _pointer + bx ], di
 
