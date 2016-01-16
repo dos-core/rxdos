@@ -131,7 +131,6 @@ the file LICENSE.TXT.
 
 		; Installable File System (Int2F.11) Dispatch Table
 IFSServicesTable:
-
 	dw _IFSInstallCheck			; 00h Install Check
 	dw _IFSRemoveDirectory			; 01h Remove Directory
 	dw _IFSUndefined			; 02h (Unused)
@@ -207,7 +206,7 @@ EIFServicesTable:
 	dw _EIFNotSupported			; 10h
 	dw _EIFNotSupported			; 11h
 	dw _EIFComputeStringLength		; 12h - Compute String Length
-%if 1
+%if 0
 	dw _EIFNotSupported			; 13h
 	dw _EIFNotSupported			; 14h
 	dw _EIFNotSupported			; 15h
@@ -225,49 +224,6 @@ EIFServicesTable:
 
 Max_EIFServices	 equ ( $ - EIFServicesTable ) / 2
 
-
-%if 1
-		; RxDOS 7.20N:	Replace table by small dispatcher!
-		; Interrupt 2F Services
-Int2FServicesTable:
-
-	dw _Int2FNotSupported			; 00h
-	dw _Int2FNotSupported			; 01h
-	dw _Int2FNotSupported			; 02h
-	dw _Int2FNotSupported			; 03h
-	dw _Int2FNotSupported			; 04h
-	dw _Int2FNotSupported			; 05h
-	dw _Int2FNotSupported			; 06h
-	dw _Int2FNotSupported			; 07h
-	dw _Int2FNotSupported			; 08h
-	dw _Int2FNotSupported			; 09h
-	dw _Int2FNotSupported			; 0Ah
-	dw _Int2FNotSupported			; 0Bh
-	dw _Int2FNotSupported			; 0Ch
-	dw _Int2FNotSupported			; 0Dh
-	dw _Int2FNotSupported			; 0Eh
-	dw _Int2FNotSupported			; 0Fh
-	dw _Int2FNotSupported			; 10h
-	dw _IFSServices				; 11h
-	dw _EIFServices				; 12h
-%if 1
-	dw _Int2FNotSupported			; 13h
-	dw _Int2FNotSupported			; 14h
-	dw _Int2FNotSupported			; 15h
-	dw _Int2FNotSupported			; 16h
-	dw _Int2FNotSupported			; 17h
-	dw _Int2FNotSupported			; 18h
-	dw _Int2FNotSupported			; 19h
-	dw _Int2FNotSupported			; 1Ah
-	dw _Int2FNotSupported			; 1Bh
-	dw _Int2FNotSupported			; 1Ch
-	dw _Int2FNotSupported			; 1Dh
-	dw _Int2FNotSupported			; 1Eh
-	dw _Int2FNotSupported			; 1Fh
-%endif
-
-Max_Int2FServices	equ ( $ - Int2FServicesTable ) / 2
-%endif
 
 
 		; Int2F Original Chain
@@ -317,30 +273,11 @@ Interrupt2F:
 	def	FctAddress, ax
 
 	call Int2FSaveRegisters
-%if 1
-	and word [ _returnFlag + bp ], byte ~ 1		; clear carry bit
-%else
 	and byte [ _returnFlag + bp ], ~ 1		; clear carry bit
-%endif
 
 	sti
 	cld
 
-%if 1
-	cmp ah, Max_Int2FServices			; supported service ?
-	jnc Interrupt2F_26				; if out of range -->
-
-	push ax
-	push bx
-	xor bx, bx
-	mov bl, ah
-	add bx, bx
-	mov bx, word [ cs:bx + Int2FServicesTable ]
-	storarg _FctAddress, bx
-	pop bx
-	pop ax
-	call word [ _FctAddress + bp ]
-%else
 	cmp ah, 11h
 	jne Interrupt2F_20
 	call _IFSServices
@@ -350,7 +287,6 @@ Interrupt2F_20:
 	cmp ah, 12h
 	jne Interrupt2F_26
 	call _EIFServices
-%endif
 
 Interrupt2F_26:
 	call Int2FRestoreRegisters
@@ -372,32 +308,17 @@ _IFSServices:
 
 	xchg ax, bx
 	shr ax, 1					; restores argument value in ax
-%if 1
-	retn						; call through stack
-		; RxDOS 7.20N:	BUG. Actually the called code does _not_ return to this
-		;		position. It'll instead return to the main Int2F dispatcher.
-%else
+
 	push bp
 	mov bp, sp
 	call word [ bp + 2 ]
 	pop bp
-%endif
 
 	jnc _IFSServices_26				; if carry not set -->
-%if 1
-	or word [ _returnFlag + bp ], byte 1		;  else set carry bit
-%else
 	or byte [ _returnFlag + bp ], 1
-%endif
 
 _IFSServices_26:
-%if 1
-	Return
-		; RxDOS 7.20N:	BUG. Should return near to the main Int2F dispatcher.
-		;		(This one just never executed caused by the above bug.)
-%else
 	retn
-%endif
 
 
 		; Extended Interface Functions (Int2F.12)
@@ -413,32 +334,16 @@ _EIFServices:
 
 	xchg ax, bx
 	shr ax, 1					; restores argument value in ax
-%if 1
-	retn						; call through stack
-		; RxDOS 7.20N:	BUG. Actually the called code does _not_ return to this
-		;		position. It'll instead return to the main Int2F dispatcher.
-%else
+
 	push bp
 	mov bp, sp
 	call word [ bp + 2 ]
 	pop bp
-%endif
-
 	jnc _EIFServices_26				; if carry not set -->
-%if 1
-	or word [ _returnFlag + bp ], byte 1		;  else set carry bit
-%else
-	or byte [ _returnFlag + bp ], 1
-%endif
+	or byte [ _returnFlag + bp ], 1			;  else set carry bit
 
 _EIFServices_26:
-%if 1
-	Return
-		; RxDOS 7.20N:	BUG. Should return near to the main Int2F dispatcher.
-		;		(This one just never executed caused by the above bug.)
-%else
 	retn
-%endif
 
 
 		; Save Registers
@@ -519,12 +424,6 @@ _IFSUnsupported:
 
 		; Extended Interface Functions
 _EIFNotSupported:
-	stc
-	retn
-
-
-		; Int 2F Not Supported
-_Int2FNotSupported:
 	stc
 	retn
 

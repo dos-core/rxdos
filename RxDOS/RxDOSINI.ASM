@@ -538,17 +538,13 @@ processDeviceHigh:
 	Entry
 	ddef	ConfigStatements, es, di
 	def	memorystrategy
-%if 0
 	def	umblink
-%endif
 
-%if 0
 	Int21 GetUMBLink				; get current UMB link
 	storarg _umblink, ax
 
 	mov bx, _UMBLINK_ENABLED
 	Int21 SetUMBLink				; link in UMBs
-%endif
 
 	Int21 GetAllocationStrategy			; get current allocation strategy
 	storarg _memorystrategy, ax
@@ -565,10 +561,8 @@ processDeviceHigh:
 	getarg bx, _memorystrategy
 	Int21 SetAllocationStrategy			; restore allocation strategy
 
-%if 0
 	getarg bx, _umblink
 	Int21 SetUMBLink				; restore UMB link
-%endif
 
 	Return
 
@@ -678,12 +672,7 @@ processAnyDevice_26:
 	jmp short processAnyDevice_26
 
 processAnyDevice_28:
-%if 1
-	mov byte [ ss:bx ], ControlM
-	mov byte [ ss:bx + 1 ], ControlM
-%else
 	mov word [ ss:bx ], ControlM*256 + ControlM
-%endif
 
 		; load program
 	mov ax, ss
@@ -747,12 +736,7 @@ processAnyDevice_32:
 	shr bx, 1					; end para
 	add bx, word [ _reqBlock + irEndAddress + _segment + bp ]
 	sub bx, word [ _SegAddress + bp ]		; paragraph size
-%if 1
-	jc processAnyDevice_60				; no size, go free-up -->
-	jz processAnyDevice_60				; no size, go free-up -->
-%else
-	jna processAnyDevice_60				; no size, go free-up -->
-%endif
+	jbe processAnyDevice_60				; no size, go free-up -->
 
 	Int21 ModifyAllocatedMemory			; free memory to given size
 
