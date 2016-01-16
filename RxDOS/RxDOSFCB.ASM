@@ -100,29 +100,17 @@ buildFindFromFCB:
 
 	mov al, byte [ es:bx + extAttribute ]		; get attributes from extended FCB
 	mov byte [ _attributes + bp ], al
-%if 1
-	add bx, word sizeExtendedFCBHdr
-%else
 	add bx, byte sizeExtendedFCBHdr
-%endif
 	mov word [ _fcb + _pointer + bp ], bx		; adjust to FCB address
 
 		; if we have a normal FCB
 buildFindFromFCB_08:
 	push ds
 	setDS es
-%if 1
-	lea si, [ word fcbName + bx ]
-%else
 	lea si, [ byte fcbName + bx ]
-%endif
 
 	getdarg es, di, _findEntry
-%if 1
-	lea di, [ word findSrchName + di ]
-%else
 	lea di, [ byte findSrchName + di ]
-%endif
 	mov cx, sizeFILENAME
 
 buildFindFromFCB_12:
@@ -192,11 +180,7 @@ _buildDTAfcbFind_12:
 	mov byte [ findSrchDrive + di ], al
 	inc byte [ findSrchDrive + di ]		; FCB drive is 01 ...
 
-%if 1
-	lea di, [ word findSrchName + di ]
-%else
 	lea di, [ byte findSrchName + di ]
-%endif
 	push di					; where to copy dir structure
 	mov si, word [ es:si + findCCBPointer ]
 	call locateCCBPHeader			; get buffers segment

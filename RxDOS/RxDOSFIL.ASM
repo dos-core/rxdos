@@ -293,11 +293,7 @@ expandFileName_50:
 	mov cx, di
 	sub cx, word [ _ExpandBuffer + _pointer + bp ]
 	sub cx, word [ _cds_SubstOffset + bp ]
-%if 1
-	jle expandFileName_56
-%else
 	jbe expandFileName_56
-%endif
 
 expandFileName_52:
 	dec di
@@ -312,11 +308,7 @@ expandFileName_56:
 	mov cx, di
 	sub cx, word [ _ExpandBuffer + _pointer + bp ]
 	cmp cx, word [ _cds_SubstOffset + bp ]
-%if 1
-	jge expandFileName_60
-%else
 	jae expandFileName_60
-%endif
 
 	mov di, word [ _cds_SubstOffset + bp ]
 	add di, word [ _ExpandBuffer + _pointer + bp ]
@@ -337,11 +329,7 @@ expandFileName_60:
 	mov cx, di
 	sub cx, word [ _ExpandBuffer + _pointer + bp ]
 	cmp cx, word [ _cds_SubstOffset + bp ]
-%if 1
-	jle expandFileName_66				; if minimal string -->
-%else
 	jbe expandFileName_66				; if minimal string -->
-%endif
 
 	cmp byte [ es:di - 1 ], '\'			; string ends with \ ?
 	jz expandFileName_64				; no, ignore fix up -->
@@ -377,11 +365,7 @@ expandFileName_66:
 expandFileName_68:
 %endif
 
-%if 1
-	or ax, ax					; return drive
-%else
 	clc
-%endif
 	jmp short expandFileName_84
 
 		; if error
@@ -1100,6 +1084,7 @@ GetActualDrive_20:
 	; ... need message ...
 
 %if 0
+RxDOS 7.30:
  cm:	Above code should move into RxBIO. In MS-DOS, IO.SYS will swap the disks
 	and display the message. Additionally it won't just force B: the be always
 	A: but rather validate the requested drive and invalidate the other if read
@@ -1581,13 +1566,11 @@ writeLogicalBuffer_16:
 
 	add word [ _bytesWritten + bp ], cx
 	sub word [ _bytestoWrite + bp ], cx		; compare against length needed
-%if 1
-	jc writeLogicalBuffer_32			; if no more to write -->
-	jz writeLogicalBuffer_32			; if no more to write -->
-	jmp writeLogicalBuffer_08			; continue writing -->
-%else
-	ja writeLogicalBuffer_08			; continue writing -->
-%endif
+;	jc writeLogicalBuffer_32			; if no more to write -->
+;	jz writeLogicalBuffer_32			; if no more to write -->
+;	jmp writeLogicalBuffer_08			; continue writing -->
+		; a = nbe = not CY && not ZR
+	jnbe writeLogicalBuffer_08			; continue writing -->
 
 writeLogicalBuffer_32:
 	; call updateAllChangedCCBBuffers		; used only in debug mode
