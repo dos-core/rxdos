@@ -2237,7 +2237,7 @@ DebugInit:
 
 	mov cx, cs
 	mov ax, word [ _RxDOS_CurrentStackTop ]
-	add ax, PARAGRAPH				; round up to nearest para
+	add ax, (PARAGRAPH - 1)				; round up to nearest para
 	shr ax, 1
 	shr ax, 1
 	shr ax, 1
@@ -2397,7 +2397,7 @@ RxDOS_initialize:
 	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
 
 	mov ax, word [ _RxDOS_CurrentStackTop ]
-	add ax, PARAGRAPH				; round up to nearest para
+	add ax, (PARAGRAPH - 1)				; round up to nearest para
 	shr ax, 1
 	shr ax, 1
 	shr ax, 1
