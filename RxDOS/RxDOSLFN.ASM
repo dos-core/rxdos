@@ -181,9 +181,6 @@ Int71LFNCreateSubdirectory:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
 
 		; does entry already exist ?
 	lea bx, [ word _structLongFilename + bp ]	; long filename, canonical name struct
@@ -284,9 +281,6 @@ Int71LFNRemoveSubdirectory:
 	defbytes	diskAccess, sizeDISKACCESS
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
 
 		; parse file name
 	lea bx, [ word _structLongFilename + bp ]	; long filename, canonical name struct
@@ -372,9 +366,6 @@ Int71LFNChangeSubdirectory:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
 
 		; parse file name
 	lea bx, [ word _structLongFilename + bp ]	; long filename, canonical name struct
@@ -435,9 +426,6 @@ Int71LFNDeleteFile:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
 
 		; parse file name
 	lea bx, [ word _structLongFilename + bp ]	; long filename, canonical name struct
@@ -541,9 +529,6 @@ Int71LFNChangeFileMode:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
 
 		; parse file name
 	lea bx, [ word _structLongFilename + bp ]	; long filename, canonical name struct
@@ -676,10 +661,6 @@ Int71LFNExecuteProgram:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
-
 		; lookup
 	lea bx, [ word _structLongFilename + bp ]	; long filename, canonical name struct
 	call initStructLongFilename
@@ -758,10 +739,6 @@ Int71LFNFindFirstFile:
 
 	ddef	pathname, es, dx				; arg passed internally as es:dx
 	ddef	finddata, es, di
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
 
 	and cx, 1f1eh
 	mov byte [ _mustMatchAttributes + bp ], ch
@@ -902,10 +879,6 @@ Int71LFNFindNextFile:
 	def	datetimeformat, si
 	ddef	finddata, es, di
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
-
 	call LFNValidateFindDataHandle			; validate handle in bx
 	ifc LFNFindNext_NoMoreFiles			; not valid -->
 
@@ -1003,10 +976,6 @@ Int71LFNRenameFile:
 	defbytes	renfileAccess, sizeDIRACCESS
 	defbytes	OldDirEntry, sizeDIRENTRY
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
-
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
 
 		; does file exist ?
 	lea bx, [ word _structLongFilename + bp ]	; long filename, canonical name struct
@@ -1257,9 +1226,6 @@ Int71LFNExtendedOpenCreate:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
 
-%if 1
-	call CtrlC_Check				; look-ahead Ctrl-C Check
-%endif
 	call VerifyAvailableHandle			; see if handle available
 	ifc _LFNExtendedOpenCreate_42			; if error -->
 
