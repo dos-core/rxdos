@@ -401,12 +401,8 @@ _allocateUpperMB_12:
 
 _allocateUpperMB_14:
 	mov ax, _RxDOS_HIGHMEMBLOCK
-%if 1
-	call _localAreaAllocateMemory
-	retn
-%else
+		; RxDOS 7.20N: Wrongly hard-coded top-of-LMA address.
 	jmp short _localAreaAllocateMemory
-%endif
 %endif
 
 
@@ -423,21 +419,14 @@ _allocateConvMB:
 	jz _allocateConvMB_14				; if search conv memory blocks -->
 
 _allocateConvMB_12:
-%if 0
-		; RxDOS 7.20N:	Commented in former releases.
 	xor dx, dx
 	SetError pexterrNotEnoughMemory
 	retn
-%endif
 
 _allocateConvMB_14:
 	call _collectMemoryBlocks			; collect free blocks
 	mov ax, word [ ss:_RxDOS_pStartMemBlock ]
-%if 1
-	call _localAreaAllocateMemory
-	retn
 		; fall through
-%endif
 
 
 		; Local Zone Memory Allocation
@@ -484,11 +473,7 @@ _allocMem_12:
 	jz _allocMem_14					; if valid arena -->
 	cmp byte [ es:_memSignature ], _RxDOS_ENDSIGNATURE
 	jz _allocMem_14					; if valid arena -->
-%if 1
-	SetError pexterrInvalidBlock, _allocMem_44	; else, if error -->
-%else
 	SetError pexterrArenaTrashed, _allocMem_44	; else, if error -->
-%endif	
 
 _allocMem_14:
 	cmp word [ es:_memParent ], byte 0		; free block ?
@@ -556,16 +541,10 @@ _allocMem_30:
 
 	sub ax, bx					; this is remaining alloc balance
 	je _allocMem_38					; if exact fit, allocate full block -->
-%if 1
-	dec ax						; make room for second memory control block
-	mov cx, es
-	add cx, ax					; where next block will be if high
-	inc cx						; adjust for next block header
-%else
+
 	mov cx, es
 	add cx, ax					; where next block will be if high
 	dec ax						; make room for second memory control block
-%endif
 	storarg _sizeFirstBlock, ax			; first block size, assume last fit
 	storarg _sizeSecondBlock, bx			; second block size, assume last fit
 	storarg _returnSegmentAddress, cx
