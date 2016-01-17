@@ -106,9 +106,6 @@ the file LICENSE.TXT.
 	extern pexterrFileExists
 
 
-		; RxDOS 7.20N:	Structures moved into RXDSTRUC.MAC
-
-
 		; Macro. Pointer to Entry
 		;
 		; %1 = word reg, points to canonical list structure (not ax)
@@ -572,18 +569,7 @@ LFNChangeFileMode_SetAttrib:
 	SetError pexterrPathNotFound, LFNChangeFileMode_18
 
 LFNChangeFileMode_SetAttrib_08:
-%if 1
-;*****	mov cx, word [ _attributes + bp ]
-; This won't even work in NASM because it's no multi-pass Assembler.
-	mov cx, word [ word bp - 4 ]
-%else
-		; RxDOS 7.20N:	Above behaviour is a BUG. Actually, this function
-		;		didn't define a label _attributes. But because MASM
-		;		is a multi-pass Assembler it used the label _attributes
-		;		defined by _other_ functions. What we want to use is
-		;		the stack label _filetime because it holds cx.
 	mov cx, word [ _filetime + bp ]
-%endif
 	test cx, ~ ATTR_SETTABLE
 	jz LFNChangeFileMode_12
 	SetError pexterrAccessDenied, LFNChangeFileMode_18
@@ -650,13 +636,13 @@ LFNGetCurrDir_36:
 		; ds:dx-> program name
 		; es:bx-> LOADEXEC structure
 		; cl = mode
+		;
+		; INP:	es = user ds
 Int71LFNExecuteProgram:
 
 	entry
 	ddef	filename, es, dx			; arg passed internally as es:dx
-%if 0
 	def	mode, cx
-%endif
 
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	structLongFilename, sizeSTRUCTLONGFILENAME
@@ -685,11 +671,7 @@ Int71LFNExecuteProgram:
 	mov es, word [ _ES + si ]
 	pop ds
 
-%if 1
-	xor ax, ax
-%else
 	mov ax, [ _mode + bp ]
-%endif
 	lea di, [ word _dirAccess + bp ]		; work dir access block
 	call loadProgram
 
@@ -1618,18 +1600,6 @@ LFNLocateFile_10:
 	mov di, word [ _ptrstructLongfilename + bp ]
 	lea di, [ word _lfnCanonicalList + _canpArray + di ]
 	add di, ax					; offset to next entry
-
-%if 1
-;*****	storarg _pCanonicalNextEntry, di		; pointer to next entry
-; This won't even work in NASM because it's no multi-pass Assembler.
-	storarg 0FFE6h, di
-%else
-		; RxDOS 7.20N:	Above behaviour is a BUG. Actually, this function
-		;		didn't define a label _pCanonicalNextEntry. But because
-		;		MASM is a multi-pass Assembler it used the label
-		;		_pCanonicalNextEntry defined by _other_ functions. What
-		;		we want to do is just nothing: The saved di is never used.
-%endif
 
 	cmp word [ _canpStringLength + di ], byte 0	; no entry (empty, ., or ..)
 	jnz LFNLocateFile_20				; no, go test -->
