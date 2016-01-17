@@ -57,14 +57,13 @@ the file LICENSE.TXT.
 
 		; Load Program Image (COM, SYS, etc... )
 		;
-		; Input:
-		; ds:dx-> ASCIZ name of program to load
-		; es:bx-> LOADEXEC structure
-		; al = mode (subfunction)
-		;
-		; Output:
-		; dx = PSP segment address
-		; CY if load failed
+		; INP: 	al = mode
+		;	ss:di -> a dir access structure
+		;	es:bx -> LOADEXEC structure
+		; OUT:	CY if load failed,
+		;	 ax = error code
+		;	NC if succeeded,
+		;	 dx = PSP segment address
 loadProgram:
 
 	Entry
@@ -1190,6 +1189,7 @@ _loaderAllocMemory_66:
 		;
 		; Input:
 		; es:di-> block
+
 		; cx = number of bytes in block
 		;
 		; Output:
