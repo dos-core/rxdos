@@ -3342,6 +3342,8 @@ At this point we should do the Unicode conversion. This must actually do:
 1. Reject the UTF-16 character if it consists of more than one UTF-16 word. Replace it
    with an underscore '_' and set the stack flag that there were unsupported
    Unicode characters.
+   (It isn't clear whether UTF-16 codepoints that require the 4-octet encoding
+   (that is, beyond UCS-2) are supported by Microsoft implementations at all.)
 
 2. Check if the UTF-16 (single) word is below 128 (0080h). The word is used as ASCII
    character without conversion if it is. It doesn't need step 3 below.
@@ -3353,6 +3355,11 @@ At this point we should do the Unicode conversion. This must actually do:
 
 After all characters were moved, report to caller if there were unsupported Unicode
 characters (that got replaced by an underscore '_').
+
+0. Load and store the CP-dependent tables. This is to do with the rest of
+   internationalisation (ie not yet supported at all).
+
+CJK and possibly some cyrillic codepages are more difficult it appears.
 %endif
 
 	_upperCase al					; upper case character
