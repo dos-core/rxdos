@@ -1627,24 +1627,17 @@ _scanToEndofName_08:
 		;
 		; The memory subsystem used by RxDOS is initialized. All
 		; previous memory allocations are lost.
+		;
+		; ds = DOS data segment
 RxDOSini_MemorySubSystem:
-
 	saveSegments
+
+		; RxDOS 7.30: Should use results of Int12 and Int2F.4A06 here.
 	mov ax, 40h
 	mov es, ax					; BIOS communications area
-
-	xor bx, bx
-%if 1
-	mov ax, word [ es:bx + _BIOS_Memory ]
-%else
-	mov ax, word [ es:_BIOS_Memory ]
-%endif
-	shl ax, 1					; multiply * 64 KiB
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1					; max segment
+	mov ax, word [ es:_BIOS_Memory ]		; = KiB of LMA
+times 6 shl ax, 1					; multiply *64 (* 2**6)
+							; -> behind last available segment
 	sub ax, word [ _RxDOS_pStartMemBlock ]		; available memory
 	dec ax						; adjust for memory header
 	push ax
@@ -1816,6 +1809,8 @@ RxDOS_DPBinit_22:
 		; RxDOS Current Directory Structure subsystem initialize
 		;
 		; No Parameters Required.
+		;
+		; cs = DOS data segment
 RxDOSini_CDSSubSystem:
 
 %if 0
@@ -2092,13 +2087,15 @@ F8_PromptRequired	dw 0000				; non-zero if prompt required
 
 
 		; CONFIG.SYS keywords
+%ifdef RxDOS_DEBUG
+%if 0
+_RxDOS_RXCONFIGSYS:	db "RXCONFIGTST", 0
+%endif
+_RxDOS_ConfigFile:	db "CONFIG  TST", 0		; if debug mode
+%else
 %if 0
 _RxDOS_RXCONFIGSYS:	db "RXCONFIGSYS", 0
 %endif
-
-%ifdef RxDOS_DEBUG
-_RxDOS_ConfigFile:	db "CONFIG  TST", 0		; if debug mode
-%else
 _RxDOS_ConfigFile:	db "CONFIG  SYS", 0		; if production
 %endif
 
@@ -2250,13 +2247,7 @@ DebugInit:
 
 	mov ax, 40h
 	mov es, ax					; BIOS communications area
-
-	xor bx, bx
-%if 1
-	mov ax, word [ es:bx + _BIOS_Memory ]
-%else
 	mov ax, word [ es:_BIOS_Memory ]
-%endif
 	shl ax, 1					; multiply * 64 KiB
 	shl ax, 1
 	shl ax, 1
@@ -2297,11 +2288,7 @@ DebugInit:
 	xor bx, bx
 	mov ax, 40h
 	mov es, ax
-%if 1
-	mov al, byte [ es:bx + _BIOS_NumFixedDrives ]
-%else
 	mov al, byte [ es:_BIOS_NumFixedDrives ]
-%endif
 	mov word [ _fixedDrives + bp ], ax		; number of fixed drives
 	or ax, ax					; any fixed drives ?
 	jz _DebugInit_06				; none -->
@@ -2310,11 +2297,7 @@ DebugInit:
 _DebugInit_06:
 	add ax, 2					; offset start of fixed by floppy disks
 	cmp ax, (DEFAULT_LASTDRIVE & 1Fh)		; max device less than LASTDRIVE ?
-%if 1
-	jg _DebugInit_08				; no, use available devices -->
-%else
 	ja _DebugInit_08				; no, use available devices -->
-%endif
 	mov ax, (DEFAULT_LASTDRIVE & 1Fh)		; use LASTDRIVE
 
 _DebugInit_08:
@@ -2598,9 +2581,9 @@ RxDOS_init_36:
 	lea bx, [ word _execBlock + bp ]		; exec block address
 	mov dx, _RxDOSini_DefaultShell
 	Int21 ExecuteProgram, 00			; if failed, execute default shell (RXCMD.EXE)
-
-%if 0
 	jnc RxDOS_init_68				; only branches if the main shell terminated
+		; RxDOS 7.30: This should check the error code returned here.
+
 	lea bx, [ word _execBlock + bp ]
 	mov dx, _RxDOSini_DefaultShell
 	mov word [ _RxDOSini_DefaultShellExt + 0 ], ".C"
@@ -2609,12 +2592,13 @@ RxDOS_init_36:
 
 	Int21 ExecuteProgram, 00			; if failed, execute default shell (RXCMD.COM)
 	jnc RxDOS_init_68				; only branches if the main shell terminated
+		; RxDOS 7.30: This should check the error code returned here.
 
 	lea bx, [ word _execBlock + bp ]
 	mov dx, _RxDOSini_compatibilityshell
 	Int21 ExecuteProgram, 00			; if failed, execute compatibility shell (COMMAND.COM)
 	jnc RxDOS_init_68				; only branches if the main shell terminated
-%endif
+
 		; Display Error Message and stop
 	push cs
 	pop ds
@@ -2713,7 +2697,7 @@ RxDOSmsg_CouldNotLoadDriver:
 
 
 		; Shell Name
-	align 2, db 0
+	align 16, db 0
 
 _RxDOSini_CommandShell:
 	times 128 db 0					; command shell
@@ -2722,32 +2706,18 @@ _RxDOSini_CommandTail:
 
 %ifndef RxDOS_DEBUG
 _RxDOSini_DefaultShell:
-%if 1
-	db "rxdoscmd"
-_RxDOSini_DefaultShellExt:
-	db ".exe",0
-%else
 	db "RXCMD"
 _RxDOSini_DefaultShellExt:
 	db ".EXE",0
-%endif
-%if 1
-	times 128-$+_RxDOSini_DefaultShell db 0
-%endif
 %else
 _RxDOSini_DefaultShell:
-	db 'c:/rxdos/rxdoscmd.exe', 0
-%if 1
-	times 128-$+_RxDOSini_DefaultShell db 0
-%endif
+	db 'c:/rxdos/rxcmd.exe', 0
 %endif
 
-%if 0
 _RxDOSini_compatibilityshell:
 	db "COMMAND.COM",0
-%endif
 
 		; Stacks
-	align 2, db 0
+	align 16, db 0
 
 RxDOS_EndOfInitCode:
