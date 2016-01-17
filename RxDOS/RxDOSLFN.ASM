@@ -163,15 +163,8 @@ _Int21Function71:
 	; Goto ServerOpenFile,		__ServerOpenFile		; A9h
 	; Goto Subst,			__Subst				; AAh
 
-%if 1
-%if 0
-	clc
-%endif
-	retn
-%else
 	seterror pexterrInvalidFunction
 	retn
-%endif
 
 
 		; 7139h Create Subdirectory
