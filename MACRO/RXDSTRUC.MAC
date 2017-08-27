@@ -1576,7 +1576,7 @@ exeInitCS		resw 1	; 16h initial cs value
 exeRelocTable		resw 1	; 18h byte offset to reloc table
 exeOverlay		resw 1	; 1Ah overlay number
 			resw 16	; 1Ch reserved (unused)
-exeNewExe		resd 1	; 1h pointer to new EXE header
+exeNewExe		resd 1	; 3Ch pointer to new EXE header
 	endstruc
 
 EXE_SIGNATURE		equ 5A4DH			; 'MZ'
