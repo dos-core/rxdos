@@ -99,14 +99,14 @@ if [ -f RxDOS.ASM -a \
 	cp "STACK\$\$.OBJ" "$toolsdir/tmp"
 	cd "$toolsdir/tmp"
 	unix2dos -q warplink.lin
-	dosemu -dumb WARPLINK.EXE @warplink.lin || exit
+	dosemu -q -dumb WARPLINK.EXE @warplink.lin || exit
 	cp rxdos.exe "$prevpwd/../bin/RxDOS.EXE"
 	cp rxdos.map "$prevpwd/../map/RxDOS.MAP"
 
 	cp "$toolsdir/X2B_IGNR.COM" "$toolsdir/tmp"
 #	exe2bin -r -l=0 RxDOS.EXE ..\bin\RXDOS.SYS || exit
 #	exe2bin -x -r -l=0 RxDOS.EXE ../bin/RXDOS.SYS || exit
-	dosemu -dumb X2B_IGNR.COM RxDOS.EXE RXDOS.SYS || exit
+	dosemu -q -dumb X2B_IGNR.COM RxDOS.EXE RXDOS.SYS || exit
 
 	cp rxdos.sys "$prevpwd/../bin/RXDOS.SYS"
 	cd "$prevpwd"
@@ -157,7 +157,7 @@ if [ -f RxCMD.ASM -a \
 	cp "STACK\$\$.OBJ" "$toolsdir/tmp"
 	cd "$toolsdir/tmp"
 	unix2dos -q warplink.lin
-	dosemu -dumb WARPLINK.EXE @warplink.lin || exit
+	dosemu -q -dumb WARPLINK.EXE @warplink.lin || exit
 	cp rxcmd.exe "$prevpwd/../bin/RxCMD.EXE"
 	cp rxcmd.map "$prevpwd/../map/RxCMD.MAP"
 
