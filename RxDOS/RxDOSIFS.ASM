@@ -457,99 +457,11 @@ _EIFComputeStringLength:
 		; SDApCurrentCDS pointer to CDS
 		;
 		; NOP
-_IFSCreateFile:
-
-	Entry
-	def	Attributes, cx
-
-	Return
+_IFSCreateFile: equ _IFSUnsupported
 
 
 		; IFS 11h Rename File
 		; 
 		; SDAFirstName	first name
 		; SDASecondName second name
-		;
-		; This actually seems to be no NOP!
-_IFSRenameFile:
-
-	Entry
-	ddef	wherePointer
-	defbytes	existfileAccess, sizeDIRACCESS
-	defbytes	renfileAccess, sizeDIRACCESS
-
-		; does source file exist ?
-	mov ax, (FILE_NODEVICENAME + FILECANNOT_BEDIRECTORY)
-	mov si, SDAFirstName
-	lea di, [ _existfileAccess + bp ]		; work dir access block
-	call LocateFile					; check file path
-	ifc _renameFile_40				; if file does not exist -->
-
-	mov ax, (FILE_NODEVICENAME + FILECANNOT_BEDEFINED + FILECANNOT_BEDIRECTORY)
-	mov si, SDASecondName
-	lea di, [ _renfileAccess + bp ]			; renamed file dir access block
-	call LocateFile					; check file path
-	ifc _renameFile_40				; if file does not exist -->
-
-		; both files seem ok, so we'll move them
-	mov al, byte [ _existfileAccess + fileAcDrive + bp ]
-	cmp al, byte [ _renfileAccess + fileAcDrive + bp ]
-	mov ax, pexterrPathNotFound
-	stc
-	ifnz _renameFile_40				; cannot move across drives -->
-
-	mov cx, word [ _existfileAccess + fileAcDirCluster + _high + bp ]
-	mov dx, word [ _existfileAccess + fileAcDirCluster + _low + bp ]
-	push word [ _renfileAccess + fileAcDirCluster + _high + bp ]
-	push word [ _renfileAccess + fileAcDirCluster + _low + bp ]
-	call _cmp32
-	jnz _renameFile_22				; if must move files across dirs -->
-
-	setDS ss
-	mov si,	word [ _renfileAccess + fileAcNameOffset + bp ]
-	les di, [ _existfileAccess + fileAcBufferPtr + bp ]
-	add di,	word [ _existfileAccess + fileAcDirOffset + bp ]
-	call convFilenametoFCBString			; convert name
-
-	les si, [ _existfileAccess + fileAcBufferPtr + bp ]
-	call locateCCBPHeader
-	call CCBChanged					; update buffer
-	jmp short _renameFile_38			; exit -->
-
-		; move entry between directories
-_renameFile_22:
-	and word [ _renfileAccess + fileAcDrive + bp ], 7FFFh
-	mov ax, word [ _renfileAccess + fileAcDrive + bp ]
-	mov dx, word [ _renfileAccess + fileAcDirCluster + _low + bp ]
-	mov cx, word [ _renfileAccess + fileAcDirCluster + _high + bp ]
-	call LocateFreeDirSlot				; can we find a valid empty entry ?
-	ifc _renameFile_40				; if can't find free slot -->
-
-	stordarg _wherePointer, es, si
-	mov di, si					; where entry must be copied to
-
-	lds si, [ _existfileAccess + fileAcBufferPtr + bp ]
-	add si,	word [ _existfileAccess + fileAcDirOffset + bp ]
-	mov cx, ( sizeDIRENTRY / 2 )
-	repe movsw					; copy entry from source dir
-
-	setDS ss
-	getdarg es, di, _wherePointer
-	mov si, word [ _renfileAccess + fileAcNameOffset + bp ]
-	call convFilenametoFCBString			; rename file
-
-	getdarg es, si, _wherePointer
-	call locateCCBPHeader
-	call CCBChanged					; update buffer
-
-	les di, [ _existfileAccess + fileAcBufferPtr + bp ]
-	mov bx,	word [ _existfileAccess + fileAcDirOffset + bp ]
-	mov byte [ es:di + bx ], DIRENTRY_DELETED
-	call CCBChanged
-
-		; return
-_renameFile_38:
-	or ax, ax					; no carry
-
-_renameFile_40:
-	Return
+_IFSRenameFile: equ _IFSUnsupported
