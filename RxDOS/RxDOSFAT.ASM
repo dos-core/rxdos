@@ -15,13 +15,14 @@ the file LICENSE.TXT.
 
 %endif
 
-	cpu 8086
-
-	segment RXDOS align=16 class=RXDOS use16 public
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
 
 	global AllocateCluster
 	global AllocateInitCluster
@@ -51,7 +52,7 @@ the file LICENSE.TXT.
 	extern _cmp32
 	extern _mul32
 	extern _div32
-
+%endif
 
 		; Definitions
 MINCLUSTER	EQU 2					; min cluster value

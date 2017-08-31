@@ -15,13 +15,14 @@ the file LICENSE.TXT.
 
 %endif
 
-	cpu 8086
-
-	segment RXDOS align=16 class=RXDOS use16 public
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
 
 	global copyCurrentPSP
 	global loadProgram
@@ -53,7 +54,7 @@ the file LICENSE.TXT.
 	extern pexterrNotEnoughMemory
 
 	extern StringLength
-
+%endif
 
 		; Load Program Image (COM, SYS, etc... )
 		;

@@ -15,13 +15,14 @@ the file LICENSE.TXT.
 
 %endif
 
-	cpu 8086
-
-	segment RXDOS align=16 class=RXDOS use16 public
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
 
 	global initFCBfromSFT
 	global buildFindFromFCB
@@ -33,7 +34,7 @@ the file LICENSE.TXT.
 	extern locateCCBPHeader
 
 	extern _RxDOS_pDTA
-
+%endif
 
 		; Init FCB from an opened SFT
 		;

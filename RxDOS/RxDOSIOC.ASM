@@ -15,13 +15,14 @@ the file LICENSE.TXT.
 
 %endif
 
-	cpu 8086
-
-	segment RXDOS align=16 class=RXDOS use16 public
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
 
 	global _IOControl_440D
 
@@ -46,7 +47,7 @@ the file LICENSE.TXT.
 	extern pexterrCurrentDirectory
 	extern pexterrNoMoreFiles
 	extern pexterrFileExists
-
+%endif
 
 		; RxDOS 7.20N:	Structs moved into RXDSTRUC.MAC
 

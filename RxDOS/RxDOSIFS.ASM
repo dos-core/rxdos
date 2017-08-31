@@ -15,13 +15,14 @@ the file LICENSE.TXT.
 
 %endif
 
-	cpu 8086
-
-	segment RXDOS align=16 class=RXDOS use16 public
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
 
 	global Interrupt2F
 
@@ -127,7 +128,7 @@ the file LICENSE.TXT.
 	extern getDaysSince1980
 	extern StringLength
 	extern condStringLength
-
+%endif
 
 		; Installable File System (Int2F.11) Dispatch Table
 IFSServicesTable:

@@ -15,13 +15,14 @@ the file LICENSE.TXT.
 
 %endif
 
-	cpu 8086
-
-	segment RXDOS align=16 class=RXDOS use16 public
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
 
 	global createSFTEntry
 	global FindAvailableSFTHandle
@@ -96,7 +97,7 @@ the file LICENSE.TXT.
 	extern pexterrCurrentDirectory
 	extern pexterrNoMoreFiles
 	extern pexterrFileExists
-
+%endif
 
 		; Map SFT handle to application handle
 		;

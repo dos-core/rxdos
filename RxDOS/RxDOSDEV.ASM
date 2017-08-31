@@ -33,13 +33,14 @@ Unfortunately there was never a December version.
 
 %endif
 
-	cpu 8086
-
-	segment RXDOS align=16 class=RXDOS use16 public
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
 
 	global checkforDeviceType
 	global checkforDeviceName
@@ -97,7 +98,7 @@ Unfortunately there was never a December version.
 	extern AmountFreeSpace
 	extern _TerminateProcess
 	extern getSysDateinDirFormat
-
+%endif
 
 		; Default StdIn Access
 		;

@@ -15,13 +15,14 @@ the file LICENSE.TXT.
 
 %endif
 
-	cpu 8086
-
-	segment RXDOS align=16 class=RXDOS use16 public
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
+
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public
+	segment RXDOS
 
 	global RxDOS_initialize
 	global RxDOS_Heap
@@ -93,7 +94,7 @@ the file LICENSE.TXT.
 	extern initReqBlock
 
 	extern RxDOS_USA_DefaultUpperCaseFunction
-
+%endif
 
 		; Allocatable Heap
 		;
