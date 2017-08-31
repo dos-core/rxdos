@@ -105,6 +105,8 @@ the file LICENSE.TXT.
 	extern pexterrCurrentDirectory
 	extern pexterrNoMoreFiles
 	extern pexterrFileExists
+
+	extern getWhereInDir
 %endif
 
 		; Macro. Pointer to Entry
@@ -2606,29 +2608,6 @@ _createFCBNAME_26:
 
 	cmp word [ _exceedsShortFormat + bp ], byte False
 	Return
-
-
-		; Return Where in Directory
-		;
-		; Input:
-		; ss:di	pointer to dir access block
-		;
-		; Output:
-		; dx:ax	directory sector
-		; cl	offset in items from start of sector
-		;
-		; Assumes ss == ds
-getWhereInDir:
-
-	mov ax, word [ fileAcDirOffset + di ]
-	sub ax, byte ccbData				; adjust for header offset
-	mov cl, sizeDIRENTRY				; bytes per entry
-	div cl						; remainder should be zero
-	mov cx, ax					; return in cl
-
-	mov ax, word [ fileAcDirSector + _low + di ]
-	mov dx, word [ fileAcDirSector + _high + di ]
-	retn
 
 
 		; Scan Directory (Exact Search)
