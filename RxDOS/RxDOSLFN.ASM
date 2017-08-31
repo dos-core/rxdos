@@ -2887,12 +2887,12 @@ seeIfDeviceName:
 	mov di, si
 	call checkforDeviceName				; see if char device name
 	mov ax, pexterrIllegalName			; (in case its an error)
-	jc getDevice_Return				; if invalid -->
+	jc .return					; if invalid -->
 
 	mov ax, es
 	or ax, ax					; nc character device
 
-getDevice_Return:
+.return:
 	pop di
 	retn
 
