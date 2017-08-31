@@ -6551,3 +6551,21 @@ _Unused_alFF:						; Set caller's al to 0FFh (FCB error but preserve CF)
 	mov al, 0FFh
 	jmp short _Unused_al
 
+
+%ifn _BUILD_OBJ
+ %include "RxDOSCCB.ASM"
+ %include "RxDOSDEV.ASM"
+ %include "RxDOSEXE.ASM"
+ %include "RxDOSFAT.ASM"
+ %include "RxDOSFCB.ASM"
+ %include "RxDOSFIL.ASM"
+ %include "RxDOSLFN.ASM"
+ %include "RxDOSF32.ASM"
+ %include "RxDOSIFS.ASM"
+ %include "RxDOSMEM.ASM"
+ %include "RxDOSSFT.ASM"
+ %include "RxDOSSTR.ASM"
+ %include "RxDOSCTB.ASM"
+ %include "RxDOSERR.ASM"
+ %include "RxDOSINI.ASM"
+%endif
