@@ -16,31 +16,31 @@ toolsdir="${PWD}/../dostools"
 cd RxBIO
 if [ -f RxBIO.ASM ]; then {
 	echo Building RxBIO
-	nasmbin RxBIO RXBIO SYS || exit
+	nasmbin RxBIO RxBIO SYS || exit
 } fi
 
 
 cd ../RxAPP
 if [ -f RxVDISK.ASM ]; then {
 	echo Building RxVDISK
-	nasmbin RxVDISK RXVDISK SYS || exit
+	nasmbin RxVDISK RxVDISK SYS || exit
 } fi
 
 if [ -f RxBOOT.ASM ]; then {
 	echo Building RxBOOT
-	nasmbin RxBOOT RXBOOT SYS || exit
+	nasmbin RxBOOT RxBOOT SYS || exit
 } fi
 
 if [ -f RxMBR.ASM ]; then {
 	echo Building RxMBR
-	nasmbin RxMBR RXMBR SYS || exit
+	nasmbin RxMBR RxMBR SYS || exit
 } fi
 
 if [ -f RxD_BOOT.ASM ]; then {
 	echo Building RxD_BOOT
-	nasmbin RxD_BOOT RXD_BOOT SYS || exit
-	if [ -f ../bin/RXBOOT.SYS ]; then {
-	cat ../bin/RXD_BOOT.SYS ../bin/RXBOOT.SYS > ../bin/RXD_BOOT.COM
+	nasmbin RxD_BOOT RxD_BOOT SYS || exit
+	if [ -f ../bin/RxBOOT.SYS ]; then {
+	cat ../bin/RxD_BOOT.SYS ../bin/RxBOOT.SYS > ../bin/RxD_BOOT.COM
 	} fi
 } fi
 
@@ -92,10 +92,10 @@ if [ -f RxDOS.ASM -a \
 	dosemu -q -dumb -K doscmd.bat "$(realpath "$toolsdir" |
 sed -re 's/\//\\/g')" WARPLINK.EXE obj @warplink.lin || exit
 
-#	exe2bin -r -l=0 RxDOS.EXE ..\bin\RXDOS.SYS || exit
-#	exe2bin -x -r -l=0 RxDOS.EXE ../bin/RXDOS.SYS || exit
+#	exe2bin -r -l=0 RxDOS.EXE ..\bin\RxDOS.SYS || exit
+#	exe2bin -x -r -l=0 RxDOS.EXE ../bin/RxDOS.SYS || exit
 	dosemu -q -dumb -K doscmd.bat "$(realpath "$toolsdir" |
-sed -re 's/\//\\/g')" X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RXDOS.SYS || exit
+sed -re 's/\//\\/g')" X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RxDOS.SYS || exit
 
 	cd obj
 	rm warplink.lin
