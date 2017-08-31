@@ -85,31 +85,19 @@ if [ -f RxDOS.ASM -a \
 			echo $x.OBJ + >> warplink.lin
 		done
 
-	echo "STACK\$\$.OBJ,RxDOS.EXE,RxDOS.MAP,;" >> warplink.lin
+	echo "STACK\$\$.OBJ,RxDOS.EXE,..\\map\\RxDOS.MAP,;" >> warplink.lin
 
-	prevpwd="${PWD}"
-	mkdir -p "$toolsdir/tmp"
-	cp warplink.lin "$toolsdir/tmp"
-	cp "$toolsdir/WARPLINK.EXE" "$toolsdir/tmp"
-	for x in RxDOS RxDOSCCB RxDOSDEV RxDOSEXE RxDOSFAT RxDOSFCB RxDOSFIL \
-		RxDOSLFN RxDOSF32 RxDOSIFS RxDOSMEM RxDOSSFT RxDOSSTR \
-		RxDOSCTB RxDOSERR RxDOSINI; do
-		cp "../obj/$x.OBJ" "$toolsdir/tmp"
-	done
-	cp "STACK\$\$.OBJ" "$toolsdir/tmp"
-	cd "$toolsdir/tmp"
 	unix2dos -q warplink.lin
-	dosemu -q -dumb WARPLINK.EXE @warplink.lin || exit
-	cp rxdos.exe "$prevpwd/../bin/RxDOS.EXE"
-	cp rxdos.map "$prevpwd/../map/RxDOS.MAP"
+	cd ..
+	dosemu -q -dumb -K doscmd.bat "$(realpath "$toolsdir" |
+sed -re 's/\//\\/g')" WARPLINK.EXE obj @warplink.lin || exit
 
-	cp "$toolsdir/X2B_IGNR.COM" "$toolsdir/tmp"
 #	exe2bin -r -l=0 RxDOS.EXE ..\bin\RXDOS.SYS || exit
 #	exe2bin -x -r -l=0 RxDOS.EXE ../bin/RXDOS.SYS || exit
-	dosemu -q -dumb X2B_IGNR.COM RxDOS.EXE RXDOS.SYS || exit
+	dosemu -q -dumb -K doscmd.bat "$(realpath "$toolsdir" |
+sed -re 's/\//\\/g')" X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RXDOS.SYS || exit
 
-	cp rxdos.sys "$prevpwd/../bin/RXDOS.SYS"
-	cd "$prevpwd"
+	cd obj
 	rm warplink.lin
 	rm STACK\$\$.OBJ
 } fi
@@ -144,24 +132,14 @@ if [ -f RxCMD.ASM -a \
 	RxCMDPRM RxCMDREN RxCMD; do
 		echo "$x.OBJ +" >> warplink.lin
 	done
-	echo "STACK\$\$.OBJ,RXCMD.EXE,RxCMD.MAP,;" >> warplink.lin
+	echo "STACK\$\$.OBJ,..\\bin\\RxCMD.EXE,..\\map\\RxCMD.MAP,;" >> warplink.lin
 
-	prevpwd="${PWD}"
-	mkdir -p "$toolsdir/tmp"
-	cp warplink.lin "$toolsdir/tmp"
-	cp "$toolsdir/WARPLINK.EXE" "$toolsdir/tmp"
-	for x in RxCMD RxCMDCPY RxCMDDIR RxCMDFOR \
-	RxCMDPRM RxCMDREN; do
-		cp "../obj/$x.OBJ" "$toolsdir/tmp"
-	done
-	cp "STACK\$\$.OBJ" "$toolsdir/tmp"
-	cd "$toolsdir/tmp"
 	unix2dos -q warplink.lin
-	dosemu -q -dumb WARPLINK.EXE @warplink.lin || exit
-	cp rxcmd.exe "$prevpwd/../bin/RxCMD.EXE"
-	cp rxcmd.map "$prevpwd/../map/RxCMD.MAP"
+	cd ..
+	dosemu -q -dumb -K doscmd.bat "$(realpath "$toolsdir" |
+sed -re 's/\//\\/g')" WARPLINK.EXE obj @warplink.lin || exit
 
-	cd "$prevpwd"
+	cd obj
 	rm warplink.lin
 	rm STACK\$\$.OBJ
 } fi
