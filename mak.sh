@@ -52,6 +52,7 @@ if [ -f RxD_BOOT.ASM ]; then {
 
 
 cd ../RxDOS
+
 if [ -f RxDOS.ASM -a \
 	-f RxDOSCCB.ASM -a \
 	-f RxDOSDEV.ASM -a \
@@ -68,6 +69,10 @@ if [ -f RxDOS.ASM -a \
 	-f RxDOSCTB.ASM -a \
 	-f RxDOSERR.ASM -a \
 	-f RxDOSINI.ASM ]; then {
+  if ((!_BUILD_OBJ)); then {
+	echo Building RxDOS
+	nasmbin RxDOS RxDOS SYS || exit
+  } else {
 	echo Building RxDOS
 	for x in RxDOS RxDOSCCB RxDOSDEV RxDOSEXE RxDOSFAT RxDOSFCB RxDOSFIL \
 		RxDOSLFN RxDOSF32 RxDOSIFS RxDOSMEM RxDOSSFT RxDOSSTR \
@@ -106,6 +111,7 @@ sed -re 's/\//\\/g')" X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RxDOS.SYS || exit
 	cd obj
 	rm warplink.lin
 	rm STACK\$\$.OBJ
+  } fi
 } fi
 
 

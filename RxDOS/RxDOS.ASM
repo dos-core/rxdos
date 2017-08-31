@@ -43,18 +43,18 @@ Performs the actual disk (Int13) access.
 %endif
 
 %ifnidni __OUTPUT_FORMAT__, obj
- %clear
- %error "RxDOS can't yet build with NASM output format bin"
+ %define _BUILD_OBJ 0
 %endif
 
 	cpu 8086
 
-	segment RXDOS align=16 class=RXDOS use16 public start=0
-	segment RXDOS
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
 %include "RXOPTION.MAC"
+
+%if _BUILD_OBJ
+	segment RXDOS align=16 class=RXDOS use16 public start=0
+	segment RXDOS
 
 	global RxDOS_LFNTempStoreCount
 	global RxDOS_LFNTempStorage
@@ -313,6 +313,10 @@ Performs the actual disk (Int13) access.
 
 
 ..start:
+%else	; not _BUILD_OBJ
+			org 0
+%endif
+
 RxDOS_start:		jmp near RxDOS_initialize
 			db 0
 
