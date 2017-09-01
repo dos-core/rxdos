@@ -1441,7 +1441,7 @@ DefineDPB16:
 	mov cx, sizeShiftTable
 	repnz scasb
 
-	sub cx, strict word sizeShiftTable - 1
+	sub cx, sizeShiftTable - 1
 	neg cx						; proper sense
 
 	pop es
