@@ -107,7 +107,7 @@ GetDeviceParameters:
 
 	Entry
 	ddef	ptrtoBuffer
-	def	size, cx
+	def	_size, cx
 
 	mov ax, pexterrInvalidFunction
 	cmp cx, sizeExtDPB
@@ -127,7 +127,7 @@ GetDeviceParameters:
 	mov es, word [ es:bx + _ES ]			; buffer address
 
 	getdarg ds, si, _ptrtoBuffer			; save pointer
-	getarg cx, _size
+	getarg cx, __size
 
 	sub cx, 2
 	mov [ es:di ], cx				; set length in WORD

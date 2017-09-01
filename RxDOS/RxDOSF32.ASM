@@ -88,7 +88,6 @@ Get_ExtDPB:
 
 	Entry
 	ddef	ptrtoBuffer
-	def	size, cx
 
 	mov ax, pexterrBadReqStruc
 	cmp cx, byte sizeEXTDPB + 2
