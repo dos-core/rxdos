@@ -124,7 +124,7 @@ Get_ExtDPB:
 	clc
 
 Get_ExtDPB_return:
-	retn
+	Return
 
 
 		; 7303h Get_ExtFreeSpace
