@@ -6553,19 +6553,34 @@ _Unused_alFF:						; Set caller's al to 0FFh (FCB error but preserve CF)
 
 
 %ifn _BUILD_OBJ
+align 16, db 0
  %include "RxDOSCCB.ASM"
+align 16, db 0
  %include "RxDOSDEV.ASM"
+align 16, db 0
  %include "RxDOSEXE.ASM"
+align 16, db 0
  %include "RxDOSFAT.ASM"
+align 16, db 0
  %include "RxDOSFCB.ASM"
+align 16, db 0
  %include "RxDOSFIL.ASM"
+align 16, db 0
  %include "RxDOSLFN.ASM"
+align 16, db 0
  %include "RxDOSF32.ASM"
+align 16, db 0
  %include "RxDOSIFS.ASM"
+align 16, db 0
  %include "RxDOSMEM.ASM"
+align 16, db 0
  %include "RxDOSSFT.ASM"
+align 16, db 0
  %include "RxDOSSTR.ASM"
+align 16, db 0
  %include "RxDOSCTB.ASM"
+align 16, db 0
  %include "RxDOSERR.ASM"
+align 16, db 0
  %include "RxDOSINI.ASM"
 %endif
