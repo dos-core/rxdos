@@ -49,7 +49,7 @@ RXDOS_DOSLOADBUFFER		equ 700h
 %endif
 	segment RXBOOT
 
-RxDOS_START:			jmp RxDOS_LOAD
+RxDOS_START:			jmp strict near RxDOS_LOAD
 
 		; this information is standard for every boot sector
 __bsOemName			db 'RxDOS6.0'		; 'RxDOS' if formatted by us
