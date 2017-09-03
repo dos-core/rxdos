@@ -152,7 +152,7 @@ RxBIOS_FIXEDDRIVEMASK		equ 80h			; fixed drive mask
 
 
 		; messages
-RXDOSBIO_MSGDivideByZero:	db "Int0: Divide by zero.", cr, lf
+RXDOSBIO_MSGDivideByZero:	db "Interrupt 00h: Divide by zero.", cr, lf
 				db "Press any key to reboot.", cr, lf, 0
 RXDOSBIO_MSGLoadingRxDOS:	db "Starting RxDOS...", cr, lf, 0
 RXDOSBIO_MSGErrorLoadingSystem: db cr, lf, "Error loading RxDOS. Please reboot. ", 0
