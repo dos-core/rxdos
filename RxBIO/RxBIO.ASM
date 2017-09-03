@@ -2345,6 +2345,8 @@ Interrupt_0:
 	hlt
 	jmp short .loop
 .gotkey:
+	xor ax, ax
+	int 16h
 	int 19h
 
 
