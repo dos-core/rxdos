@@ -865,6 +865,19 @@ RxBIO_EvalHardware_12:
 	mov ax, 40h
 	mov es, ax
 	mov al, byte [ es:_BIOS_NumFixedDrives ]
+
+	test ax, ax
+	jnz .got_fixed_units
+
+	mov ah, 8
+	mov dl, 80h
+	stc
+	int 13h
+	mov ax, 0
+	jc .got_fixed_units
+	mov al, dl
+
+.got_fixed_units:
 	mov word [ _FixedDrives ], ax			; number of fixed drives
 
 		; determine (manufacture) floppy drives
