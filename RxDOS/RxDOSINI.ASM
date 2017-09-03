@@ -66,6 +66,8 @@ the file LICENSE.TXT.
 	extern RxDOS_start
 
 	extern _CallDOS
+	extern _Interrupt_00
+	extern _Interrupt_06
 	extern _Interrupt_20
 	extern _Interrupt_21
 	extern _Interrupt_23
@@ -2422,9 +2424,17 @@ RxDOS_initialize:
 	mov ax, 0500h					; set page zero
 	int 10h
 
-		; set interrupt vectors for interrupt 21, 23, ... 28, 2F, 30
+		; set interrupt vectors for interrupt 00, 06, 21, 23, ... 28, 2F, 30
 	xor ax, ax
 	mov ds, ax
+	mov bx, ( 00h * 4 )				; Int21
+	mov word [ _pointer + bx ], _Interrupt_00
+	mov word [ _segment + bx ], cs
+
+	mov bx, ( 06h * 4 )				; Int21
+	mov word [ _pointer + bx ], _Interrupt_06
+	mov word [ _segment + bx ], cs
+
 	mov bx, ( 21h * 4 )				; Int21
 	mov word [ _pointer + bx ], _Interrupt_21
 	mov word [ _segment + bx ], cs

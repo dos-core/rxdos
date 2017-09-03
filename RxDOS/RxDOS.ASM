@@ -72,6 +72,8 @@ Performs the actual disk (Int13) access.
 	global _div32
 	global _cmp32
 
+	global _Interrupt_00
+	global _Interrupt_06
 	global _Interrupt_20
 	global _Interrupt_21
 	global _Interrupt_23
@@ -642,6 +644,11 @@ _RxDOS_DOSProgramName	db 'RxDOS7.22'		; Product Name. First 8 bytes copied into 
 
 _RxDOS_ContrlC_Message	asciz '^C',13,10
 
+dos_msg:
+.int0:		db "Interrupt 00h: Divide by zero.", 13, 10, 0
+.int6:		db "Interrupt 06h: Invalid opcode.", 13, 10, 0
+
+
 		; Device Assign Table
 
 stdDeviceAssignTable:
@@ -830,6 +837,43 @@ _RxDOS_maxFunctionCode equ ($ - _RxDOS_functions)/2
 
 		; Critical Section Patch Area
 _RxDOS_CritSectPatches	times 5 dw 0
+
+
+		; Display Message
+		;
+		; Uses Int10.0E
+		;
+		; INP:	cs:si -> 0-terminated message
+		; CHG:	ax, bx, si, bp
+		; OUT:	-
+dos_disp_msg:
+.:
+	cs lodsb					; get character (cs:si)
+
+	or al, al					; null terminator ?
+	jz .end						; yes -->
+	push si
+	mov ah, 0Eh
+	mov bx, 0007h
+	int 10h
+	pop si
+	jmp short .
+.end:
+	retn
+
+
+_Interrupt_00:
+	mov si, dos_msg.int0
+	call dos_disp_msg
+	mov ax, 4C7Fh
+	int 21h
+
+
+_Interrupt_06:
+	mov si, dos_msg.int6
+	call dos_disp_msg
+	mov ax, 4C7Fh
+	int 21h
 
 
 		; Interrupt 21
