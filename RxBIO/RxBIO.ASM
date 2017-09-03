@@ -3941,6 +3941,7 @@ SaveInterruptsTable:
 	savint 01h
 	savint 03h
 	savint 04h
+	savint 06h
 	savint 08h
 
 	savint 16h
