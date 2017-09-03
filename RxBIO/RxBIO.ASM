@@ -2337,8 +2337,8 @@ Interrupt_0:
 
 		; Interrupt 19 - Ctrl Alt Delete
 Interrupt_19:
-	cld
 	cli
+	cld
 
 	xor ax, ax
 	mov es, ax
