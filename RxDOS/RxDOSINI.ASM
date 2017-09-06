@@ -2428,11 +2428,11 @@ RxDOS_initialize:
 		; set interrupt vectors for interrupt 00, 06, 21, 23, ... 28, 2F, 30
 	xor ax, ax
 	mov ds, ax
-	mov bx, ( 00h * 4 )				; Int21
+	mov bx, ( 00h * 4 )				; Int00
 	mov word [ _pointer + bx ], _Interrupt_00
 	mov word [ _segment + bx ], cs
 
-	mov bx, ( 06h * 4 )				; Int21
+	mov bx, ( 06h * 4 )				; Int06
 	mov word [ _pointer + bx ], _Interrupt_06
 	mov word [ _segment + bx ], cs
 
