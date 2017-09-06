@@ -2087,6 +2087,7 @@ Init_AttachedFileSystem_16:
 		; CONFIG Switches
 F5_SkipConfigProcessing dw 0000				; non-zero if skipping
 F8_PromptRequired	dw 0000				; non-zero if prompt required
+init_verbose:		dw 1
 
 
 		; CONFIG.SYS keywords
@@ -2529,6 +2530,8 @@ RxDOS_initialize:
 	lea di, [ word _execBlock + bp ]
 	clearMemory sizeEXEC				; clear load exec block
 
+	mov word [ bp + _execBlock + lexecCommandTail + 2 ], cs
+	mov word [ bp + _execBlock + lexecCommandTail ], init_msg.double_null
 	mov al, ' '
 	mov cx, 128
 	mov di, _RxDOSini_CommandShell
@@ -2585,13 +2588,17 @@ RxDOS_init_24:
 
 	lea bx, [ word _execBlock + bp ]		; exec block address
 	mov dx, _RxDOS_CommandShell
+	call init_shell_verbose
 	Int21 ExecuteProgram, 00			; execute custom user shell from RXCONFIG.SYS SHELL= statement
+	call init_shell_verbose_error
 	jnc RxDOS_init_68				; only branches if the main shell terminated
 
 RxDOS_init_36:
 	lea bx, [ word _execBlock + bp ]		; exec block address
 	mov dx, _RxDOSini_DefaultShell
+	call init_shell_verbose
 	Int21 ExecuteProgram, 00			; if failed, execute default shell (RXCMD.EXE)
+	call init_shell_verbose_error
 	jnc RxDOS_init_68				; only branches if the main shell terminated
 		; RxDOS 7.30: This should check the error code returned here.
 
@@ -2600,14 +2607,19 @@ RxDOS_init_36:
 	mov word [ _RxDOSini_DefaultShellExt + 0 ], ".C"
 	mov word [ _RxDOSini_DefaultShellExt + 2 ], "OM"; set .COM extension
 	mov byte [ _RxDOSini_DefaultShellExt + 4 ], 0	; make sure it's zero
+	call init_shell_verbose
 
 	Int21 ExecuteProgram, 00			; if failed, execute default shell (RXCMD.COM)
+	call init_shell_verbose_error
 	jnc RxDOS_init_68				; only branches if the main shell terminated
 		; RxDOS 7.30: This should check the error code returned here.
 
 	lea bx, [ word _execBlock + bp ]
 	mov dx, _RxDOSini_compatibilityshell
+	call init_shell_verbose
+
 	Int21 ExecuteProgram, 00			; if failed, execute compatibility shell (COMMAND.COM)
+	call init_shell_verbose_error
 	jnc RxDOS_init_68				; only branches if the main shell terminated
 
 		; Display Error Message and stop
@@ -2632,9 +2644,134 @@ RxDOS_init_62:
 
 		; Wait for Ctrl+Alt+Del
 RxDOS_init_68:
+	push cs
+	pop ds
+	mov si, init_msg.reboot_prompt
+	call RxDOSIni_TypeMessage
+.loop:
 	xor ax, ax
 	int 16h						; this allows Ctrl+Alt+Del
-	jmp short RxDOS_init_68				; infinite loop
+	jmp short .loop					; infinite loop
+
+
+		; INP:	ds:dx -> ASCIZ shell to be loaded
+		;	es:bx -> exec block
+		; OUT:	-
+		; CHG:	si
+init_shell_verbose:
+	push ds
+	 push cs
+	 pop ds
+	cmp word [ init_verbose ], 0
+	je .return
+	 mov si, init_msg.loading_shell
+	call RxDOSIni_TypeMessage
+	pop ds
+	push ds
+	mov si, dx
+	call RxDOSIni_TypeMessage
+	 push cs
+	 pop ds
+	mov si, init_msg.loading_shell_arg
+	call RxDOSIni_TypeMessage
+	pop ds
+	push ds
+	lds si, [ es:bx + lexecCommandTail ]
+	inc si
+	call RxDOSIni_TypeMessage
+	 push cs
+	 pop ds
+	mov si, init_msg.loading_shell_after
+	call RxDOSIni_TypeMessage
+.return:
+	pop ds
+	retn
+
+
+		; INP:	CF = whether error
+		;	CY if error,
+		;	 ax = error code
+		; OUT:	-
+		; CHG:	ds, si, bx
+init_shell_verbose_error:
+	pushf
+	push cs
+	pop ds
+	jnc .return
+	cmp word [ init_verbose ], 0
+	je .return
+	mov si, init_msg.loaded_shell_error
+	call RxDOSIni_TypeMessage
+	call init_disp_ax_hex
+	mov si, init_msg.loaded_shell_error_q
+	call RxDOSIni_TypeMessage
+
+	cmp ax, init_msg_errors.count
+	jb .valid
+	mov si, init_msg_errors.unknown_error
+	jmp short .disp_error
+.valid:
+	mov bx, ax
+	add bx, bx
+	mov si, [ init_msg_errors + bx ]
+.disp_error:
+	call RxDOSIni_TypeMessage
+	mov si, init_msg.linebreak
+	call RxDOSIni_TypeMessage
+.return:
+	popf
+	retn
+
+
+		; INP:	ax = number
+		; OUT:	-
+		; CHG:	-
+init_disp_ax_hex:		; ax
+	xchg al,ah
+	call init_disp_al_hex		; display former ah
+	xchg al,ah			;  and fall trough for al
+init_disp_al_hex:		; al
+	push cx
+	mov cl,4
+	ror al,cl
+	call init_disp_al_lownibble_hex	; display former high-nibble
+	rol al,cl
+	pop cx
+					;  and fall trough for low-nibble
+init_disp_al_lownibble_hex:
+	push ax				; save ax for call return
+	and al,00001111b		; high nibble must be zero
+	add al,'0'			; if number is 0-9, now it's the correct character
+	cmp al,'9'
+	jna .decimalnum			; if we get decimal number with this, ok -->
+	add al, - ('9' + 1) + 'A'	;  otherwise, adjust to our alphabet
+ .decimalnum:
+	call init_disp_al
+	pop ax
+	retn
+
+		; INP:	al = character
+		; OUT:	-
+		; CHG:	-
+init_disp_al:
+	push bx
+%if 0
+	push ax
+	push ax
+	mov ah, 0Fh
+	int 10h				; get video mode and active page
+	pop ax
+	mov ah, 0Eh
+	mov bl, 07h
+	push bp
+	int 10h
+	pop bp
+	pop ax
+%else
+	int 29h
+%endif
+	pop bx
+	retn
 
 
 		; Type Message
@@ -2690,18 +2827,73 @@ checkforF8_exit:
 	retn
 
 
+init_msg:
+.loading_shell:		db "init: Loading shell ", '"', 0
+.loading_shell_arg:	db '"', " arguments: ", '"', 0
+.loading_shell_after:	db '"', 13, 10, 0
+.loaded_shell_error:	db "init: Error ",0
+.loaded_shell_error_q:	db "h: ",0
+.linebreak:		db 13,10,0
+.reboot_prompt:		db "Halted. Press Ctrl+Alt+Del to reboot.",13,10
+.double_null:		db 0,0
+
+	align 2
+init_msg_errors:
+.:
+	dw .no_error
+	dw .invalid_function
+	dw .file_not_found
+	dw .path_not_found
+	dw .no_handles_available
+	dw .access_denied
+	dw .invalid_handle
+	dw .mcb_destroyed
+	dw .insufficient_memory
+	dw .mcb_invalid
+	dw .environment_invalid
+	dw .format_invalid
+	dw .access_code_invalid
+	dw .data_invalid
+	dw .fixup_overflow
+	dw .invalid_drive
+	dw .attempted_to_remove_current_directory
+	dw .not_same_device
+	dw .no_more_files
+.count equ ($ - .) / 2
+.unknown_error:		db "Unknown error",0
+.no_error:		db "No error",0
+.invalid_function:	db "Invalid function",0
+.file_not_found:	db "File not found",0
+.path_not_found:	db "Path not found",0
+.no_handles_available:	db "No handles available",0
+.access_denied:		db "Access denied",0
+.invalid_handle:	db "Invalid handle",0
+.mcb_destroyed:		db "MCB destroyed",0
+.insufficient_memory:	db "Insufficient memory",0
+.mcb_invalid:		db "MCB invalid",0
+.environment_invalid:	db "Environment invalid",0
+.format_invalid:	db "Format invalid",0
+.access_code_invalid:	db "Access code invalid",0
+.data_invalid:		db "Data invalid",0
+.fixup_overflow:	db "Fixup overflow",0
+.invalid_drive:		db "Invalid drive",0
+.attempted_to_remove_current_directory:		db "Attempted to remove current directory",0
+.not_same_device:	db "Not same device",0
+.no_more_files:		db "No more files",0
+
+
 		; Error Message
 RxDOSmsg_CouldNotFindShell:
-	db 13,10,"Could not find command shell",0
+	db 13,10,"Could not find command shell",13,10,0
 
 RxDOSmsg_InvalidPathShell:
-	db 13,10,"Invalid Path: Shell command line probably contains wrong path",0
+	db 13,10,"Invalid Path: Shell command line probably contains wrong path",13,10,0
 
 RxDOSmsg_ArenaTrashedShell:
-	db 13,10,"Arena trashed detected while loading command shell",0
+	db 13,10,"Arena trashed detected while loading command shell",13,10,0
 
 RxDOSmsg_NotEnoughMemoryShell:
-	db 13,10,"Not enough memory to load command shell",0
+	db 13,10,"Not enough memory to load command shell",13,10,0
 
 RxDOSmsg_CouldNotLoadDriver:
 	db 13,10,"Could not load: ",0
