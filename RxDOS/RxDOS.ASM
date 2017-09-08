@@ -317,6 +317,7 @@ Performs the actual disk (Int13) access.
 ..start:
 %else	; not _BUILD_OBJ
 			org 0
+			[map all __MAPFILE__]
 %endif
 
 RxDOS_start:		jmp near RxDOS_initialize
