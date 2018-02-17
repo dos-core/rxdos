@@ -3642,8 +3642,10 @@ ReadPartitionTable:
 	mov si, RxBIO_DiskBuffer + sizeSector - 2 - sizePARTITIONTABLE
 	mov ax, word [ RxBIO_DiskBuffer + sizeSector - 2 ]
 	cmp ax, RxDOS_PARTITIONSIGNATURE
-	clc
+	je .12			; (NC if ZR) valid signature -->
+	stc
 
+.12:
 ReadPartitionTable_12:
 	RestoreSegments bx, di
 	retn
