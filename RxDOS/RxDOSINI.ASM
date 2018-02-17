@@ -1821,7 +1821,9 @@ RxDOSini_CDSSubSystem:
 %endif
 	setDS cs
 	mov ax, sizeCDS
-	mul word [ _RxDOS_bLastDrive ]			; ax contains offset to current drive
+	xor bx, bx
+	mov bl, [ _RxDOS_bLastDrive ]			; ax contains offset to current drive
+	mul bx
 	call AllocateSystemSpace
 	mov word [ _RxDOS_pCDS + _segment ], es
 	mov word [ _RxDOS_pCDS + _pointer ], di
