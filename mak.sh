@@ -100,13 +100,13 @@ if [ -f RxDOS.ASM -a \
 
 	unix2dos -q warplink.lin
 	cd ..
-	dosemu -q -dumb -K doscmd.bat "$(realpath "$toolsdir" |
-sed -re 's/\//\\/g')" WARPLINK.EXE obj @warplink.lin || exit
+	dosemu -q -dumb -E "doscmd.bat $(realpath "$toolsdir" |
+sed -re 's/\//\\/g') WARPLINK.EXE obj @warplink.lin" || exit
 
 #	exe2bin -r -l=0 RxDOS.EXE ..\bin\RxDOS.SYS || exit
 #	exe2bin -x -r -l=0 RxDOS.EXE ../bin/RxDOS.SYS || exit
-	dosemu -q -dumb -K doscmd.bat "$(realpath "$toolsdir" |
-sed -re 's/\//\\/g')" X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RxDOS.SYS || exit
+	dosemu -q -dumb -E "doscmd.bat $(realpath "$toolsdir" |
+sed -re 's/\//\\/g') X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RxDOS.SYS" || exit
 
 	cd obj
 	rm warplink.lin
@@ -148,8 +148,8 @@ if [ -f RxCMD.ASM -a \
 
 	unix2dos -q warplink.lin
 	cd ..
-	dosemu -q -dumb -K doscmd.bat "$(realpath "$toolsdir" |
-sed -re 's/\//\\/g')" WARPLINK.EXE obj @warplink.lin || exit
+	dosemu -q -dumb -E "doscmd.bat $(realpath "$toolsdir" |
+sed -re 's/\//\\/g') WARPLINK.EXE obj @warplink.lin" || exit
 
 	cd obj
 	rm warplink.lin
