@@ -173,14 +173,19 @@ DisplayPrompt_10:
 
 	cmp al, 't'
 	ife DisplayPrompt_Time				; $t time -->
+	COMPAT_NOP
 	cmp al, 'd'
 	ife DisplayPrompt_Date				; $d date -->
+	COMPAT_NOP
 	cmp al, 'p'
 	ife DisplayPrompt_Path				; $p path -->
+	COMPAT_NOP
 	cmp al, 'v'
 	ife DisplayPrompt_Version			; $v version -->
+	COMPAT_NOP
 	cmp al, 'n'
 	ife DisplayPrompt_Drive				; $d drive -->
+	COMPAT_NOP
 	cmp al, '_'
 	je DisplayPrompt_CRLF				; $_ line break -->
 	cmp al, 'h'
@@ -379,7 +384,7 @@ formatCurrentDate:
 
 	; eventually, make this international
 
-	lea dx, [ _countryInfo + bp ]
+	lea dx, [ COMPAT_WORD _countryInfo + bp ]
 	Int21 CountryDependentInfo, 00			; get country info
 
 	Int21 GetDate
@@ -423,7 +428,7 @@ formatCurrentTime:
 
 	; eventually, make this international
 
-	lea dx, [ _countryInfo + bp ]
+	lea dx, [ COMPAT_WORD _countryInfo + bp ]
 	Int21 CountryDependentInfo, 00			; get country info
 
 	Int21 GetTime
@@ -505,8 +510,8 @@ _date_12:
 		; parse arg at [ si ]
 _date_26:
 	push si						; pointer to start of first arg
-	lea si, [ _parsedDate + bp ]			; start of buffer
-	lea di, [ _parsedDatePtrs + bp ]
+	lea si, [ COMPAT_WORD _parsedDate + bp ]	; start of buffer
+	lea di, [ COMPAT_WORD _parsedDatePtrs + bp ]
 	call _GetDateTemplate
 
 	pop si
@@ -663,6 +668,7 @@ _time_12:
 	mov bl, byte [ _buffer + bufActualLength + bp ]
 	and bx, 255
 	ifz _timeReturn
+	COMPAT_NOP
 
 	add bx, bp
 	mov byte [ _buffer + bufData + bx ], 00		; place a null terminator
@@ -789,8 +795,11 @@ _GetDateTemplate:
 _GetDateTemplate_14:
 	lodsw						; get characters
 	Goto 'd', _GetDateTemplate_Day			; if day -->
+	COMPAT_NOP
 	Goto 'm', _GetDateTemplate_Month		; if month -->
+	COMPAT_NOP
 	Goto 'y', _GetDateTemplate_Year			; if year -->
+	COMPAT_NOP
 	jmp short _GetDateTemplate_Done
 
 _GetDateTemplate_Day:
@@ -867,7 +876,7 @@ returnDateTimeTemplate:
 	defbytes	countryInfo, sizeCOUNTRYINFO
 
 	push di
-	lea dx, [ _countryInfo + bp ]
+	lea dx, [ COMPAT_WORD _countryInfo + bp ]
 	Int21 CountryDependentInfo, 00			; get country info
 	mov word [ _countryCode + bp ], bx		; save value
 

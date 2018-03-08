@@ -157,6 +157,10 @@ shell which is accessible by Int2E.
 	extern _Rename
 
 
+%if _COMPAT
+	times 256 db 0
+%endif
+
 		; RxDOS interrupt 2Eh interface
 		;
 		; Usage:
@@ -742,7 +746,13 @@ _assignRedirect_08:
 	cmp al, '<'					; StdIn ?
 	jz _assignRedirect_StdIn			; yes -->
 	cmp al, '|'					; pipe ?
+%if _COMPAT
+	jnz .notjmp
+	jmp strict near _assignRedirect_Pipe
+.notjmp:
+%else
 	ifz _assignRedirect_Pipe			; yes -->
+%endif
 
 	add di, sizeArgCmd				; advance over command index
 	jmp short _assignRedirect_08			; go to next -->
@@ -782,7 +792,7 @@ _assignRedirect_StdIn:
 	call deletearg					; kill '<' arg
 
 	mov bx, word [ __execCtrlBlock + bp ]		; execution control block
-	lea dx, [ exCtrlStdInFileName + bx ]		; offset to filename
+	lea dx, [ COMPAT_WORD exCtrlStdInFileName + bx ]; offset to filename
 	call _asgnGetFileName				; arg to dx
 
 	ExOpenFile dx, OPEN_ACCESS_READONLY		; open read only
@@ -813,6 +823,7 @@ _assignRedirect_Pipe:
 	mov cx, OPEN_ACCESS_READWRITE			; create read/write
 	Int21 CreateUniqueFile				; if not found, create
 	ifc _assignRedirect_Error			; just display error -->
+	COMPAT_NOP
 
 	push ax
 	mov bx, ax
@@ -831,6 +842,7 @@ _assignRedirect_Pipe:
 	mov word [ exCtrlArgArray + _pointer + bx ], di
 	or word [ exCtrlFlags + bx ], exCtrlPiped	; say arg is piped.
 	jmp _assignRedirect_36				; exit -->
+	COMPAT_NOP
 
 
 		; append StdOut
@@ -2129,6 +2141,7 @@ _replaceForVar_08:
 	lodsb						; scan for % character
 	or al, al					; null terminator ?
 	ifz _replaceForVar_36				; yes -->
+	COMPAT_NOP
 	cmp al, '%'					; percent character ?
 	jnz _replaceForVar_08				; no, continue searching -->
 
@@ -2932,7 +2945,7 @@ _loadProgram:
 	push es
 	push di
 	setES ss
-	lea di, [ _ExecBlock + bp ]
+	lea di, [ COMPAT_WORD _ExecBlock + bp ]
 	clearMemory sizeEXEC
 
 	lea di, [ _FCB1 + bp ]
@@ -2945,7 +2958,7 @@ _loadProgram:
 	mov word [ _ExecBlock + lexecFCB_2 + _pointer + bp ], di
 	mov word [ _ExecBlock + lexecFCB_2 + _segment + bp ], ss
 
-	lea bx, [ _ExecBlock + bp ]
+	lea bx, [ COMPAT_WORD _ExecBlock + bp ]
 	mov ax, word [ _EnvSegment ]
 	mov word [ _ExecBlock + lexecEnvironment + bp ], ax
 		; Usually RxCMD's PSP should be active, so setting this
@@ -3008,7 +3021,7 @@ _loadProgram_12:
 		; go run program
 _loadProgram_20:
 	setES ss
-	lea bx, [ _ExecBlock + bp ]
+	lea bx, [ COMPAT_WORD _ExecBlock + bp ]
 	getdarg ds, dx, _progname
 	Int21 LFNExecuteProgram, 00
 		; RxDOS 7.20N:	This should really check for CY!
@@ -3036,7 +3049,7 @@ _initFCB:
 	push di
 	clearMemory sizeFCB
 
-	lea di, [ fcbName + di ]
+	lea di, [ COMPAT_WORD fcbName + di ]
 	clearMemory sizeFILENAME, 2020h			; double spaces
 
 	pop di
@@ -3077,7 +3090,7 @@ returnVolumeName_08:
 	mov dx, bx
 
 	pop di
-	lea bx, [ findDataLongFilename + di ]
+	lea bx, [ COMPAT_WORD findDataLongFilename + di ]
 	mov byte [ es:bx ], 0
 
 	lea bx, [ findDataShortFilename + di ]
@@ -3113,6 +3126,7 @@ DisplayErrorCode:
 
 	push bx
 	cmp ax, CmndError_RefTableEntries
+	COMPAT_NOP
 	jnc DisplayErrorCode_08
 
 	mov bx, ax
@@ -3585,7 +3599,7 @@ _sprintfNum:
 
 	push si
 	push di
-	lea di, [ _decDisplay + bp ]
+	lea di, [ COMPAT_WORD _decDisplay + bp ]
 	call _sprintfInitField				; init field to spaces
 	push di
 
@@ -3629,7 +3643,7 @@ _sprintfNum_12:
 
 	pop di
 	push di						; where to begin right justify
-	lea si, [ _decDisplay + bp ]			; where data stored
+	lea si, [ COMPAT_WORD _decDisplay + bp ]	; where data stored
 	cmp word [ _fieldwidth + bp ], byte 0		; left justified output ?
 	jz _sprintfNum_20				; yes -->
 
@@ -3974,6 +3988,7 @@ _call_12:
 	mov si, RxDOS_BatchFile
 	mov di, word [ RxDOS_PrevStackFrame ]
 	mov cx, sizeBATCH_ARGS
+	COMPAT_NOP
 	repz movsb					; copy current args to save area
 
 		; RxDOS 7.20N:	Move following done.
@@ -4268,7 +4283,7 @@ _Delete_42:
 		; ax	Number of arguments in array
 _DiskSelect:
 
-%if 0
+%if _COMPAT
 	push di
 	add di, sizeArgCmd				; check for no arguments
 	jc _diskSelect_32				; if error -->
@@ -4291,7 +4306,7 @@ _DiskSelect:
 	Int21 SelectDisk				; can we select a drive ?
 	Int21 CurrentDisk				; get current disk
 
-%if 0
+%if _COMPAT
 	inc si
 	inc si						; point [si] past drive
 %endif
@@ -4400,6 +4415,7 @@ _EndCall:
 	mov si, word [ RxDOS_PrevStackFrame ]
 	mov di, RxDOS_BatchFile
 	mov cx, sizeBATCH_ARGS
+	COMPAT_NOP
 	repz movsb					; copy
 
 	mov si, word [ RxDOS_PrevStackFrame ]
@@ -4620,8 +4636,10 @@ _If_16:
 _If_20:
 	cmp word [ bx + _ARGTYPE ], IF_ERRORLEVEL
 	ifz _ifErrorLevel
+	COMPAT_NOP
 	cmp word [ bx + _ARGTYPE ], IF_EXIST
 	ifz _ifExist
+	COMPAT_NOP
 
 	mov si, word [ bx + 4 + _ARGTEXT ]		; next arg
 	or si, si					; no text ?
@@ -5109,6 +5127,7 @@ _TypeNext:
 	mov dx, word [ argpointer + di ]		; point to filename arg
 	call DisplayLine				; show arg
 	jmp _TypeReturn					; return -->
+	COMPAT_NOP
 
 
 		; open and print
@@ -5288,7 +5307,7 @@ _Vol_30:
 	mov bx, _Dir_VolumeLabel			; print statement format
 
 _Vol_34:
-	lea di, [ _currdisk + bp ]			; pointer to current disk
+	lea di, [ COMPAT_WORD _currdisk + bp ]		; pointer to current disk
 	push di						; current disk
 	push bx						; format
 	lea di, [ _printbuffer + bp ]
@@ -5419,7 +5438,7 @@ CheckFileClose_08:
 		;
 LFNReturnPreferedFilenamePtr:
 
-	lea dx, [ findDataLongFilename + di ]
+	lea dx, [ COMPAT_WORD findDataLongFilename + di ]
 	cmp byte [ es:findDataLongFilename + di ], 0
 	jnz _lfnPref_08
 
@@ -5727,7 +5746,7 @@ _getStdinLine_08:
 	mov di, word [ _buffer + bp ]
 	mov bl, byte [ bufActualLength + di ]		; store character into buffer
 	xor bh, bh
-	lea dx, [ bufData + di + bx ]			; data address
+	lea dx, [ COMPAT_WORD bufData + di + bx ]	; data address
 
 	mov cx, 1
 	mov bx, STDIN
@@ -6010,7 +6029,7 @@ ReadBatchLine:
 
 ReadBatchLine_12:
 	mov cx, 1
-	lea dx, [ _tempbuffer + bp ]			; scan char by character till cr
+	lea dx, [ COMPAT_WORD _tempbuffer + bp ]	; scan char by character till cr
 	Int21 ReadFile					; read
 	jc ReadBatchLine_36				; if error -->
 	or ax, ax					; end of file ?
@@ -6122,6 +6141,7 @@ CommandBegin:
 	mov si, RxDOS_BatchFile
 	mov di, word [ RxDOS_PrevStackFrame ]		; copy args to stack frame
 	mov cx, sizeBATCH_ARGS
+	COMPAT_NOP
 	repz movsb					; copy
 
 
@@ -6476,6 +6496,13 @@ RxDOS_ForArgs:
 	dw -1
 
 
+%if _COMPAT
+RxDOS_Version:                  db "RxDOS Version 7.1.5", 0
+
+RxDOS_VersionCopyright:         db 13, 10
+                                db "(c) Copyright 1999 Api Software - All rights reserved", 13, 10 
+                                db "    For updates, visit http://rxdos.com", 13, 10, 13, 10, 0
+%else
 		; Version number
 		;
 		; RxDOS 7.20N:	Changed version from "RxDOS Version 7.1.5", changed
@@ -6493,6 +6520,7 @@ RxDOS_VersionCopyright:
 				db 13,10
 %endif
 				asciz
+%endif
 
 		; Error Table
 	align 2, db 0

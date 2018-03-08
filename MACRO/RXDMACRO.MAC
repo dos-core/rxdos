@@ -975,8 +975,10 @@ the file LICENSE.TXT.
 		dw %1
 		dw %%end - %%start
 		asciz %2
-%if 1
-		align 2,db 0
+%if _COMPAT
+		align 2, nop
+%elif 1
+		align 2, db 0
 %endif
 %%end:
 	%endmacro

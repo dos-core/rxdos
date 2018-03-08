@@ -68,7 +68,7 @@ _Rename:
 	getarg di, __argarray
 	mov cx, word [ sizeArgCmd + arglength + di ]
 	mov si, word [ sizeArgCmd + argpointer + di ]	; second argument
-	lea di, [ _destfile + bp ]			; parsed destination buffer
+	lea di, [ COMPAT_WORD _destfile + bp ]		; parsed destination buffer
 	call BuildParsedFilenameArray
 
 	cmp word [ _destfile + parsepathlength + bp ], byte 0
@@ -81,7 +81,7 @@ _Rename:
 	getarg di, __argarray
 	mov cx, word [ arglength + di ]
 	mov si, word [ argpointer + di ]		; first argument
-	lea di, [ _srcfile + bp ]			; parsed source buffer
+	lea di, [ COMPAT_WORD _srcfile + bp ]		; parsed source buffer
 	call BuildParsedFilenameArray
 
 	cmp word [ _srcfile + parseptrfilename + bp ], byte 0
@@ -127,7 +127,7 @@ _rename_18:
 
 	push si
 	push di
-	lea si, [ _finddata + findDataShortFilename + bp ]
+	lea si, [ COMPAT_WORD _finddata + findDataShortFilename + bp ]
 	call CopyString					; overwrite long name if missing
 	pop di
 	pop si
@@ -185,3 +185,4 @@ _renameError:
 	mov dx, CmndError_FileAlreadyExists
 	call DisplayErrorMessage
 	Return
+

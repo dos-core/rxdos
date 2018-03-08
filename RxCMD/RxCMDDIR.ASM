@@ -439,7 +439,7 @@ _dir_42:
 	mov bx, _Dir_VolumeLabel			; print statement format
 
 _dir_44:
-	lea di, [ _currdisk + bp ]			; pointer to current disk
+	lea di, [ COMPAT_WORD _currdisk + bp ]		; pointer to current disk
 	push di						; current disk
 	push bx						; format
 	lea di, [ _printbuffer + bp ]
@@ -488,12 +488,12 @@ _dir_54:
 	push di
 
 	mov ax, word [ _finddata + findDataCreateTime + finddataTime + bp ]
-	lea di, [ _asciiFileTime + bp ]
+	lea di, [ COMPAT_WORD _asciiFileTime + bp ]
 	call _dirTimeToAscii
 	push di
 
 	mov ax, word [ _finddata + findDataCreateTime + finddataDate + bp ]
-	lea di, [ _asciiFileDate + bp ]
+	lea di, [ COMPAT_WORD _asciiFileDate + bp ]
 	call _dirDateToAscii
 	push di
 
@@ -537,6 +537,7 @@ _dir_64:
 	mov di, _Dir_FileEntry
 	test byte [ _finddata + findDataAttributes + bp ], ATTR_DIRECTORY
 	ifz _dir_66					; if not a directory -->
+	COMPAT_NOP
 
 	mov di, _Dir_DirEntry
 
@@ -600,18 +601,18 @@ _dir_76:
 		; RxDOS 7.20N:	This assumes 512 byte sectors.
 
 	mov word [ _summaryline + bp ], _Dir_Files_MBSummary
-	lea di, [ _freespaceFraction + bp ]
+	lea di, [ COMPAT_WORD _freespaceFraction + bp ]
 	mov word [ di ], 0
 	push di
 
 _dir_82:
 	stordarg _freespace, dx, ax
 
-	lea di, [ _freespace + bp ]
+	lea di, [ COMPAT_WORD _freespace + bp ]
 	push di
-	lea di, [ _totalfilespace + bp ]
+	lea di, [ COMPAT_WORD _totalfilespace + bp ]
 	push di
-	lea di, [ _filesread + bp ]
+	lea di, [ COMPAT_WORD _filesread + bp ]
 	push di
 
 	push word [ _summaryline + bp ]
@@ -694,10 +695,15 @@ _filenameparsearray_12:
 	mov al, byte [ es:si ]
 
 	Goto '?', _filenameparsearray_WildChar
+	COMPAT_NOP
 	Goto '*', _filenameparsearray_WildChar
+	COMPAT_NOP
 	Goto '.', _filenameparsearray_Extension
+	COMPAT_NOP
 	Goto ':', _filenameparsearray_Path
+	COMPAT_NOP
 	Goto '\', _filenameparsearray_Path
+	COMPAT_NOP
 
 _filenameparsearray_18:
 	loop _filenameparsearray_12

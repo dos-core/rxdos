@@ -932,7 +932,7 @@ seeIfDirectoryName_16:
 %endif
 seeIfDirectoryName_18:
 	mov si, FINDDATA_MSDOSDATEFORMAT
-	lea di, [ _finddata + bp ]
+	lea di, [ COMPAT_WORD _finddata + bp ]
 	Int21 LFNFindNextFile				; locate next file
 	jnc seeIfDirectoryName_16			; see if also a dir -->
 
