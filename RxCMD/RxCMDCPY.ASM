@@ -116,7 +116,7 @@ _Copy:
 	pop es
 
 	mov bx, -1					; handle not init
-	lea di, [ _destCluster + bp ]			; cluster record
+	lea di, [ COMPAT_WORD _destCluster + bp ]			; cluster record
 	call _initClusterRecord
 
 	lea di, [ _copyFilename + bp ]
@@ -145,7 +145,7 @@ _Copy:
 	jz _Copy_14					; if only one arg, then same as drive: case ->
 
 	dec ax						; may not have more than two args
-%if 1
+%if _COMPAT
 	mov cx, sizeArgCmd
 %else
 	mov cl, sizeArgCmd
@@ -253,11 +253,11 @@ _Copy_44:
 	ifc _copyCannotOpenFile				; can't, display error -->
 
 	mov bx, ax
-	lea di, [ _srcCluster + bp ]			; cluster record
+	lea di, [ COMPAT_WORD _srcCluster + bp ]	; cluster record
 	call GetClusterValue				; source cluster
 	jz _Copy_50					; if not a file -->
 
-	lea si, [ _destCluster + bp ]			; cluster record
+	lea si, [ COMPAT_WORD _destCluster + bp ]	; cluster record
 	call _compareClusters				; compare source and destination clusters
 	jnz _Copy_50					; no -->
 
@@ -274,6 +274,7 @@ _Copy_50:
 	jz _Copy_52					; no, MUST create -->
 	cmp word [ __AddMode +  bp ], 0			; add mode ?
 	ifnz _Copy_68					; yes, append to existing file -->
+	COMPAT_NOP
 
 _Copy_52:
 	lea si, [ _destFilename + bp ]			; destination filename
@@ -299,11 +300,11 @@ _Copy_54:
 	jc _Copy_62					; MUST create -->
 
 	mov bx, ax
-	lea di, [ _destCluster + bp ]			; cluster record
+	lea di, [ COMPAT_WORD _destCluster + bp ]	; cluster record
 	call GetClusterValue				; cluster of dest
 	Int21 CloseFile					; release file
 
-	lea si, [ _srcCluster + bp ]			; cluster record
+	lea si, [ COMPAT_WORD _srcCluster + bp ]	; cluster record
 	call _compareClusters				; compare source and destionation clusters
 	ifz _copyCannotCopyOverSelf			; cannot copy over self -->
 
@@ -319,10 +320,10 @@ _Copy_62:
 	ifc _copyCannotCreateFile			; if cannot be created or nulled -->
 
 	mov bx, ax
-	lea di, [ _destCluster + bp ]			; cluster record
+	lea di, [ COMPAT_WORD _destCluster + bp ]	; cluster record
 	call GetClusterValue				; cluster of dest
 
-	lea si, [ _srcCluster + bp ]			; cluster record
+	lea si, [ COMPAT_WORD _srcCluster + bp ]	; cluster record
 	call _compareClusters				; compare src and dest Clusters
 	ifz _copyCannotCopyOverSelf			; camnnot copy over self -->
 
@@ -405,7 +406,7 @@ _Copy_ReturnClose:
 	inc word [ _filesCopied + bp ]			; number of files copied.
 
 _Copy_ReturnClose_08:
-	lea di, [ _filesCopied + bp ]
+	lea di, [ COMPAT_WORD _filesCopied + bp ]
 	push di						; first arg encountered
 	mov di, _Copy_FilesCopied
 	push di
@@ -665,6 +666,7 @@ _copyOverideCheck_06:
 	push dx
 	ExOpenFile dx, OPEN_ACCESS_READONLY		; open read only
 	ifc _copyOverideCheck_OK			; doesn't, so exit with OK to overide
+	COMPAT_NOP
 
 	mov bx, ax
 	Int21 CloseFile
@@ -941,3 +943,4 @@ seeIfDirectoryName_20:
 
 seeIfDirectoryName_24:
 	Return
+

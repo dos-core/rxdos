@@ -1007,6 +1007,9 @@ the file LICENSE.TXT.
 		jae %%noletter
 		and %1, ~20h
 %%noletter:
+%if _COMPAT
+		or %1, %1
+%endif
 	%endmacro
 
 
@@ -1018,6 +1021,9 @@ the file LICENSE.TXT.
 		jae %%noletter
 		or %1, 20h
 %%noletter:
+%if _COMPAT
+		or %1, %1
+%endif
 	%endmacro
 
 
