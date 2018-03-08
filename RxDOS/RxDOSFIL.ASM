@@ -196,7 +196,7 @@ ExpandFileName:
 	jz expandFileName_18				; yes, else add -->
 	cmp byte [ es:di - 1 ], '\'			; ends with trailing \ ?
 	jz expandFileName_18				; yes, else add -->
-	inc di						; add trailing \
+	inc di						; add trailing '\'
 
 expandFileName_18:
 	mov byte [ es:di - 1 ], '\'			; insure ends with \ char
@@ -235,7 +235,7 @@ expandFileName_32:
 	call ifPathSeparator				; path separator ?
 	jnz expandFileName_32				; not yet -->
 ;%if 1
-	mov byte [ es:di - 1 ], al			; make sure separator is \
+	mov byte [ es:di - 1 ], al			; make sure separator is '\'
 ;%endif
 	mov word [ _currCluster + _low + bp ], 0
 	mov word [ _currCluster + _high + bp ], 0	; path name info supplied
@@ -250,7 +250,7 @@ expandFileName_36:
 	dec cx						; excluding last \ ...
 	jg expandFileName_38				; if more than one character -->
 %else
-	lea cx, [ word si - 1 ]				; point to last \
+	lea cx, [ word si - 1 ]				; point to last '\'
 	sub cx, word [ _startPointer + bp ]		; length of string
 	ja expandFileName_38				; if more than one character -->
 		; RxDOS 7.20N:	I'm not sure this bug fix is correct.
@@ -349,7 +349,7 @@ expandFileName_60:
 	jnz expandFileName_66				; no, ignore fix up -->
 
 expandFileName_64:
-	mov byte [ es:di - 1 ], 0			; kill any terminating (needless) \
+	mov byte [ es:di - 1 ], 0			; kill any terminating (needless) '\'
 
 expandFileName_66:
 	getarg ax, _drive
