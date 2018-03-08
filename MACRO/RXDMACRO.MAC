@@ -32,6 +32,22 @@ the file LICENSE.TXT.
 [list -]
 
 
+	numdef COMPAT, 1
+%if _COMPAT
+ %define COMPAT_STRICT strict
+ %define COMPAT_WORD word
+ %define COMPAT_BYTE byte
+ %define COMPAT_NEAR near
+ %define COMPAT_SHORT short
+%else
+ %define COMPAT_STRICT
+ %define COMPAT_WORD
+ %define COMPAT_BYTE
+ %define COMPAT_NEAR
+ %define COMPAT_SHORT
+%endif
+
+
 		; Compare and goto (short jump)
 		;
 		; %1 = Compare this value to al or ax
