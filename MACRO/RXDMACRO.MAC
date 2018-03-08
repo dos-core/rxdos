@@ -39,12 +39,14 @@ the file LICENSE.TXT.
  %define COMPAT_BYTE byte
  %define COMPAT_NEAR near
  %define COMPAT_SHORT short
+ %define COMPAT_NOP nop
 %else
  %define COMPAT_STRICT
  %define COMPAT_WORD
  %define COMPAT_BYTE
  %define COMPAT_NEAR
  %define COMPAT_SHORT
+ %define COMPAT_NOP
 %endif
 
 
