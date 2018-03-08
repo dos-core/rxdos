@@ -810,9 +810,9 @@ _replaceWithRealName:
 
 _replaceWithRealName_08:
 	mov al, byte [ es:di - 1 ]
-	cmp al, '\'					; scan back until : or \
+	cmp al, '\'					; scan back until : or '\'
 	jz _replaceWithRealName_12			; if found -->
-	cmp al, ':'					; scan back until : or \
+	cmp al, ':'					; scan back until : or '\'
 	jz _replaceWithRealName_12			; if found -->
 	dec di
 	loop _replaceWithRealName_08

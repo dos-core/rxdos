@@ -1055,7 +1055,7 @@ checkInstallableCommandInterface:
 	retn
 %else
 	entry
-	defbytes	commandline, 128+2		; \
+	defbytes	commandline, 128+2		; \-
 	defbytes	commandname, 128		; /- do not change their order
 	mov byte [ bp + _commandline ], 127		; maximal length = 127
 	push es
@@ -2371,7 +2371,7 @@ _AppendPathName:
 	mov al, '\'
 	cmp byte [ di - 1 ], al				; does path have terminating \ ?
 	jz _AppendPathName_12				; yes, no need to add another -->
-	stosb						; add terminating \
+	stosb						; add terminating '\'
 
 _AppendPathName_12:
 	call CopyString
