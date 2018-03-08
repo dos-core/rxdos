@@ -1,12 +1,18 @@
 #! /bin/bash
 
+# Usage of the works is permitted provided that this
+# instrument is retained with the works, so that any entity
+# that uses the works is notified of this instrument.
+#
+# DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
+
 NASMENV="$@"
 
 function nasmbin() {
-	nasm -O0 -i../MACRO/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
+	nasm -Ox -i../MACRO/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
 }
 function nasmobj() {
-	nasm -O0 -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
+	nasm -Ox -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
 }
 
 cd "${0%/*}"
@@ -16,36 +22,37 @@ toolsdir="${PWD}/../dostools"
 cd RxBIO
 if [ -f RxBIO.ASM ]; then {
 	echo Building RxBIO
-	nasmbin RxBIO RXBIO SYS || exit
+	nasmbin RxBIO RxBIO SYS || exit
 } fi
 
 
 cd ../RxAPP
 if [ -f RxVDISK.ASM ]; then {
 	echo Building RxVDISK
-	nasmbin RxVDISK RXVDISK SYS || exit
+	nasmbin RxVDISK RxVDISK SYS || exit
 } fi
 
 if [ -f RxBOOT.ASM ]; then {
 	echo Building RxBOOT
-	nasmbin RxBOOT RXBOOT SYS || exit
+	nasmbin RxBOOT RxBOOT SYS || exit
 } fi
 
 if [ -f RxMBR.ASM ]; then {
 	echo Building RxMBR
-	nasmbin RxMBR RXMBR SYS || exit
+	nasmbin RxMBR RxMBR SYS || exit
 } fi
 
 if [ -f RxD_BOOT.ASM ]; then {
 	echo Building RxD_BOOT
-	nasmbin RxD_BOOT RXD_BOOT SYS || exit
-	if [ -f ../bin/RXBOOT.SYS ]; then {
-	cat ../bin/RXD_BOOT.SYS ../bin/RXBOOT.SYS > ../bin/RXD_BOOT.COM
+	nasmbin RxD_BOOT RxD_BOOT SYS || exit
+	if [ -f ../bin/RxBOOT.SYS ]; then {
+	cat ../bin/RxD_BOOT.SYS ../bin/RxBOOT.SYS > ../bin/RxD_BOOT.COM
 	} fi
 } fi
 
 
 cd ../RxDOS
+
 if [ -f RxDOS.ASM -a \
 	-f RxDOSCCB.ASM -a \
 	-f RxDOSDEV.ASM -a \
@@ -62,6 +69,10 @@ if [ -f RxDOS.ASM -a \
 	-f RxDOSCTB.ASM -a \
 	-f RxDOSERR.ASM -a \
 	-f RxDOSINI.ASM ]; then {
+  if ((!_BUILD_OBJ)); then {
+	echo Building RxDOS
+	nasmbin RxDOS RxDOS SYS || exit
+  } else {
 	echo Building RxDOS
 	for x in RxDOS RxDOSCCB RxDOSDEV RxDOSEXE RxDOSFAT RxDOSFCB RxDOSFIL \
 		RxDOSLFN RxDOSF32 RxDOSIFS RxDOSMEM RxDOSSFT RxDOSSTR \
@@ -85,33 +96,22 @@ if [ -f RxDOS.ASM -a \
 			echo $x.OBJ + >> warplink.lin
 		done
 
-	echo "STACK\$\$.OBJ,RxDOS.EXE,RxDOS.MAP,;" >> warplink.lin
+	echo "STACK\$\$.OBJ,RxDOS.EXE,..\\map\\RxDOS.MAP,;" >> warplink.lin
 
-	prevpwd="${PWD}"
-	mkdir -p "$toolsdir/tmp"
-	cp warplink.lin "$toolsdir/tmp"
-	cp "$toolsdir/WARPLINK.EXE" "$toolsdir/tmp"
-	for x in RxDOS RxDOSCCB RxDOSDEV RxDOSEXE RxDOSFAT RxDOSFCB RxDOSFIL \
-		RxDOSLFN RxDOSF32 RxDOSIFS RxDOSMEM RxDOSSFT RxDOSSTR \
-		RxDOSCTB RxDOSERR RxDOSINI; do
-		cp "../obj/$x.OBJ" "$toolsdir/tmp"
-	done
-	cp "STACK\$\$.OBJ" "$toolsdir/tmp"
-	cd "$toolsdir/tmp"
 	unix2dos -q warplink.lin
-	dosemu -dumb WARPLINK.EXE @warplink.lin || exit
-	cp rxdos.exe "$prevpwd/../bin/RxDOS.EXE"
-	cp rxdos.map "$prevpwd/../map/RxDOS.MAP"
+	cd ..
+	dosemu -q -dumb -E "doscmd.bat $(realpath "$toolsdir" |
+sed -re 's/\//\\/g') WARPLINK.EXE obj @warplink.lin" || exit
 
-	cp "$toolsdir/X2B_IGNR.COM" "$toolsdir/tmp"
-#	exe2bin -r -l=0 RxDOS.EXE ..\bin\RXDOS.SYS || exit
-#	exe2bin -x -r -l=0 RxDOS.EXE ../bin/RXDOS.SYS || exit
-	dosemu -dumb X2B_IGNR.COM RxDOS.EXE RXDOS.SYS || exit
+#	exe2bin -r -l=0 RxDOS.EXE ..\bin\RxDOS.SYS || exit
+#	exe2bin -x -r -l=0 RxDOS.EXE ../bin/RxDOS.SYS || exit
+	dosemu -q -dumb -E "doscmd.bat $(realpath "$toolsdir" |
+sed -re 's/\//\\/g') X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RxDOS.SYS" || exit
 
-	cp rxdos.sys "$prevpwd/../bin/RXDOS.SYS"
-	cd "$prevpwd"
+	cd obj
 	rm warplink.lin
 	rm STACK\$\$.OBJ
+  } fi
 } fi
 
 
@@ -144,24 +144,14 @@ if [ -f RxCMD.ASM -a \
 	RxCMDPRM RxCMDREN RxCMD; do
 		echo "$x.OBJ +" >> warplink.lin
 	done
-	echo "STACK\$\$.OBJ,RXCMD.EXE,RxCMD.MAP,;" >> warplink.lin
+	echo "STACK\$\$.OBJ,..\\bin\\RxCMD.EXE,..\\map\\RxCMD.MAP,;" >> warplink.lin
 
-	prevpwd="${PWD}"
-	mkdir -p "$toolsdir/tmp"
-	cp warplink.lin "$toolsdir/tmp"
-	cp "$toolsdir/WARPLINK.EXE" "$toolsdir/tmp"
-	for x in RxCMD RxCMDCPY RxCMDDIR RxCMDFOR \
-	RxCMDPRM RxCMDREN; do
-		cp "../obj/$x.OBJ" "$toolsdir/tmp"
-	done
-	cp "STACK\$\$.OBJ" "$toolsdir/tmp"
-	cd "$toolsdir/tmp"
 	unix2dos -q warplink.lin
-	dosemu -dumb WARPLINK.EXE @warplink.lin || exit
-	cp rxcmd.exe "$prevpwd/../bin/RxCMD.EXE"
-	cp rxcmd.map "$prevpwd/../map/RxCMD.MAP"
+	cd ..
+	dosemu -q -dumb -E "doscmd.bat $(realpath "$toolsdir" |
+sed -re 's/\//\\/g') WARPLINK.EXE obj @warplink.lin" || exit
 
-	cd "$prevpwd"
+	cd obj
 	rm warplink.lin
 	rm STACK\$\$.OBJ
 } fi
