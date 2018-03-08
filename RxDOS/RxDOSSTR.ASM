@@ -163,7 +163,7 @@ ifPathSeparator:
 
 	cmp al, '/'
 	jnz ifPathSeparator_08
-	mov al, '\'					; convert / to \
+	mov al, '\'					; convert / to '\'
 
 ifPathSeparator_08:
 	cmp al, '\'
