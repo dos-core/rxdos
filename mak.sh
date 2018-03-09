@@ -128,14 +128,6 @@ if [ -f RxCMD.ASM -a \
 	RxCMDPRM RxCMDREN; do
 		nasmobj "$x" || exit
 	done
-	
-	echo > STACK\$\$.ASM
-	echo	segment STACK\$\$ align=16 class=RXDOS use16 stack >> STACK\$\$.ASM
-	echo			resw 1 >> STACK\$\$.ASM
-	echo >> STACK\$\$.ASM
-	nasm -fobj -o../obj/STACK\$\$.OBJ STACK\$\$.ASM || exit
-	rm STACK\$\$.ASM
-
 
 	cd ../obj
 	echo "/s /mx /xt +" > warplink.lin
@@ -144,7 +136,7 @@ if [ -f RxCMD.ASM -a \
 	RxCMDPRM RxCMDREN RxCMD; do
 		echo "$x.OBJ +" >> warplink.lin
 	done
-	echo "STACK\$\$.OBJ,..\\bin\\RxCMD.EXE,..\\map\\RxCMD.MAP,;" >> warplink.lin
+	echo ",..\\bin\\RxCMD.EXE,..\\map\\RxCMD.MAP,;" >> warplink.lin
 
 	unix2dos -q warplink.lin
 	cd ..
@@ -153,7 +145,6 @@ sed -re 's/\//\\/g') WARPLINK.EXE obj @warplink.lin" || exit
 
 	cd obj
 	rm warplink.lin
-	rm STACK\$\$.OBJ
 } fi
 
 cd ..
