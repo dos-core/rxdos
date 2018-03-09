@@ -184,6 +184,17 @@ endheader:
 
 	section RXCMD align=16 vstart=0 follows=_EXEHEADER
 firstaddress:
+
+%include "RxCMDCPY.ASM"
+	align 16, db 0
+%include "RxCMDDIR.ASM"
+	align 16, db 0
+%include "RxCMDFOR.ASM"
+	align 16, db 0
+%include "RxCMDPRM.ASM"
+	align 16, db 0
+%include "RxCMDREN.ASM"
+	align 16, db 0
 %endif
 
 		; RxDOS interrupt 2Eh interface
