@@ -25,15 +25,19 @@ shell which is accessible by Int2E.
 
 %endif
 
-	cpu 8086
+%ifnidni __OUTPUT_FORMAT__, obj
+ %define _BUILD_OBJ 0
+%endif
 
-	segment RXCMD align=16 class=RXCMD use16 public start=100h
-	segment RXCMD
+	cpu 8086
 
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
 %include "RXCSTRUC.MAC"
 
+%if _BUILD_OBJ
+	segment RXCMD align=16 class=RXCMD use16 public start=100h
+	segment RXCMD
 
 	global CommandBegin
 
@@ -153,7 +157,34 @@ shell which is accessible by Int2E.
 
 		; in RxCMDREN
 	extern _Rename
+%else	; not _BUILD_OBJ
 
+	section _EXEHEADER align=16 start=0 vstart=0
+startheader:
+	istruc EXEHEADER
+at exeSignature,	dw "MZ"
+at exeExtraBytes,	dw (RXDOSLASTADDRESS - firstaddress) % 512
+at exePages,		dw (endheader - startheader \
+				+ RXDOSLASTADDRESS - firstaddress + 511) >> 9
+at exeRelocItems,	dw 0
+at exeHeaderSize,	dw (endheader - startheader + 15) >> 4
+at exeMinAlloc,		dw (65536 - (RXDOSLASTADDRESS - firstaddress) \
+				+ 512 + 15) >> 4
+at exeMaxAlloc,		dw -1
+at exeInitSS,		dw 0
+at exeInitSP,		dw 0
+at exeChecksum,		dw 0
+at exeInitIP,		dw CommandBegin
+at exeInitCS,		dw 0
+at exeRelocTable,	dw 1Eh
+at exeOverlay,	dw 0
+	iend
+	times 512 - ($-$$) db 0
+endheader:
+
+	section RXCMD align=16 vstart=0 follows=_EXEHEADER
+firstaddress:
+%endif
 
 		; RxDOS interrupt 2Eh interface
 		;
@@ -5828,7 +5859,9 @@ ReadBatchLine_36:
 		; Initial command shell entry
 		;
 		; RxDOS 7.30:	Parts of the initializing should move into RXCMDINSTALLATION.
+%if _BUILD_OBJ
 ..start:
+%endif
 CommandBegin:
 
 	cli

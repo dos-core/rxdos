@@ -123,6 +123,10 @@ if [ -f RxCMD.ASM -a \
 	-f RxCMDPRM.ASM -a \
 	-f RxCMDREN.ASM ]; then
 {
+  if ((!_BUILD_OBJ)); then {
+	echo Building RxCMD
+	nasmbin RxCMD RxCMD EXE || exit
+  } else {
 	echo Building RxCMD
 	for x in RxCMD RxCMDCPY RxCMDDIR RxCMDFOR \
 	RxCMDPRM RxCMDREN; do
@@ -145,6 +149,7 @@ sed -re 's/\//\\/g') WARPLINK.EXE obj @warplink.lin" || exit
 
 	cd obj
 	rm warplink.lin
+  } fi
 } fi
 
 cd ..
