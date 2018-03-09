@@ -15,15 +15,15 @@ the file LICENSE.TXT.
 
 %endif
 
-	cpu 8086
-
-	segment RXCMD align=16 class=RXCMD use16 public start=100h
-	segment RXCMD
-
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
 %include "RXCSTRUC.MAC"
 
+	cpu 8086
+
+%if _BUILD_OBJ
+	segment RXCMD align=16 class=RXCMD use16 public start=100h
+	segment RXCMD
 
 	global _Dir
 	global _makePath
@@ -68,7 +68,7 @@ the file LICENSE.TXT.
 	extern _endofString
 	extern _sprintf
 	extern returnVolumeName
-
+%endif
 
 		; File time to ASCII (USA format)
 		;
