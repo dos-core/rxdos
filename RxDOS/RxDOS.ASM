@@ -3944,8 +3944,8 @@ _CtrlBreakCheck:
 		; decimal digit with padding to two digits). 0701h == "7.01", 140Ah == "20.10"
 
 	mov word [ si + _AX ], "Rx"			; 7852h
-	mov word [ si + _CX ], 2017
-	mov word [ si + _DX ], 09<<8|01			; cx:dx = build (2017-09-01)
+	mov word [ si + _CX ], 2018
+	mov word [ si + _DX ], 03<<8|09			; cx:dx = build (2018-03-09)
 	mov word [ si + _BX ], 7<<8|22			; bx = version (7.22)
 	mov word [ si + _DI ], 0			; RxBIO compatibility level gets patched in here
 patch_rxbio_version equ $-2
