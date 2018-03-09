@@ -6249,6 +6249,7 @@ RxDOS_Version:	asciz RXCMDLONG_S, " version ", RXCMDVERSIONLONG_S
 RxDOS_VersionCopyright:
 		db 13,10
 		db " Copyright (C) 1990-1999 Mike Podanoffsky",13,10
+		db " Copyright (C) 2008-2018 C. Masloch",13,10
 		asciz
 
 		; Error Table
