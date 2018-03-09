@@ -4848,7 +4848,7 @@ _truename_36:
 _Type:
 	entry
 	def	_argarray, di
-	def	_wildchars, FALSE
+	def	wildchars, FALSE
 	def	abortFlag, FALSE
 	def	handle
 
