@@ -158,6 +158,7 @@ shell which is accessible by Int2E.
 		; in RxCMDREN
 	extern _Rename
 %else	; not _BUILD_OBJ
+			[map all __MAPFILE__]
 
 	section _EXEHEADER align=16 start=0 vstart=0
 startheader:
