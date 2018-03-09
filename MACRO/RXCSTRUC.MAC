@@ -15,6 +15,9 @@ the file LICENSE.TXT.
 
 %endif
 
+%ifnnum __RXCSTRUC_MAC__
+%assign __RXCSTRUC_MAC__ 1
+
 
 		; Switches
 	struc SWITCHENTRY
@@ -238,5 +241,8 @@ IF_EXIST			equ 03h
 
 _ARGTEXT			equ _high
 _ARGTYPE			equ _low
+
+
+%endif ; __RXCSTRUC_MAC__
 
 [list +]
