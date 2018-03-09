@@ -641,7 +641,7 @@ _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
 _RxDOS_DOSVersionString:
 			asciz RXDOSLONG_S, " version ", RXDOSVERSIONLONG_S
 
-_RxDOS_DOSProgramName	db 'RxDOS7.22'		; Product Name. First 8 bytes copied into system MCBs
+_RxDOS_DOSProgramName	db 'RxDOS7.23'		; Product Name. First 8 bytes copied into system MCBs
 
 _RxDOS_ContrlC_Message	asciz '^C',13,10
 
@@ -3946,7 +3946,7 @@ _CtrlBreakCheck:
 	mov word [ si + _AX ], "Rx"			; 7852h
 	mov word [ si + _CX ], 2018
 	mov word [ si + _DX ], 03<<8|09			; cx:dx = build (2018-03-09)
-	mov word [ si + _BX ], 7<<8|22			; bx = version (7.22)
+	mov word [ si + _BX ], 7<<8|23			; bx = version (7.23)
 	mov word [ si + _DI ], 0			; RxBIO compatibility level gets patched in here
 patch_rxbio_version equ $-2
 	retn

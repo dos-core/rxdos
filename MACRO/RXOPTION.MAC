@@ -120,12 +120,12 @@ numdef DEFAULT_AVAILDEV,	0
 		  "DEVICE=JEMMEX.EXE",10,0
 %endif
 
-	verdef RXDOS,C, 7,22			; RxDOS compatible, Int21.335E/Int2D.0010
-	verdef RXDOS,P, 7,22			; RxDOS private, Int21.335E/Int2D.0000
+	verdef RXDOS,C, 7,23			; RxDOS compatible, Int21.335E/Int2D.0010
+	verdef RXDOS,P, 7,23			; RxDOS private, Int21.335E/Int2D.0000
 	numdef RXDOSBETA,0			;  > 0 is the beta version number
 %defstr RXDOSBETA _RXDOSBETA
-	verdef RXCMD,C, 7,22			; RxCMD compatible, Int2D.mm10
-	verdef RXCMD,P, 7,22			; RxCMD private, Int2D.mm00
+	verdef RXCMD,C, 7,23			; RxCMD compatible, Int2D.mm10
+	verdef RXCMD,P, 7,23			; RxCMD private, Int2D.mm00
 	numdef RXCMDBETA,0			;  > 0 is the beta version number
 %defstr RXCMDBETA _RXCMDBETA
 
