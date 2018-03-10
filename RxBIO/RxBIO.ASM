@@ -31,22 +31,18 @@ root directory which is located at 0000:0500 (that is, 50:0).
 Boot sequence is
  
 RxMBR (master boot record)
- loads at 0:7C00, relocated to 60:0
+ loads at 0:7C00h, relocated to 60h:0
  located at LBA 0 (cyl: 0 head: 0 sector: 1)
  
-RxBOOT (boot record)
- loads at 0:7C00
+boot12/16/32 (boot record)
+ loads at 0:7C00h
  located at start of partition (in partition's logical sector 0)
 
-RxBIO
- loads initially at 70:0, relocated high
- boot record loads first three sectors (regardless of cluster size)
- (this currently assumes that these three sectors are contiguous)
- initial part of RxBIO loads remainder of module high in low memory,
- then loads RxDOS
+iniload
+ loaded at eg 70h:0 (entry :400h), loads remainder of BIO + DOS
 
+RxBIO
 RxDOS
- loaded by RxBIO
  provides user-level DOS services
  sets up DOS memory management
  currently the code segment and the DOS data segment are synonymous
@@ -77,28 +73,74 @@ startseg RXBIO, 0, align=16 class=RXBIO use16 public
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
 
+bsJump:	equ 0
+bsOEM:	equ 3
+bsBPB:	equ 11
+
+	struc EBPB		;        BPB sec
+bpbBytesPerSector:	resw 1	; offset 00h 0Bh
+bpbSectorsPerCluster:	resb 1	; offset 02h 0Dh
+bpbReservedSectors:	resw 1	; offset 03h 0Eh
+bpbNumFATs:		resb 1	; offset 05h 10h
+bpbNumRootDirEnts:	resw 1	; offset 06h 11h -- 0 for FAT32
+bpbTotalSectors:	resw 1	; offset 08h 13h
+bpbMediaID:		resb 1	; offset 0Ah 15h
+bpbSectorsPerFAT:	resw 1	; offset 0Bh 16h -- 0 for FAT32
+bpbCHSSectors:		resw 1	; offset 0Dh 18h
+bpbCHSHeads:		resw 1	; offset 0Fh 1Ah
+bpbHiddenSectors:	resd 1	; offset 11h 1Ch
+bpbTotalSectorsLarge:	resd 1	; offset 15h 20h
+bpbNew:				; offset 19h 24h
+
+ebpbSectorsPerFATLarge:	resd 1	; offset 19h 24h
+ebpbFSFlags:		resw 1	; offset 1Dh 28h
+ebpbFSVersion:		resw 1	; offset 1Fh 2Ah
+ebpbRootCluster:	resd 1	; offset 21h 2Ch
+ebpbFSINFOSector:	resw 1	; offset 25h 30h
+ebpbBackupSector:	resw 1	; offset 27h 32h
+ebpbReserved:		resb 12	; offset 29h 34h
+ebpbNew:			; offset 35h 40h
+	endstruc
+
+	struc BPBN		; ofs B16 S16 B32 S32
+bpbnBootUnit:		resb 1	; 00h 19h 24h 35h 40h
+			resb 1	; 01h 1Ah 25h 36h 41h
+bpbnExtBPBSignature:	resb 1	; 02h 1Bh 26h 37h 42h -- 29h for valid BPBN
+bpbnSerialNumber:	resd 1	; 03h 1Ch 27h 38h 43h
+bpbnVolumeLabel:	resb 11	; 07h 20h 2Bh 3Ch 47h
+bpbnFilesystemID:	resb 8	; 12h 2Bh 36h 47h 52h
+	endstruc		; 1Ah 33h 3Eh 4Fh 5Ah
+
+	struc LOADSTACKVARS, -10h
+lsvFirstCluster:	resd 1
+lsvFATSector:		resd 1
+lsvFATSeg:		resw 1
+lsvLoadSeg:		resw 1
+lsvDataStart:		resd 1
+	endstruc
+
+	struc LOADDATA, LOADSTACKVARS - 10h
+ldMemoryTop:	resw 1
+ldLoadTop:	resw 1
+ldSectorSeg:	resw 1
+ldFATType:	resb 1
+ldHasLBA:	resb 1
+ldClusterSize:	resw 1
+ldParaPerSector:resw 1
+ldLoadingSeg:	resw 1
+ldLoadUntilSeg:	resw 1
+	endstruc
+
+
 		; Startup Code
 	global RxBIO_Start
 RxBIO_Start:		jmp RxBIO_initialize
 
 
+		align 2
+dos_park_segment:		dw 0
 		; Data
 BootDrive:			db 0
-
-BootDrive_BPB:
-	dw sizeCCBData		; __bsBytesPerSector
-	db 1			; __bsSectorsPerCluster
-	dw 1			; __bsResSectors
-	db 2			; __bsNumCopiesFAT
-	dw 00E0h		; __bsMaxAllocRootDir
-	dw 0960h		; __bsMaxSectors
-	db 0f9h			; __bsMediaDescriptor
-	dw 7			; __bsSectorsPerFat
-	dw 15			; __bsSectorsPerTrack
-	dw 2			; __bsHeads
-	dd 0			; __bsHiddenSectors
-	dd 0960h		; __bsHugeSectors
-	times (sizeBPB+2+BootDrive_BPB)-$ db 0
 
 RxBIO_INITBLOCK:		times sizeSYSINIT db 0
 
@@ -110,22 +152,7 @@ RxDOS_LoadSegment:		dd 0			; where RxDOS loaded
 ptrStartBlockedDeviceTable:	dd 0			; ptr to Disk Parameter Blocks
 diskParameterTable:		dd 0			; disk parameter table
 
-RootDirSector:			dd 0			; root directory sector
-ReservedBeforeDataSector:	dd 0			; first data sector
-
-RXDOSBIO_ClusterAddr:		dw 0			; cluster address of RxBIO.SYS
-RXDOS_ClusterAddr:		dw 0			; cluster address of RxDOS.SYS
-
-_FATbuffer_SectorNumber:	dd -1			; allocated FAT sector
-_FATbuffer:			dd 0
-
 RxDOS_CLOCKDATA:		times CLOCKDATA_size db 0
-
-
-		; location of system entries in root directory
-RXDOSBIO_SYS			equ (0 * sizeDIRENTRY)
-RXDOS_SYS			equ (1 * sizeDIRENTRY)
-
 
 		; Form Codes
 DSKFORMTYPES_40_9		equ 00h		 ; 40 cyls, <= 9 sect/track
@@ -152,442 +179,17 @@ RxBIOS_FIXEDDRIVEMASK		equ 80h			; fixed drive mask
 
 
 		; messages
+msg:
+.error_memory_layout:		db 13,10,"Memory layout error!",0
 RXDOSBIO_MSGDivideByZero:	db "Interrupt 00h: Divide by zero.", cr, lf
 				db "Press any key to reboot.", cr, lf, 0
 RXDOSBIO_MSGLoadingRxDOS:	db "Starting RxDOS...", cr, lf, 0
 RXDOSBIO_MSGErrorLoadingSystem: db cr, lf, "Error loading RxDOS. Please reboot. ", 0
 
-%ifdef RxDOS_DEBUG
-RXDOSBIO_MSGDEBUG_CANTLOAD:	db "Can't Load DEBUG Image", 0
-%endif
 
-		; Load Program Using FAT
-		; 
-		; Input:
-		; dx	starting cluster address
-		; es:di	buffer
-		; 
-		; Output:
-		; cy	error reading file
-_LoadProgram:
-
-	entry
-	def	sectorsToRead				; sectors to read
-	def	scanEndCluster, dx			; last cluster scanned
-	def	currentCluster, dx			; cluster address of pgm /start
-	def	relCluster				; rel cluster offset required
-	ddef	buffer, es, di				; where to load
-
-	xor dx, dx
-	mov ax, word [ bp + _buffer + _pointer ]
-	div word [ BootDrive_BPB + _bpbBytesPerSector ]
-	div byte [ BootDrive_BPB + _bpbSectorsPerCluster ]
-
-	xor ah, ah
-	storarg _relCluster, ax				; required rel cluster offset
-	or ax, ax					; starts at first file cluster ?
-	jz _LoadProgram_18				; yes -->
-
-		; at start, we must position at rel cluster
-_LoadProgram_14:
-	mov ax, word [ BootDrive ]
-	mov dx, word [ bp + _currentCluster ]
-	call getNextCluster				; get next cluster
-	jz _LoadProgram_Return				; exit if error -->
-
-	mov word [ bp + _currentCluster ], dx		; save cluster number
-	dec word [ bp + _relCluster ]			; scan more clusters ?
-	jnz _LoadProgram_14				; scan more -->
-
-		; optimize cluster read
-_LoadProgram_18:
-	mov ax, word [ BootDrive ]
-	mov dx, word [ bp + _currentCluster ]
-	call scanClusterMap
-	mov word [ bp + _sectorsToRead ], cx		; # sectors to sequentially read
-	mov word [ bp + _scanEndCluster ], dx		; last cluster scanned
-
-		; mov dl, byte [ BootDrive_BPB + _bpbSectorsPerCluster ]
-		; sub dl, al					; sectors remaining
-		; sub word [ bp + _sectorsToRead ], dx		; adjust sectors to read
-		; jnz _LoadProgram_26				; keep reading if more required -->
-		; mov word [ bp + _sectorsToRead ], 0001	; else default to one sector
-
-		; get sector offset to read
-_LoadProgram_26:
-	xor dx, dx
-	mov ax, word [ bp + _buffer + _pointer ]
-	div word [ BootDrive_BPB + _bpbBytesPerSector ]
-	div byte [ BootDrive_BPB + _bpbSectorsPerCluster ]
-
-	xor bh, bh
-	mov bl, ah					; sector adjust for pointer
-
-	mov ax, word [ bp + _currentCluster ]
-	dec ax
-	dec ax
-
-	xor cx, cx
-	mov cl, byte [ BootDrive_BPB + _bpbSectorsPerCluster ]
-	mul cx						; compute sector
-	add ax, word [ ReservedBeforeDataSector + _low	]
-	adc dx, word [ ReservedBeforeDataSector + _high ]
-
-	add ax, bx					; add sector adjust
-	adc dx, byte 0000
-
-
-		; read buffer
-	mov cx, dx
-	mov dx, ax					; sector address
-
-	mov al, byte [ BootDrive ]
-	getdarg es, di, _buffer
-	getarg bx, _sectorsToRead
-	call ReadBuffer					; do read
-	jc _LoadProgram_Abrupt				; if error -->
-
-	mov ax, word [ bp + _sectorsToRead ]
-	mul word [ BootDrive_BPB + _bpbBytesPerSector ]
-	add word [ bp + _buffer + _pointer ], ax
-
-	getarg dx, _scanEndCluster			; last cluster scanned
-	storarg _currentCluster, dx			; cluster address of pgm /start
-	cmp dx, byte -1					; was last read to end of file ?
-	jnz _LoadProgram_18				; no, keep reading -->
-
-
-		; return
-_LoadProgram_Return:
-	mov cx, word [ bp + _buffer + _pointer ]
-	or cx, cx					; if ok return
-
-_LoadProgram_Abrupt:
-	return
-
-
-		; Read FAT Buffer
-		; 
-		; Input:
-		; cx:dx	sector to read
-ReadFATBuffer:
-readFATBuffer:
-
-	les di, [ _FATbuffer ]
-
-	cmp word [ _FATbuffer_SectorNumber + _low ], dx
-	jnz readFATBuffer_08
-	cmp word [ _FATbuffer_SectorNumber + _high ], cx
-	jz readFATBuffer_12
-
-readFATBuffer_08:
-	mov bx, 0001
-	mov al, byte [ BootDrive ]
-	mov word [ _FATbuffer_SectorNumber + _high ], cx
-	mov word [ _FATbuffer_SectorNumber + _low ], dx
-	call readBuffer
-
-readFATBuffer_12:
-	retn
-
-
-		; Read Buffer
-		; 
-		; Input:
-		; ax	drive
-		; bx	buffers to read
-		; cx:dx	logical sector to read
-		; es:di	buffer address
-ReadBuffer:
-readBuffer:
-
-	entry
-	ddef	bufferPtr, es, di
-	ddef	sector, cx, dx
-	def	drive, ax
-	def	buffers, bx
-	def	retries
-
-	SaveRegisters bp, dx, ax, cx
-
-readBuffer_08:
-	mov word [ bp + _retries ], 3
-
-readBuffer_10:
-	getdarg dx, ax, _sector
-	add ax, word [ BootDrive_BPB + _bpbHiddenSectors + _low ]
-	adc dx, word [ BootDrive_BPB + _bpbHiddenSectors + _high ]
-
-	div word [ BootDrive_BPB + _bpbSectorsPerTrack ]
-	inc dl
-	mov cl, dl					; _readSector
-
-	xor dx, dx
-	div word [ BootDrive_BPB + _bpbHeads ]
-	; mov word [ bp + _readTrack ], ax		; don't need to save track
-	; mov byte [ bp + _readHead ], dl		; don't need to save heads
-	mov dh, dl					; head
-
-	shl ah, 1					; high order two bits of track
-	shl ah, 1					; ... moved to top end of reg
-	shl ah, 1
-	shl ah, 1
-	shl ah, 1
-	shl ah, 1
-	or cl, ah					; or with sector
-	mov ch, al					; remainder of track to ch
-
-	mov al, byte [ bp + _buffers ]			; plus buffers to read 
-	mov ah, al					; buffers
-	add ah, cl					; starting sector
-	sub ah, byte [ BootDrive_BPB + _bpbSectorsPerTrack ]
-	jle readBuffer_12				; no, ok to read -->
-	sub al, ah					; safe number of buffers to read
-	inc ax
-
-readBuffer_12:
-	push ax						; # buffers requested
-	mov ah, 02h					; read command type
-	mov dl, byte [ bp + _drive ]
-	getdarg es, bx, _bufferPtr
-	; NormalizeBuffer es, bx
-
-	int 13h
-	pop ax						; # buffers requested
-	jc readBuffer_26				; if error -->
-
-	xor ah, ah
-	xor cx, cx
-	mov bx, ax
-	mul word [ BootDrive_BPB + _bpbBytesPerSector ]
-	add word [ bp + _bufferPtr + _pointer ], ax
-
-	add word [ bp + _sector + _low ], bx
-	adc word [ bp + _sector + _high ], cx
-
-	sub byte [ bp + _buffers ], bl			; buffers remaining after this read 
-	ja readBuffer_08				; if more to read
-	jmp short readBuffer_28				; exit -->
-
-readBuffer_26:
-	xor ax, ax
-	mov dl, byte [ bp + _drive ]
-	int 13h						; if error, attempt reset
-
-	dec word [ bp + _retries ]
-	jnz readBuffer_10
-
-	stc						; make sure exit with error flag
-
-readBuffer_28:
-	RestoreRegisters cx, ax, dx, bp
-	Return
-
-
-		; Get Next Cluster
-		;
-		; Input:
-		; ax	drive
-		; dx	current cluster
-		;
-		; Output:
-		; dx	next cluster
-		; zr	if end of cluster chain.
-		;
-		;
-		; This function is only used in the BOOT sequence. Normal
-		; FAT processing is performed in rxdosfat.
-		;
-		; This code will NOT boot FAT32 drives (not yet)
-getNextCluster:
-	entry
-	def	drive, ax
-	def	cluster, dx
-	def	MaxClusters
-
-	saveRegisters es, di, si, cx, bx, ax
-
-		; determine whether its 12 or 16 bit FAT entries
-	xor cx, cx
-	mov cl, byte [ BootDrive_BPB + _bpbSectorsPerCluster ]
-	mov dx, word [ BootDrive_BPB + _bpbHugeSectors + _high ]
-	mov ax, word [ BootDrive_BPB + _bpbHugeSectors + _low ]
-	div cx
-	storarg _MaxClusters, ax
-
-	mov dx, word [ BootDrive_BPB + _bpbHugeSectors + _high ]
-	mov ax, word [ BootDrive_BPB + _bpbHugeSectors + _low ]
-
-	mov dx, -1					; presume end if error
-	mov ax, word [ bp + _cluster ]			; get cluster #
-	or ax, ax					; invalid number 
-	jz getNextCluster_Return			; exit -->
-	cmp ax, word [ bp + _MaxClusters ]
-	jnc getNextCluster_Return			; if valid cluster # -->
-
-getNextCluster_08:
-	xor dx, dx
-	test word [ bp + _MaxClusters ], 0F000h
-	jnz getNextCluster_16Bits			; if 16 -->
-
-		; 12 bit FAT entries
-getNextCluster_12Bits:
-	mov ax, word [ bp + _drive ]			; get drive
-	mov dx, word [ bp + _cluster ]			; and cluster
-	call _get_12Bit_ClusterValue
-	jmp short getNextCluster_Return
-
-		; 16 bit FAT entries
-getNextCluster_16Bits:
-	mov cx, word [ BootDrive_BPB + _bpbBytesPerSector ]
-	shr cx, 1
-	div cx						; FAT sector/Offset
-
-	; ax will contain FAT sector
-	; dx will contain byte offset into FAT sector
-
-	add dx, dx					; make word offset
-	push dx
-
-	xor cx, cx
-	mov dx, word [ BootDrive_BPB + _bpbResSectors ]	; where is first FAT table ?
-	add dx, ax					; add offset required
-	mov ax, word [ bp + _drive ]			; get drive
-	call ReadFATBuffer				; read FAT Table
-
-	pop bx						; word offset into FAT table
-	mov dx, word [ es:bx + di ]			; get FAT word
-
-	mov ax, dx
-	and ax, strict word 0FFF8h			; FAT value, 12 bit entries
-	cmp ax, strict word 0FFF8h			; end of chain ?
-	jnz getNextCluster_Return			; no -->
-	mov dx, -1					; if end, set end value
-
-;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-;	return
-;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-getNextCluster_Return:
-	restoreRegisters ax, bx, cx, si, di, es
-	cmp dx, byte -1					; set if end of chain
-	Return
-
-
-		; Scan Ahead Cluster Map
-		; 
-		; Input:
-		; ax	drive
-		; dx	current cluster
-		; 
-		; Output:
-		; cx	# sectors to sequentially read
-		; dx	last cluster value
-scanClusterMap:
-
-	entry
-	def	drive, ax
-	def	cluster, dx
-	def	nextCluster
-	def	clusterCount, 0000
-
-scanClusterMap_12:
-	inc word [ bp + _clusterCount ]			; cluster count
-
-	mov cx, dx
-	call getNextCluster				; get next cluster
-	cmp dx, byte -1					; end ?
-	jz scanClusterMap_22				; yes -->
-
-	sub cx, dx					; sequential clusters are ...
-	cmp cx, byte -1					; ... identified by a -1 offset
-	jz scanClusterMap_12				; if still sequential -->
-
-scanClusterMap_22:
-	mov ax, word [ bp + _clusterCount ]		; # sequential clusters
-	mul byte [ BootDrive_BPB + _bpbSectorsPerCluster ]
-	mov cx, ax					; # sectors to sequentially read
-	Return
-
-
-		; Get 12Bit FAT Table Value
-		; 
-		; Input:
-		; ax	drive
-		; dx	current cluster
-		; 
-		; Output:
-		; dx	value at cluster (next cluster)
-		; zr	if end of cluster chain.
-_get_12Bit_ClusterValue:
-	entry
-	def	drive, ax
-	def	cluster, dx
-	def	sectorsize
-	ddef	sector
-
-	mov ax, dx
-	add ax, ax
-	add ax, dx					; *3, nibble address
-
-	xor dx, dx
-	mov cx, word [ BootDrive_BPB + _bpbBytesPerSector ]
-	mov word [ bp + _sectorsize ], cx
-	dec word [ bp + _sectorsize ]
-	shl cx, 1					; nibbles / sector
-	div cx						; sector to read
-
-	; ax will contain sector
-	; dx will contain nibble offset
-
-	shr dx, 1					; word offset
-	push dx
-
-	xor cx, cx					; 32 bit address
-	mov dx, ax
-	add dx, word [ BootDrive_BPB + _bpbResSectors ]	; where is first FAT table ?
-	stordarg _sector, cx, dx			; 32 bit sector address
-
-	mov ax, word [ bp + _drive ]			; get drive
-	call ReadFATBuffer				; read FAT Table
-
-	pop bx						; word offset into FAT table
-	mov dx, word [ es:bx + di ]			; get FAT word
-
-	cmp bx, word [ bp + _sectorsize ]		; at sector size -1 boundry ?
-	jnz _get_12Bit_ClusterValue_12			; no, ok to return as is -->
-
-	push dx						; else save what we have
-	getdarg cx, dx, _sector				; read next cluster sector
-	add dx, byte 0001				; incr by one
-	adc cx, byte 0000
-
-	mov ax, word [ bp + _drive ]			; get drive
-	call ReadFATBuffer				; read FAT Table
-
-	pop dx
-	mov dh, byte [ es:di ]				; get FAT word at start of buffer
-
-_get_12Bit_ClusterValue_12:
-	test word [ bp + _cluster ], 1			; is cluster Odd ?
-	jz _get_12Bit_ClusterValue_14			; no, just take value -->
-
-	shr dx, 1
-	shr dx, 1
-	shr dx, 1
-	shr dx, 1
-
-_get_12Bit_ClusterValue_14:
-	and dx, 0FFFh					; 12 bit mask
-	mov ax, dx
-	and ax, 0FF8h					; FAT value, 12 bit entries.
-	cmp ax, 0FF8h					; end of chain ?
-	jnz _get_12Bit_ClusterValue_16			; no -->
-	mov dx, -1					; if end, set end value
-
-_get_12Bit_ClusterValue_16:
-	return
-
+error_memory_layout:
+	mov si, msg.error_memory_layout
+	call _DisplayMsg
 
 		; Error Display
 RxBIO_Error:
@@ -664,115 +266,196 @@ SaveInterruptVectors_16:
 	retn
 
 
-		; Initialize
-		; 
-		; The boot loader loader transfers control to here with the
-		; following arguments:
-		; 
-		; ch	media descriptor byte
-		; dl	unit address of startup drive
-		; ax:bx	sector address of root directory
-		; ds:si	bios parameter table
-		; 
-		; Int1E address contains a pointer to the current drive DISK
-		; PARAMETER Table.
+	align 16
+		; Move paragraphs
+		;
+		; INP:	ax:0-> source
+		;	dx:0-> destination
+		;	cx = number of paragraphs
+		; CHG:	-
+		; OUT:	NC
+		; Note:	Doesn't work correctly on HMA; doesn't always wrap to LMA either.
+		;	Do not provide a wrapped/HMA source or destination!
+movp:
+	push cx
+	push ds
+	push si
+	push es
+	push di
+
+	cmp ax, dx		; source below destination ?
+	jb .down		; yes, move from top down -->
+	je .return		; same, no need to move --> (NC)
+
+	push ax
+	push dx
+.uploop:
+	mov ds, ax
+	mov es, dx
+	xor di, di
+	xor si, si		; -> start of segment
+	sub cx, 1000h		; 64 KiB left ?
+	jbe .uplast		; no -->
+	push cx
+	mov cx, 10000h /2
+	rep movsw		; move 64 KiB
+	pop cx
+	add ax, 1000h
+	add dx, 1000h		; -> next segment
+	jmp short .uploop	; proceed for more -->
+.uplast:
+	add cx, 1000h		; restore counter
+	shl cx, 1
+	shl cx, 1
+	shl cx, 1		; *8, paragraphs to words (NC)
+	rep movsw		; move last part
+	pop dx
+	pop ax
+	jmp short .return
+
+.down:
+	std
+.dnloop:
+	sub cx, 1000h		; 64 KiB left ?
+	jbe .dnlast		; no -->
+	push ax
+	push dx
+	add ax, cx
+	add dx, cx
+	mov ds, ax		; -> 64 KiB not yet moved
+	mov es, dx
+	pop dx
+	pop ax
+	mov di, -2
+	mov si, di		; moved from last word down
+	push cx
+	mov cx, 10000h /2
+	rep movsw		; move 64 KiB
+	pop cx
+	jmp short .dnloop	; proceed for more -->
+.dnlast:
+	add cx, 1000h		; restore counter
+	shl cx, 1
+	shl cx, 1
+	shl cx, 1		; *8, paragraphs to words
+	mov di, cx
+	dec di
+	shl di, 1		; words to offset, -> last word (NC)
+	mov si, di
+	mov ds, ax
+	mov es, dx		; first segment correct
+	rep movsw		; move first part
+	cld
+.return:
+	pop di
+	pop es
+	pop si
+	pop ds
+	pop cx
+	retn
+
+.far:
+	call movp
+	retf
+
+.len:
+
+
+		; INP:	ss:bp -> EBPB, BPBN
+		;	ss:bp-16 -> LOADSTACKVARS
+		;	ss:bp-32 -> LOADDATA
+		;	cs:0 -> both kernel parts
+		;	cs = anywhere
 RxBIO_initialize:
 
 	cli
 	cld
-	mov word [ cs:diskParameterTable + _pointer ], si
-	mov word [ cs:diskParameterTable + _segment ], ds
+	mov dl, byte [ bp + bsBPB + ebpbNew + bpbnBootUnit ]
 	mov byte [ cs:BootDrive ], dl			; physical drive (80, ... )
 
+	mov dx, word [ bp + ldLoadTop ]
 	mov ax, cs
-	mov ds, ax					; DS:
-	mov es, ax					; ES:
-	mov ss, ax					; SS:
-	mov sp, RxBIO_LastAddress + 1024		; temporary stack
+	add ax, (payload - $$) >> 4
+	mov cx, (payload.end - payload + 15) >> 4
+	sub dx, cx
+	cmp dx, ax
+	jb error_memory_layout
+	call movp
+	mov word [ cs:dos_park_segment ], dx
+
+	mov dx, 70h
+	mov ax, cs
+
+	cmp dx, ax
+	ja error_memory_layout
+
+	mov ax, .relocated
+
+	 push dx
+	 push ax
+	mov si, movp
+	push cs
+	pop ds
+	xor di, di
+	push dx
+	sub dx, (movp.len - movp + 15) >> 4
+	mov es, dx
+	pop dx
+	mov cx, ((movp.len - movp + 15) & ~15) >> 1
+	mov ax, movp.far - movp
+	 push es
+	 push ax
+	rep movsw
+
+	mov ax, cs
+	mov cx, (payload - $$) >> 4
+
+	retf
+
+.relocated:
 	sti
 
-		; copy BPB from boot record (at 0:7C0Bh)
-	push ds
 	xor ax, ax
-	mov ds, ax					; disk boot table
-	mov si, 7C0Bh					; at 0000:7C0B
-	mov di, BootDrive_BPB
-	mov cx, sizeBPB
-	repe movsb					; copy BPB
-
-		; get cluster address of RxBIO and RxDOS
-	pop ds
-	xor ax, ax
+	mov ds, ax
 	mov es, ax					; ES:
-	mov si, 500h					; where root directory is located
-	mov ax, word [ es:si + RXDOSBIO_SYS + deStartCluster ]
-	mov dx, word [ es:si + RXDOS_SYS + deStartCluster ]
-	mov word [ RXDOSBIO_ClusterAddr ], ax
-	mov word [ RXDOS_ClusterAddr ], dx
 
 		; relocate disk parameter table to safe address ( at, surprisingly, 0:522 )
 		;  we move it here to maintain some strange compatability with the other DOS.
-	cli
 	xor ax, ax
 	mov di, 500h
-	mov cx, 10h
+	mov cx, 200h >> 1
 	repe stosw					; clear drive, communications area
 
-	mov di, 522h					; destination address (0:522)
-	mov word [ es:1Eh * 4 + _segment ], es
-	mov word [ es:1Eh * 4 + _pointer ], di
+	lds si, [ es:1Eh * 4 ]				; where to copy table
 
-	lds si, [ cs:diskParameterTable ]		; where to copy table
+	mov di, 522h					; destination address (0:522)
+	push di
 	mov cx, 11
 	repe movsb
-	sti
 
-	mov bx, 522h + _mdtHeadSettleTime
-	mov byte [ es:bx ], 2
+	mov word [ es:1Eh * 4 + _segment ], es
+	pop word [ es:1Eh * 4 + _pointer ]
+
+	mov byte [ es:522h + _mdtHeadSettleTime ], 2
 
 		; relocate this loader up to the high end of lower memory
 	mov ax, cs
 	mov ds, ax
 	mov es, ax
 
-	int 12h					 ; get memory configuration
+	mov ax, word [ bp + ldMemoryTop ]
 	mov word [ RxBIO_INITBLOCK + initMemParagraphs ], ax
 
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1					; shl ax, 6
+%if 0
 	sub ax, 64 * (1024 / sizePARAGRAPH)		; subtract 64k in segment form
-	mov word [ _FATbuffer + _segment ], ax		; address of FAT buffer
 
 		; switch stacks so it doesn't get clobbered during load
 	cli
 	mov ss, ax					; new stack
-	mov sp, 0FE00h
-	nop
+	mov sp, 0FFFEh
 	sti
+%endif
 
-		; initialize and load
-	xor ax, ax
-	mov al, byte [ BootDrive_BPB + _bpbNumCopiesFAT ]
-	mul word [ BootDrive_BPB + _bpbSectorsPerFat ]
-	add ax, word [ BootDrive_BPB + _bpbResSectors ]
-	adc dx, byte 0000
-	mov word [ RootDirSector + _low ], ax
-	mov word [ RootDirSector + _high ], dx
-
-		; read first sector of Root Directory
-	mov cx, word [ BootDrive_BPB + _bpbMaxAllocRootDir ]
-	shr cx, 1
-	shr cx, 1
-	shr cx, 1
-	shr cx, 1
-	add ax, cx
-	adc dx, byte 0000
-	mov word [ ReservedBeforeDataSector + _low ], ax
-	mov word [ ReservedBeforeDataSector + _high ], dx
 
 		; Reset Interrupts
 	mov al, 20h
@@ -785,34 +468,6 @@ RxBIO_initialize:
 	mov si, RXDOSBIO_MSGLoadingRxDOS
 	call _DisplayMsg				; Loading RxDOS ...
 
-%ifdef RxDOS_DEBUG
-	mov si, RXDOSBIO_MSGDEBUG_CANTLOAD
-	call _DisplayMsg				; Can't Load Debug Image
-
-RxBIO_InitHalt:
-	jmp short RxBIO_InitHalt
-%endif
-
-		; load the remainder of RxBIO and RxDOS
-	mov di, 600h					; reload starts at 600h
-	mov dx, word [ RXDOSBIO_ClusterAddr ]
-	call _LoadProgram				; Load RxDOSBIO
-	ifc RxBIO_Error
-
-
-		; Load Protection
-		; 
-		; Everything above this line must reside in the first 600h
-		; bytes of the file. This is the minimal portion loaded by the
-		; bootstrap loader.
-		; 
-		; The code below causes an error message in compile if the
-		; file size at this location will exceed 600 hex bytes.
-%if $-$$ >= 600h
- %clear
- %error "RxBIO minimal section exceeds 600h bytes (3 sectors)."
-%endif
-
 
 		; Hardware Evaluation and Startup
 RxBIO_EvaluateHardware:
@@ -822,10 +477,6 @@ RxBIO_EvaluateHardware:
 
 	mov word [ RxBIO_INITBLOCK + initDeviceChain + _segment ], cs
 	mov word [ RxBIO_INITBLOCK + initDeviceChain + _pointer ], con
-
-		; Determine the amount of actual memory
-	int 12h						; get memory size
-	mov word [ RxBIO_INITBLOCK + initMemParagraphs ], ax
 
 		; Determine number of floppy drives
 	xor ax, ax
@@ -949,34 +600,33 @@ RxBIO_InitDeviceChain:
 	mul cx						; size required by table
 
 	add ax, RxBIO_LastAddress + (sizeParagraph - 1)
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1					; paragraphs size
+	adc dx, 0
+%rep 4
+	shr dx, 1
+	rcr ax, 1
+%endrep
+							; paragraphs size
 
 	mov dx, cs					; current segment
-	add dx, ax
-	mov es, dx					; seg address to load next module.
-	mov word [ RxBIO_INITBLOCK + initLowMemSegment ], es
-	mov word [ RxDOS_LoadSegment + _segment ], es
+	add dx, ax					; seg address to load next module.
+	mov word [ RxBIO_INITBLOCK + initLowMemSegment ], dx
+	mov word [ RxDOS_LoadSegment + _segment ], dx
 
-	xor di, di
-	mov dx, word [ RXDOS_ClusterAddr ]
-	call _LoadProgram				; Load RxDOS
-	ifc RxBIO_Error
+	mov ax, [ dos_park_segment ]
+	mov cx, (payload.end - payload + 15) >> 4
 
-	add cx, byte (PARAGRAPH-1)			; (rounded up)
-	shr cx, 1
-	shr cx, 1
-	shr cx, 1
-	shr cx, 1					; paragraphs read
+	cmp dx, ax
+	ja error_memory_layout
+
+	call movp
+
 	add word [ RxBIO_INITBLOCK + initLowMemSegment ], cx
 
 	push cs
 	pop es
 	mov dl, byte [BootDrive]			; storage unit
 	mov di, RxBIO_INITBLOCK
-	jmp far [ cs:RxDOS_LoadSegment ]
+	jmp far [ RxDOS_LoadSegment ]
 
 
 	align 4
@@ -3985,8 +3635,9 @@ RxBIO_DiskBuffer:
 RxBIO_LastAddress:
 RxDOS_StartBlockedDeviceTable:
 
-	; anything allocated after this line will either be clobbered or
-	; reallocated
-
-	; this message is destroyed once the device table is initialized
+	align 16
+payload:
+	incbin "RxDOS.SYS"
+	align 16
+.end:
 

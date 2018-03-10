@@ -2413,9 +2413,7 @@ RxDOS_initialize:
 	add cx, ax					; low address available
 	mov word [ ss:_RxDOS_pStartMemBlock ], cx	; allocate from here
 
-	mov cx, 6
 	mov ax, word [ es:di + initMemParagraphs ]	; available memory size
-	shl ax, cl					; convert to segment address form
 	mov word [ _RxDOS_MaxMemory ], ax		; memory available
 
 	mov ax, word [ es:di + initDeviceChain + _pointer ]
