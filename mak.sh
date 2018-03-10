@@ -9,7 +9,7 @@
 NASMENV="$@"
 
 function nasmbin() {
-	nasm -Ox -i../MACRO/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
+	nasm -Ox -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
 }
 function nasmobj() {
 	nasm -Ox -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
@@ -19,14 +19,8 @@ cd "${0%/*}"
 toolsdir="${PWD}/../dostools"
 ((debug)) && echo "toolsdir=\"$toolsdir\""
 
-cd RxBIO
-if [ -f RxBIO.ASM ]; then {
-	echo Building RxBIO
-	nasmbin RxBIO RxBIO SYS || exit
-} fi
 
-
-cd ../RxAPP
+cd RxAPP
 if [ -f RxVDISK.ASM ]; then {
 	echo Building RxVDISK
 	nasmbin RxVDISK RxVDISK SYS || exit
@@ -112,6 +106,20 @@ sed -re 's/\//\\/g') X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RxDOS.SYS" || exit
 	rm warplink.lin
 	rm STACK\$\$.OBJ
   } fi
+} fi
+
+
+cd ../RxBIO
+if [ -f RxBIO.ASM ]; then {
+	echo Building RxBIO
+	nasmbin RxBIO RxDOS BIN || exit
+
+	cd ../ldosboot
+	echo Building RxDOS.COM
+	nasm -Ox -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ \
+	  -d__MAPFILE__=../map/iniload.map -d_MAP=../map/iniload.map \
+	  -l../lst/iniload.lst -fbin \
+	  -o../bin/RxDOS.COM iniload.asm -D_PAYLOAD_FILE"'RxDOS.BIN'"
 } fi
 
 
