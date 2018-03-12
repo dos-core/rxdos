@@ -2393,13 +2393,8 @@ RxDOS_initialize:
 	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
 	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
 
-	mov ax, word [ _RxDOS_CurrentStackTop ]
-	add ax, (PARAGRAPH - 1)				; round up to nearest para
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1
-
+	mov ax, (RxDOS_EndOfInitCode - $$ + 3 * RXDOS_PERCALL_STACKRESERVE + 15) >> 4
+						; round up to nearest para
 	mov cx, cs
 	add cx, ax					; low address available
 	mov word [ ss:_RxDOS_pStartMemBlock ], cx	; allocate from here
