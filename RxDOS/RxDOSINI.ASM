@@ -2093,17 +2093,10 @@ init_verbose:		dw 1
 
 
 		; CONFIG.SYS keywords
-%ifdef RxDOS_DEBUG
-%if 0
-_RxDOS_RXCONFIGSYS:	db "RXCONFIGTST", 0
-%endif
-_RxDOS_ConfigFile:	db "CONFIG  TST", 0		; if debug mode
-%else
 %if 0
 _RxDOS_RXCONFIGSYS:	db "RXCONFIGSYS", 0
 %endif
-_RxDOS_ConfigFile:	db "CONFIG  SYS", 0		; if production
-%endif
+_RxDOS_ConfigFile:	db "CONFIG  SYS", 0
 
 _RxDOS_ConfigKeywords:	dw CONFIGTYPE_BREAK
 			db 'break', 0
@@ -2229,97 +2222,6 @@ msgProcessCommandYesNo:	db ' [y,n]?', 0
 Config_MenuSelector:	db 'MENU', 0
 Config_CommonSelector:	db 'COMMON', 0
 
-%ifdef RxDOS_DEBUG
-		; Debug Init
-		;
-		; Called when in debug mode.
-		;
-DebugInit:
-
-	Entry
-	def	floppyDrives
-	def	fixedDrives
-	defbytes	execBlock, sizeEXEC
-
-	mov cx, cs
-	mov ax, word [ _RxDOS_CurrentStackTop ]
-	add ax, (PARAGRAPH - 1)				; round up to nearest para
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1
-	add cx, ax					; low address available
-	mov word [ ss:_RxDOS_pStartMemBlock ], cx	; until relocation
-
-	mov ax, 40h
-	mov es, ax					; BIOS communications area
-	mov ax, word [ es:_BIOS_Memory ]
-	shl ax, 1					; multiply * 64 KiB
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1
-	shl ax, 1					; max segment
-	mov word [ _RxDOS_MaxMemory ], ax		; memory available
-
-		; driver link (normally this will get done by driver init calls)
-	currSegment ds
-
-	mov ax, 5200h
-	int 21h
-
-	xor di, di
-	mov ax, word [ es:di + _RxDOS_NULLDev + _pointer ]
-	mov dx, word [ es:di + _RxDOS_NULLDev + _segment ]
-	mov word [ _RxDOS_NULLDev + _pointer ], ax
-	mov word [ _RxDOS_NULLDev + _segment ], dx
-
-		; this code should move to RxBIO
-	call maxBlockDevices
-	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
-
-	int 11h						; read hardware configuration
-
-	shr ax, 1					; floppy bit
-	shr ax, 1					; math coprocessor
-	shr ax, 1					; memory (XT only)
-	shr ax, 1
-	shr ax, 1					; video mode bits
-	shr ax, 1
-	and ax, 0003h
-	inc ax
-	mov word [ _floppyDrives + bp ], ax		; number of floppy disks
-	mov byte [ _RxDOS_CurrentDrive ], 0		; default to drive A:
-
-	xor bx, bx
-	mov ax, 40h
-	mov es, ax
-	mov al, byte [ es:_BIOS_NumFixedDrives ]
-	mov word [ _fixedDrives + bp ], ax		; number of fixed drives
-	or ax, ax					; any fixed drives ?
-	jz _DebugInit_06				; none -->
-	mov byte [ _RxDOS_CurrentDrive ], 2		; else default to drive C:
-
-_DebugInit_06:
-	add ax, 2					; offset start of fixed by floppy disks
-	cmp ax, (DEFAULT_LASTDRIVE & 1Fh)		; max device less than LASTDRIVE ?
-	ja _DebugInit_08				; no, use available devices -->
-	mov ax, (DEFAULT_LASTDRIVE & 1Fh)		; use LASTDRIVE
-
-_DebugInit_08:
-	cmp al, byte [ _RxDOS_bNumBlockDev ]		; compare with number of block devices
-	jnc _DebugInit_12				; if at least as many block devices -->
-	mov al, byte [ _RxDOS_bNumBlockDev ]		;  else use number of block devices
-
-_DebugInit_12:
-	mov byte [ _RxDOS_bLastDrive ], al		; number of logical devices
-
-	mov al, byte [ _RxDOS_CurrentDrive ]		; get current drive
-	inc al
-	mov byte [ _RxDOS_BootDrive ], al		; boot drive
-
-	Return
-%endif
 
 		; Relocate data segment low
 		;
@@ -2373,10 +2275,6 @@ RxDOS_initialize:
 	Entry
 	defbytes	execBlock, sizeEXEC
 	ddef	InitBlockPtr, es, di
-
-%ifdef RxDOS_DEBUG
-	call DebugInit
-%endif
 
 	mov dl, byte [ es:di + initBootDrive ]
 	mov dh, dl
@@ -2458,11 +2356,9 @@ RxDOS_initialize:
 	mov word [ _pointer + bx ], _Interrupt_2a
 	mov word [ _segment + bx ], cs
 
-%ifndef RxDOS_DEBUG
 	mov bx, ( 2fh * 4 )				; Int2F
 	mov word [ _pointer + bx ], _Interrupt_2f
 	mov word [ _segment + bx ], cs
-%endif
 
 	mov bx, ( 30h * 4 )				; "jmp far _CallDOS" at Int30/Int31
 	mov byte [ bx ], 0EAh				; "jmp far" instruction
@@ -2893,15 +2789,10 @@ _RxDOSini_CommandShell:
 _RxDOSini_CommandTail:
 	times 128 db 0					; command tail
 
-%ifndef RxDOS_DEBUG
 _RxDOSini_DefaultShell:
 	db "RXCMD"
 _RxDOSini_DefaultShellExt:
 	db ".EXE",0
-%else
-_RxDOSini_DefaultShell:
-	db 'c:/rxdos/rxcmd.exe', 0
-%endif
 
 _RxDOSini_compatibilityshell:
 	db "COMMAND.COM",0
