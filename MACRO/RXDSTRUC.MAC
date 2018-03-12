@@ -1805,14 +1805,6 @@ initTotalDrives		resb 1				; detected by RxBIO
 initLowMemSegment	resw 1				; low memory segment
 initMemParagraphs	resw 1				; memory size
 initDeviceChain		resd 1				; start of device chain (CON)
-initRelocHighBeg:
-initRelocHighBegAddress	resd 1
-initRelocHighSize	resw 1				; bytes to relocate
-initRelocHighNotify	resw 1				; call back function address
-initRelocLowBeg:
-initRelocLowBegAddress	resd 1				; only used if RxBIO reloc to HMA
-initRelocLowSize	resw 1				; bytes to relocate
-initRelocLowNotify	resw 1				; call back function address
 	endstruc
 
 

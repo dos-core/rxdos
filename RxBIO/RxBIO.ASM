@@ -544,15 +544,6 @@ RxBIO_EvalHardware_20:
 
 		; Setup remainder of INIT Block
 RxBIO_EvalHardware_22:
-	mov word [ RxBIO_INITBLOCK + initRelocHighBegAddress + _segment ], cs
-	mov word [ RxBIO_INITBLOCK + initRelocHighBegAddress + _pointer ], RxBIO_Start
-	mov word [ RxBIO_INITBLOCK + initRelocHighSize ], RxBIO_LastAddress - RxBIO_Start
-	mov word [ RxBIO_INITBLOCK + initRelocHighNotify ], -1
-
-	mov word [ RxBIO_INITBLOCK + initRelocLowBegAddress + _segment ], 0000
-	mov word [ RxBIO_INITBLOCK + initRelocLowBegAddress + _pointer ], 0000
-	mov word [ RxBIO_INITBLOCK + initRelocLowSize ], 0000
-	mov word [ RxBIO_INITBLOCK + initRelocHighNotify ], -1
 
 		; fix-up device driver chain
 	mov si, con
