@@ -2223,35 +2223,6 @@ Config_MenuSelector:	db 'MENU', 0
 Config_CommonSelector:	db 'COMMON', 0
 
 
-		; Relocate data segment low
-		;
-		; DX	where to relocate DS
-		;
-		; At the start of the program, the data segment is located at
-		; the low end of the current CS. The data segment space
-		; begins at 0000 and ends at 'SDAExtendedSwapArea'
-relocateDataSegmentLow:
-
-%ifdef RELOCDATASEG
-	retn						; never execute
-
-	mov es, dx					; destination segment
-	mov cx, SDAExtendedSwapArea			; size
-
-	xor di, di
-	xor si, si
-	shr cx, 1					; words
-	repe movsw					; copy
-
-		; stack also moves with data segment
-	mov ss, dx					; but offset remains intact
-	mov ds, dx					;
-	mov word [ _RxDOS_CurrentSeg ], ds		; Update current segment
-%endif
-
-	retn
-
-
 		; Initialize
 		;
 		; Expects from RxBIO:
@@ -2375,10 +2346,6 @@ RxDOS_initialize:
 	mov word [ _RxDOS_pDTA + _segment ], ds
 
 	mov word [ _RxDOS_CurrentPSP ], 0
-
-		; relocate data segment low
-	mov dx, word [ _RxDOS_pStartMemBlock ]		; where to relocate ds
-	call relocateDataSegmentLow
 
 		; initialize memory and other buffers
 	call RxDOSini_MemorySubSystem
