@@ -2353,9 +2353,7 @@ relocateDataSegmentLow:
 		; Initialize
 		;
 		; Expects from RxBIO:
-		;
-		; DL	unit code of startup disk
-		; ES:DI	points to SYSINIT block
+		; INP:	es:di -> SYSINIT structure
 RxDOS_initialize:
 
 	cli						; disable interrupts
@@ -2378,15 +2376,8 @@ RxDOS_initialize:
 
 %ifdef RxDOS_DEBUG
 	call DebugInit
+%endif
 
-	mov dl, 02h
-	mov dh, dl
-	and dx, 807Fh					; save offset, hard drive bit
-	rol dh, 1					; hard drive
-	rol dh, 1					; A: or C:
-	add dl, dh					; RxDOS drive number
-	mov byte [ _RxDOS_CurrentDrive ], dl		; default to drive A:
-%else
 	mov dl, byte [ es:di + initBootDrive ]
 	mov dh, dl
 	and dx, 807Fh					; save offset, hard drive bit
@@ -2420,7 +2411,7 @@ RxDOS_initialize:
 	mov dx, word [ es:di + initDeviceChain + _segment ]
 	mov word [ _RxDOS_NULLDev + _pointer ], ax
 	mov word [ _RxDOS_NULLDev + _segment ], dx
-%endif
+
 
 	mov ax, 0500h					; set page zero
 	int 10h

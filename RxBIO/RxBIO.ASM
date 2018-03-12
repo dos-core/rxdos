@@ -147,10 +147,8 @@ RxBIO_INITBLOCK:		times sizeSYSINIT db 0
 		; Hardware Configuration Tables and Data
 _FloppyDrives:			dw 0			; # floppy drives
 _FixedDrives:			dw 0			; # fixed drives
-RxDOS_LoadSegment:		dd 0			; where RxDOS loaded
 
 ptrStartBlockedDeviceTable:	dd 0			; ptr to Disk Parameter Blocks
-diskParameterTable:		dd 0			; disk parameter table
 
 RxDOS_CLOCKDATA:		times CLOCKDATA_size db 0
 
@@ -600,8 +598,9 @@ RxBIO_InitDeviceChain:
 
 	mov dx, cs					; current segment
 	add dx, ax					; seg address to load next module.
-	mov word [ RxBIO_INITBLOCK + initLowMemSegment ], dx
-	mov word [ RxDOS_LoadSegment + _segment ], dx
+	xor ax, ax
+	push dx
+	push ax				; on stack: far address of DOS
 
 	mov ax, [ dos_park_segment ]
 	mov cx, (payload.end - payload + 15) >> 4
@@ -609,15 +608,15 @@ RxBIO_InitDeviceChain:
 	cmp dx, ax
 	ja error_memory_layout
 
-	call movp
+	call movp			; move DOS into place
 
-	add word [ RxBIO_INITBLOCK + initLowMemSegment ], cx
-
+	add cx, dx			; => behind DOS
 	push cs
 	pop es
-	mov dl, byte [BootDrive]			; storage unit
-	mov di, RxBIO_INITBLOCK
-	jmp far [ RxDOS_LoadSegment ]
+	mov di, RxBIO_INITBLOCK		; -> SYSINIT structure
+	mov word [ di + initLowMemSegment ], cx		; enter this
+
+	retf				; jump to DOS
 
 
 	align 4
