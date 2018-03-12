@@ -840,18 +840,10 @@ the file LICENSE.TXT.
 		; RxDOS actually uses only ifc, ifnc, ifz and ifnz
 %idefine ifc	if_ c,
 %idefine ifnc	if_ nc,
-%idefine ifb	if_ b,
-%idefine ifnb	if_ nb,
 %idefine ifz	if_ z,
 %idefine ifnz	if_ nz,
 %idefine ife	if_ e,
 %idefine ifne	if_ ne,
-%idefine ifa	if_ a,
-%idefine ifna	if_ na,
-%idefine ifae	if_ ae,
-%idefine ifnae	if_ nae,
-%idefine ifbe	if_ be,
-%idefine ifnbe	if_ nbe,
 
 
 		; Normalize segment and pointer
