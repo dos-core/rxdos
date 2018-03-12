@@ -826,14 +826,11 @@ the file LICENSE.TXT.
 		;
 		; %1 = CPU condition
 		; %2 = Jump address to branch to if condition matches
+		;
+		; Recent NASM versions automatically create the two-instruction
+		; near conditional jumps when needed!
 	%imacro if_ 2.nolist
-%if _386
-		j%+1 near %2
-%else
-		j%-1 %%skip
-		jmp %2
-%%skip:
-%endif
+		j%+1 %2
 	%endmacro
 
 		; Though this doesn't cover all conditions the CPU knows,
