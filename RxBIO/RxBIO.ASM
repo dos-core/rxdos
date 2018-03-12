@@ -610,12 +610,9 @@ RxBIO_InitDeviceChain:
 
 	call movp			; move DOS into place
 
-	add cx, dx			; => behind DOS
-	push cs
-	pop es
+	 push cs
+	 pop es
 	mov di, RxBIO_INITBLOCK		; -> SYSINIT structure
-	mov word [ di + initLowMemSegment ], cx		; enter this
-
 	retf				; jump to DOS
 
 

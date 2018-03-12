@@ -1801,7 +1801,6 @@ _BIO_activeDJdrive	equ 0004h			; byte: logical drive associated with the single 
 		; Obsolete. RxDOS 7.30 doesn't have a separate RxBIO.
 	struc SYSINIT
 initDeviceChain		resd 1			; start of device chain (CON)
-initLowMemSegment	resw 1			; low memory segment
 initMemParagraphs	resw 1			; memory size
 initBootDrive		resb 1			; unit code
 initTotalDrives		resb 1			; detected by RxBIO
