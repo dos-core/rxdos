@@ -16,7 +16,7 @@ numdef BUILD_OBJ,	1		; build each source file to an object
 
 numdef 186,		0		; allow code for 80186+ processors, won't run on 8086
 numdef 386,		0		; allow code for 80386+ processors, won't run on 8086, 80186 or 80286
-incdef 386, 186				; excluding 186 opcodes on 386+ seems not useful
+incdef _386, 186			; excluding 186 opcodes on 386+ seems not useful
 numdef DEBUG,		0		; generic debug - include some code to make debugging easier
 					;  (not useful if RxDOS isn't debugged with DEBUG.COM)
 numdef DEBUG0,		0		; 1st level debug - print numbers indicating system startup process
@@ -44,7 +44,7 @@ numdef DOSCODEUMA,	1		; move the DOS code into UMA if available
 numdef DOSCODEHMA,	1		; move the DOS code into HMA if available
 numdef DOSCODEROM,	0		; execute the DOS code from ROM if we started from ROM
 numdef RXROMDOS,	0		; ROM version of RxDOS (execute DOS code in ROM)
-incdef RXROMDOS, DOSCODEROM
+incdef _RXROMDOS, DOSCODEROM
 %assign _RELOCATEDOSCODE (_DOSCODEUMA| _DOSCODEHMA| _DOSCODEROM)	; relocation of DOS code required ?
 numdef DOSDATAUMA,	1		; move the DOS data into UMA if available
 %assign _RELOCATEDOSDATA _DOSDATAUMA	; relocation of DOS data required ?
