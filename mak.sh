@@ -6,7 +6,7 @@
 #
 # DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
 
-NASMENV="$@"
+export NASMENV="$@"
 
 function nasmbin() {
 	nasm -Ox -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
