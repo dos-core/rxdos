@@ -568,8 +568,11 @@ RxBIO_InitDeviceChain:
 	xor ax, ax
 	mov es, ax
 
+%ifn _DEBUG4
+						; (leave int 00h of debugger)
 	mov word [ es:_segment + 0h * 4 ], cs
 	mov word [ es:_pointer + 0h * 4 ], Interrupt_0
+%endif
 
 	mov word [ es:_segment + 29h * 4 ], cs
 	mov word [ es:_pointer + 29h * 4 ], Interrupt_29
@@ -578,9 +581,24 @@ RxBIO_InitDeviceChain:
 	mov word [ es:bx + 2 ], cs			; _segment
 	mov word [ es:bx ], IntReturn			; _pointer
 
+%ifn _DEBUG4
 	mov cx, 6
-	mov bx, 0001 * 4				; int 01h - int 07h
+	mov bx, 0001h * 4				; int 01h - int 07h
 	call InitInterruptVectors
+%else
+						; (leave int 01h of debugger)
+	mov cx, 1
+	mov bx, 0002h * 4				; int 02h
+	call InitInterruptVectors
+						; (leave int 03h of debugger)
+	mov cx, 2
+	mov bx, 0004h * 4				; int 04h -- 05h
+	call InitInterruptVectors
+						; (leave int 06h of debugger)
+	mov cx, 1
+	mov bx, 0007h * 4				; int 07h
+	call InitInterruptVectors
+%endif
 
 	mov word [ es:_segment + 19h * 4 ], cs
 	mov word [ es:_pointer + 19h * 4 ], Interrupt_19

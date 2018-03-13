@@ -2277,6 +2277,8 @@ RxDOS_initialize:
 		; set interrupt vectors for interrupt 00, 06, 21, 23, ... 28, 2F, 30
 	xor ax, ax
 	mov ds, ax
+
+%ifn _DEBUG4
 	mov bx, ( 00h * 4 )				; Int00
 	mov word [ _pointer + bx ], _Interrupt_00
 	mov word [ _segment + bx ], cs
@@ -2284,6 +2286,7 @@ RxDOS_initialize:
 	mov bx, ( 06h * 4 )				; Int06
 	mov word [ _pointer + bx ], _Interrupt_06
 	mov word [ _segment + bx ], cs
+%endif
 
 	mov bx, ( 21h * 4 )				; Int21
 	mov word [ _pointer + bx ], _Interrupt_21
@@ -2432,6 +2435,8 @@ RxDOS_init_24:
 	lea bx, [ word _execBlock + bp ]		; exec block address
 	mov dx, _RxDOS_CommandShell
 	call init_shell_verbose
+
+	d4bp
 	Int21 ExecuteProgram, 00			; execute custom user shell from RXCONFIG.SYS SHELL= statement
 	call init_shell_verbose_error
 	jnc RxDOS_init_68				; only branches if the main shell terminated
@@ -2440,6 +2445,8 @@ RxDOS_init_36:
 	lea bx, [ word _execBlock + bp ]		; exec block address
 	mov dx, _RxDOSini_DefaultShell
 	call init_shell_verbose
+
+	d4bp
 	Int21 ExecuteProgram, 00			; if failed, execute default shell (RXCMD.EXE)
 	call init_shell_verbose_error
 	jnc RxDOS_init_68				; only branches if the main shell terminated
@@ -2452,6 +2459,7 @@ RxDOS_init_36:
 	mov byte [ _RxDOSini_DefaultShellExt + 4 ], 0	; make sure it's zero
 	call init_shell_verbose
 
+	d4bp
 	Int21 ExecuteProgram, 00			; if failed, execute default shell (RXCMD.COM)
 	call init_shell_verbose_error
 	jnc RxDOS_init_68				; only branches if the main shell terminated
@@ -2461,6 +2469,7 @@ RxDOS_init_36:
 	mov dx, _RxDOSini_compatibilityshell
 	call init_shell_verbose
 
+	d4bp
 	Int21 ExecuteProgram, 00			; if failed, execute compatibility shell (COMMAND.COM)
 	call init_shell_verbose_error
 	jnc RxDOS_init_68				; only branches if the main shell terminated
