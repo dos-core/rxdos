@@ -1909,9 +1909,11 @@ RxDOSini_SFTSubSystem:
 
 	call AllocateSystemSpace
 
+	push di
 	xor ax, ax
 	shr cx, 1
 	repe stosw					; init entire space to nulls
+	pop di
 
 	mov word [ _RxDOS_pFT + _segment ], es
 	mov word [ _RxDOS_pFT + _pointer ], di
