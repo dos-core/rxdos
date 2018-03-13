@@ -492,7 +492,6 @@ RxBIO_EvaluateHardware:
 	int 13h
 
 	int 11h						; read hardware configuration
-	mov word [ _FloppyDrives ], 0000		; number of floppy disks
 
 	test ax, 1					; floppy disks listed ?
 	jz RxBIO_EvalHardware_08			; if no -->
