@@ -2248,11 +2248,6 @@ RxDOS_initialize:
 	ddef	InitBlockPtr, es, di
 
 	mov dl, byte [ es:di + initBootDrive ]
-	mov dh, dl
-	and dx, 807Fh					; save offset, hard drive bit
-	rol dh, 1					;
-	rol dh, 1					; if harddrive, dh = 2 (else 0)
-	add dl, dh					; RxDOS drive number
 	mov byte [ _RxDOS_CurrentDrive ], dl		; current drive = boot drive (A: = 0, ...)
 
 	inc dl

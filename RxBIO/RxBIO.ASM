@@ -141,14 +141,23 @@ RxBIO_Start:		jmp RxBIO_initialize
 dos_park_segment:		dw 0
 		; Data
 BootDrive:			db 0
+		align 4
+BootPartition:			dd 0
 
-RxBIO_INITBLOCK:		times sizeSYSINIT db 0
+RxBIO_INITBLOCK:
+	istruc SYSINIT
+at initDeviceChain,	dw con, 0
+at initMemParagraphs,	dw 0
+at initBootDrive,	db -1
+at initTotalDrives,	db 0
+	iend
 
 		; Hardware Configuration Tables and Data
-_FloppyDrives:			dw 0			; # floppy drives
-_FixedDrives:			dw 0			; # fixed drives
+_FloppyDrives:			dw 0		; # floppy drives
+_FixedDrives:			dw 0		; # fixed drives
 
-ptrStartBlockedDeviceTable:	dd 0			; ptr to Disk Parameter Blocks
+ptrStartBlockedDeviceTable:	dw RxDOS_StartBlockedDeviceTable, -1
+						; ptr to Disk Parameter Blocks
 
 RxDOS_CLOCKDATA:		times CLOCKDATA_size db 0
 
@@ -368,8 +377,14 @@ RxBIO_initialize:
 
 	cli
 	cld
-	mov dl, byte [ bp + bsBPB + ebpbNew + bpbnBootUnit ]
-	mov byte [ cs:BootDrive ], dl			; physical drive (80, ... )
+	push cs
+	pop ds
+	mov dl, byte [bp + bsBPB + ebpbNew + bpbnBootUnit]
+	mov byte [BootDrive], dl		; ROM-BIOS unit (0, 80h, ...)
+	mov ax, word [bp + bsBPB + bpbHiddenSectors]
+	mov dx, word [bp + bsBPB + bpbHiddenSectors + 2]
+	mov word [BootPartition], ax
+	mov word [BootPartition + 2], dx	; partition start sector
 
 	mov dx, word [ bp + ldLoadTop ]
 	mov ax, cs
@@ -469,12 +484,7 @@ RxBIO_initialize:
 
 		; Hardware Evaluation and Startup
 RxBIO_EvaluateHardware:
-
-	mov dl, byte [BootDrive]			; int13 unit
-	mov byte [ RxBIO_INITBLOCK + initBootDrive ], dl
-
 	mov word [ RxBIO_INITBLOCK + initDeviceChain + _segment ], cs
-	mov word [ RxBIO_INITBLOCK + initDeviceChain + _pointer ], con
 
 		; Determine number of floppy drives
 	xor ax, ax
@@ -583,6 +593,15 @@ RxBIO_InitDeviceChain:
 	mov word [ RxBIO_INITBLOCK + initTotalDrives ], cx
 	mov byte [ block + devUnits ], cl		; block device header
 
+	cmp byte [RxBIO_INITBLOCK + initBootDrive], -1	; found any ?
+	jne @FF						; yes -->
+	mov al, [BootDrive]
+	cmp al, 2					; 0 or 1 ?
+	jb @F						; A: or B: -->
+	mov al, 2					; else use C:
+@@:
+	mov byte [RxBIO_INITBLOCK + initBootDrive], al
+@@:
 
 		; Load remainder of RxDOS
 	mov ax, sizeDISKBLOCK				; number of block devices
@@ -3090,14 +3109,46 @@ _initDiskParams_12:
 
 		; set end of list
 _initDiskParams_32:
-	lea bx, [ di - sizeDISKBLOCK ]
-	mov word [ bx + _dskNextPointer + _pointer ], -1
+	mov word [ di - sizeDISKBLOCK + _dskNextPointer + _pointer ], -1
 
 		; end, return
 _initDiskParams_36:
 	mov word [ ptrStartBlockedDeviceTable + _segment ], cs
-	mov word [ ptrStartBlockedDeviceTable + _pointer ], RxDOS_StartBlockedDeviceTable
+	les di, [ptrStartBlockedDeviceTable]
 
+	mov ax, word [BootPartition]
+	mov dx, word [BootPartition + 2]
+	mov cl, byte [BootDrive]
+
+.loop:
+	cmp di, -1
+	je .end
+
+	cmp byte [es:di + _dskPhysDriveNumber], cl
+	je .try
+.next:
+	les di, [es:di + _dskNextPointer]
+	jmp .loop
+
+.try:
+			; do we have a default initialised value ?
+	mov ch, [es:di + _dskDOSLogicalDiskUnit]
+	cmp byte [RxBIO_INITBLOCK + initBootDrive], -1
+	jne @F		; yes -->
+			; no, so use the first partition on this ROM-BIOS unit
+	mov byte [RxBIO_INITBLOCK + initBootDrive], ch	; default initialise
+@@:
+
+			; do we have a match for the partition ?
+	cmp word [es:di + _dskBPB + bpbHiddenSectors], ax
+	jne .next	; no -->
+	cmp word [es:di + _dskBPB + bpbHiddenSectors + 2], dx
+	jne .next	; no -->
+			; yes
+
+	mov byte [RxBIO_INITBLOCK + initBootDrive], ch
+			; done
+.end:
 	getarg cx, _devices				; total devices (floppy + fixed)
 	Return
 
