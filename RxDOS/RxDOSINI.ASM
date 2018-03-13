@@ -2501,6 +2501,7 @@ RxDOS_init_68:
 	mov si, init_msg.reboot_prompt
 	call RxDOSIni_TypeMessage
 .loop:
+	d4bp
 	xor ax, ax
 	int 16h						; this allows Ctrl+Alt+Del
 	jmp short .loop					; infinite loop
