@@ -664,14 +664,14 @@ the file LICENSE.TXT.
 %if %$pushedreg == 0
 		push ax
 %if %0 >= 3
-		mov word [bp+_pointer+_%1], %3	; really a value
+		mov word [bp+_segment+_%1], %2	; really a value
 %endif
 %endif
 
 %if %$pushedseg == 0
 		push ax
 %if %0 >= 2
-		mov word [bp+_segment+_%1], %2	; really a value
+		mov word [bp+_pointer+_%1], %3	; really a value
 %endif
 %endif
 %pop
