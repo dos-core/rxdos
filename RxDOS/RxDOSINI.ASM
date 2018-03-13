@@ -1931,6 +1931,8 @@ RxDOSini_SFTSubSystem:
 		; ax = number of CCBs to initialize
 RxDOSini_CCBSubSystem:
 
+	d2bp
+
 	push ax						; buffers
 	mov cx, sizeCCB
 	mul cx						; total bytes for cache blocks
@@ -2367,6 +2369,7 @@ RxDOS_initialize:
 	mov es, ax
 
 	call configProcessing				; process RXCONFIG.SYS file
+	d4bp
 	call RxDOSini_StdInStdOutDrivers		; initialize drivers
 
 		; parse command line

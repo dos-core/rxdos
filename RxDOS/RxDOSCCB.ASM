@@ -57,6 +57,8 @@ the file LICENSE.TXT.
 		; NZ if buffer contains valid data
 SelBuffer:
 
+	d2bp
+
 	SaveRegisters ax, bx, cx, dx
 
 	les di, [ ss:_RxDOS_BufferList ]

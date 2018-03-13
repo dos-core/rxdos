@@ -3174,7 +3174,7 @@ _initDiskParams_36:
 		; ax	current devices
 mapAllStandardDOSPartitions:
 
-	d4bp
+	d3bp
 
 	entry
 	def	devices, ax
