@@ -146,7 +146,7 @@ BootPartition:			dd 0
 
 RxBIO_INITBLOCK:
 	istruc SYSINIT
-at initDeviceChain,	dw con, 0
+at initDeviceChain,	dw con, 70h
 at initMemParagraphs,	dw 0
 at initBootDrive,	db -1
 at initTotalDrives,	db 0
@@ -484,7 +484,6 @@ RxBIO_initialize:
 
 		; Hardware Evaluation and Startup
 RxBIO_EvaluateHardware:
-	mov word [ RxBIO_INITBLOCK + initDeviceChain + _segment ], cs
 
 		; Determine number of floppy drives
 	xor ax, ax
@@ -551,15 +550,6 @@ RxBIO_EvalHardware_20:
 
 		; Setup remainder of INIT Block
 RxBIO_EvalHardware_22:
-
-		; fix-up device driver chain
-	mov si, con
-
-RxBIO_InitDeviceChain:
-	mov word [ si + 2 ], cs				; _segment
-	mov si, word [ si ]				; _pointer
-	cmp si, byte -1
-	jnz RxBIO_InitDeviceChain
 
 	call SaveInterruptVectors
 
@@ -657,37 +647,37 @@ RxBIO_InitDeviceChain:
 Strategy:		dd 0
 
 		; CON definition
-	devheader con, clock, 0, (DEV_CHAR+ DEV_STDINPUT+ DEV_STDOUTPUT+ DEV_FASTCHARIO), \
+	devheader con, clock, 70h, (DEV_CHAR+ DEV_STDINPUT+ DEV_STDOUTPUT+ DEV_FASTCHARIO), \
 		_DevStrategy, con_interrupt, 'CON'
 
 		; CLOCK$ definition
-	devheader clock, prn, 0, (DEV_CHAR+ DEV_CLOCK), \
+	devheader clock, prn, 70h, (DEV_CHAR+ DEV_CLOCK), \
 		_DevStrategy, clock_interrupt, 'CLOCK$'
 
 		; PRN, LPT1, LPT2, LPT3 definitions
-	devheader prn, lpt1, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
+	devheader prn, lpt1, 70h, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
 		_DevStrategy, prn_interrupt, 'PRN'
-	devheader lpt1, lpt2, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
+	devheader lpt1, lpt2, 70h, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
 		_DevStrategy, lpt1_interrupt, 'LPT1'
-	devheader lpt2, lpt3, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
+	devheader lpt2, lpt3, 70h, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
 		_DevStrategy, lpt2_interrupt, 'LPT2'
-	devheader lpt3, aux, 0, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
+	devheader lpt3, aux, 70h, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
 		_DevStrategy, lpt3_interrupt, 'LPT3'
 
 		; AUX, COM1, COM2, COM3, COM4 definitions
-	devheader aux, com1, 0, (DEV_CHAR), \
+	devheader aux, com1, 70h, (DEV_CHAR), \
 		_DevStrategy, aux_interrupt, 'AUX'
-	devheader com1, com2, 0, (DEV_CHAR), \
+	devheader com1, com2, 70h, (DEV_CHAR), \
 		_DevStrategy, com1_interrupt, 'COM1'
-	devheader com2, com3, 0, (DEV_CHAR), \
+	devheader com2, com3, 70h, (DEV_CHAR), \
 		_DevStrategy, com2_interrupt, 'COM2'
-	devheader com3, com4, 0, (DEV_CHAR), \
+	devheader com3, com4, 70h, (DEV_CHAR), \
 		_DevStrategy, com3_interrupt, 'COM3'
-	devheader com4, block, 0, (DEV_CHAR), \
+	devheader com4, block, 70h, (DEV_CHAR), \
 		_DevStrategy, com4_interrupt, 'COM4'
 
 		; Block Device, pre-initialised to three units
-	devheader block, -1, 0, (DEV_REMOVABLEMEDIA+ DEV_LOGICALMAPPING+ DEV_IOCTL), \
+	devheader block, -1, -1, (DEV_REMOVABLEMEDIA+ DEV_LOGICALMAPPING+ DEV_IOCTL), \
 		_DevStrategy, block_interrupt, 3, "RXBLOCK"
 
 	align 2
