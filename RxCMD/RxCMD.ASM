@@ -5033,15 +5033,97 @@ _VerifyExit:
 		;
 		; /R	Display kernel information
 _Ver:
-	call CheckNoArgs				; check for no arguments
-	call CRLF
+	entry
+	def	majorversion
+	def	minorversion
+	def	oemversion
+
+	defbytes	printbuffer, 128
+
+	xor cx, cx					; min args
+	xor dx, dx					; max args
+	mov bx, _VerSwitches				; dir switches
+	call PreProcessCmndLine				; process switches and args
+	jc .exit					; if error -->
 
 	mov dx, RxDOS_Version
 	call DisplayLine
 
 	mov dx, RxDOS_VersionCopyright
 	call DisplayLine
-	retn
+
+	test word [ _VerRSwitch + swFlags ], SW_SWITCHSET
+	jz .exit
+
+
+	mov ax, 3000h
+	int 21h
+	xor cx, cx
+	mov cl, al
+	mov word [ bp + _majorversion ], cx
+	mov cl, ah
+	mov word [ bp + _minorversion ], cx
+	mov cl, bh
+	mov word [ bp + _oemversion ], cx
+
+	mov bx, msg.ver_r_30
+	lea di, [ _oemversion + bp ]
+	push di
+	lea di, [ _minorversion + bp ]
+	push di
+	lea di, [ _majorversion + bp ]
+	push di
+	push bx						; format
+	lea di, [ _printbuffer + bp ]
+	push di
+	call _sprintf
+	add sp, ax					; # args passed
+	call DisplayLine
+
+
+	mov ax, 3306h
+	int 21h
+	xor cx, cx
+	mov cl, bl
+	mov word [ bp + _majorversion ], cx
+	mov cl, bh
+	mov word [ bp + _minorversion ], cx
+
+	mov bx, msg.ver_r_true
+	lea di, [ _minorversion + bp ]			; pointer to current disk
+	push di						; current disk
+	lea di, [ _majorversion + bp ]			; pointer to current disk
+	push di						; current disk
+	push bx						; format
+	lea di, [ _printbuffer + bp ]
+	push di
+	call _sprintf
+	add sp, ax					; # args passed
+	call DisplayLine
+
+	mov dx, msg.ver_r_str
+	call DisplayLine
+
+
+	mov ax, 33FFh
+	xor dx, dx
+	int 21h
+
+	test dx, dx
+	jz @F
+
+	xchg ax, dx
+	mov es, ax
+	jmp @FF
+
+@@:
+	mov dx, msg.ver_r_no_str
+@@:
+	call DisplayLine
+	call CRLF
+	
+.exit:
+	Return
 
 
 		; Volume
@@ -6322,6 +6404,10 @@ CmndError_ReadErrorAbort:		asciz "error reading file"
 msg:
 .error_load_program:	asciz "Error loading program."
 .int3:			asciz "Breaking into debugger.",13,10
+.ver_r_30:	asciz 13,10,"Reported DOS version (Int21.30): %d.%z2d OEM: %z2Xh",13,10
+.ver_r_true:	asciz "Reported true DOS version (Int21.3306): %d.%z2d",13,10
+.ver_r_str:	asciz "Version string (Int21.33FF): "
+.ver_r_no_str:	asciz "(None)"
 
 		; Other Variables
 RxDOS_NewLine:			asciz 13,10
@@ -6397,6 +6483,10 @@ _DirOrderSwitch:	switch 'o', SW_LETTERCHOICE, SW_DIR_ORDER
 _DirSubDirSwitch:	switch 's', 0
 _DirLowerCaseSwitch:	switch 'l', 0
 _DirBareSwitch:		switch 'b', 0
+			db -1
+
+_VerSwitches:
+_VerRSwitch:		switch 'r', 0
 			db -1
 
 SW_DIR_ATTRIB:		db '-dnsra', 0
