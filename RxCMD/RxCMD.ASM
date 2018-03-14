@@ -2699,7 +2699,7 @@ _findProgram_18:
 		; search through current directory first
 _findProgram_24:
 	cmp word [ _extensionFlag + bp ], False		; extension included ?
-	jnz _findProgram_30				; no, search for program appending extension -->
+	jz _findProgram_30				; no, search for program appending extension -->
 
 	getarg dx, __pathArg				; pointer to path argument
 	lea di, [ _finddata + bp ]
