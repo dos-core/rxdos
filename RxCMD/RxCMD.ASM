@@ -3535,6 +3535,7 @@ _sprintfNum_12:
 	push di						; where to begin right justify
 	lea si, [ _decDisplay + bp ]			; where data stored
 	cmp word [ _fieldwidth + bp ], byte 0		; left justified output ?
+	 push cx
 	jz _sprintfNum_20				; yes -->
 
 
@@ -3564,15 +3565,22 @@ _sprintfNum_18:
 
 		; left justified
 _sprintfNum_20:
+.l:
 	lodsb						; get character
 	stosb
-	loop _sprintfNum_20
+	loop .l
 
 
 		; done
 _sprintfNum_32:
+	 pop cx
 	pop di
-	add di, word [ _fieldwidth + bp ]		; point past field
+	mov si, word [ _fieldwidth + bp ]
+	test si, si
+	jnz @F
+	mov si, cx
+@@:
+	add di, si					; point past field
 
 	pop si
 	return
