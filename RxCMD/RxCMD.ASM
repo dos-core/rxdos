@@ -6421,7 +6421,7 @@ CmndError_ReadErrorAbort:		asciz "error reading file"
 msg:
 .error_load_program:	asciz "Error loading program."
 .int3:			asciz "Breaking into debugger.",13,10
-.ver_r_30:	asciz 13,10,"Reported DOS version (Int21.30): %d.%z2d OEM: %z2Xh",13,10
+.ver_r_30:	asciz 13,10,"Reported DOS version (Int21.3000): %d.%z2d OEM: %z2Xh",13,10
 .ver_r_true:	asciz "Reported true DOS version (Int21.3306): %d.%z2d",13,10
 .ver_r_str:	asciz "Version string (Int21.33FF): "
 .ver_r_no_str:	asciz "(None)"
