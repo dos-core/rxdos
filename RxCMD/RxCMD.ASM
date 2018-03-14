@@ -3251,6 +3251,7 @@ isStdOutAFile:
 		; 	%c	character
 		; 	%s	string
 		; 	%d	decimal number
+		;	%x	hexadecimal number
 		; For each requested data, a pointer to it is expected on stack.
 		; The formatting codes are case insensitive.
 		;
@@ -3294,10 +3295,6 @@ _sprintf:
 	mov di, word [ _output + bp ]
 
 _sprintf_06:
-%if 1
-	mov word [ _fieldwidth + bp ], 0		; no width
-	mov word [ _fieldflags + bp ], 0		; no flags
-%endif
 
 _sprintf_08:
 	lodsb						; get character
@@ -3363,8 +3360,10 @@ _sprintf_18:
 
 		; see if it's a valid formatting code
 _sprintf_22:
+	xor cx, cx
 	cmp al, 'd'					; decimal output ?
 	je _sprintf_26
+	mov cl, 2
 	cmp al, 'x'					; hexadecimal output ?
 	je _sprintf_26
 	cmp al, 'c'					; character ?
@@ -3379,7 +3378,7 @@ _sprintf_22:
 		; Don't store the unknown code itself.
 
 
-		; numerical, cx = type (0 for decimal)
+		; numerical, cx = type (0 for decimal, 2 for hexadecimal)
 _sprintf_26:
 	push si
 	getarg si, _varg				; get pointer to next variable argument
@@ -3396,6 +3395,7 @@ _sprintf_26:
 
 _sprintf_28:
 	mov bx, word [ _fieldflags + bp ]		; flags
+	or bx, cx
 	mov cx, word [ _fieldwidth + bp ]		; width
 	call _sprintfNum				; write nummer as ASCII
 
@@ -3478,9 +3478,10 @@ _sprintf_86:
 		; cx = size of field to right justify
 		; bx = display option flags:
 		; 	8000	insert decimal commas
+		;	0002	display hexadecimal
 		; RxDOS 7.30+:
 		;	0001	display binary
-		;	0002	display hexadecimal (if both, binary is prefered!)
+		;	 (if both 0002 and 0001, binary is prefered!)
 _sprintfNum:
 
 	entry
@@ -3498,8 +3499,16 @@ _sprintfNum:
 
 _sprintfNum_08:
 	mov cx, 10
+	test byte [ bp + _decimalflag ], 2
+	jz .dec_divisor
+	mov cl, 16
+.dec_divisor:
 	call _div32					; divide by base (maximal remainder: 1/9/F)
-	or cl, '0'
+	add cl, '0'
+	cmp cl, '9'
+	jbe .dec_digit
+	add cl, -('9'+1) + 'A'
+.dec_digit:
 	mov byte [ di ], cl				; store character
 	inc di
 
