@@ -5111,6 +5111,17 @@ _Vol_62:
 	Return
 
 
+		; Break into debugger
+_Int3:
+	call CheckNoArgs				; check for no arguments
+
+	mov dx, msg.int3
+	call DisplayLine
+
+	int3
+	retn
+
+
 		; Commands not supported
 _Chcp:
 _Ctty:
@@ -6168,6 +6179,7 @@ RxDOS_InternalCommands:
 	cmnd _Verify,	"verify"
 	cmnd _Ver,	"ver"
 	cmnd _Vol,	"vol"
+	cmnd _Int3,	"int3"
 	dw -1
 
 
@@ -6309,6 +6321,7 @@ CmndError_ReadErrorAbort:		asciz "error reading file"
 
 msg:
 .error_load_program:	asciz "Error loading program."
+.int3:			asciz "Breaking into debugger.",13,10
 
 		; Other Variables
 RxDOS_NewLine:			asciz 13,10
