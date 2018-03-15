@@ -2137,8 +2137,6 @@ _editorControlC:
 _editorCRLF:
 	mov al, 13
 	int 29h
-	mov al, 10
-	int 29h
 	jmp short _lineEditor_60
 
 
