@@ -3296,16 +3296,13 @@ _sprintf:
 	mov di, word [ _output + bp ]
 
 _sprintf_06:
-
-_sprintf_08:
 	lodsb						; get character
-_sprintf_10:
 	stosb						; copy to output
 	or al, al					; all done ?
 	jz _sprintf_86					; yes -->
 
 	cmp al, '%'					; format code ?
-	jnz _sprintf_08					; not yet -->
+	jnz _sprintf_06					; not yet -->
 
 		; format code
 	mov word [ _fieldwidth + bp ], 0		; no width
