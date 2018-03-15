@@ -3302,7 +3302,7 @@ _sprintf_08:
 _sprintf_10:
 	stosb						; copy to output
 	or al, al					; all done ?
-	ifz _sprintf_86					; yes -->
+	jz _sprintf_86					; yes -->
 
 	cmp al, '%'					; format code ?
 	jnz _sprintf_08					; not yet -->
@@ -3318,7 +3318,7 @@ _sprintf_12:
 	lodsb						; get character that follows
 	_lowerCase al
 	or al, al					; all done ?
-	ifz _sprintf_86					; yes -->
+	jz _sprintf_85					; yes -->
 
 	mov cx, SPRINTF_LONGFLAG
 	cmp al, 'l'					; long flag ?
@@ -3347,6 +3347,21 @@ _sprintf_12:
 _sprintf_16:
 	or word [ _fieldflags + bp ], cx
 	jmp short _sprintf_12
+
+
+_sprintf_85:
+	push dx
+	mov dx, msg.invalid_sprintf_format
+	call DisplayLine
+	pop dx
+
+		; all done
+_sprintf_86:
+	mov ax, word [ _args + bp ]
+	add ax, ax					; # words left on stack
+	mov si, word [ _output + bp ]
+	mov dx, si
+	return
 
 
 		; is it a field width ?
@@ -3533,15 +3548,6 @@ _sprintf_40:
 _sprintf_46:
 	stosb
 	jmp _sprintf_06
-
-
-		; all done
-_sprintf_86:
-	mov ax, word [ _args + bp ]
-	add ax, ax					; # words left on stack
-	mov si, word [ _output + bp ]
-	mov dx, si
-	return
 
 
 		; Convert number (dx:ax) to ASCII string
