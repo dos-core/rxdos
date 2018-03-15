@@ -3256,6 +3256,7 @@ isStdOutAFile:
 		; The formatting codes are case insensitive.
 		;
 		; Additional parameters of formatting codes:
+		;	f	Use far pointers
 		;	z	Zero-fill numerical formatting code (instead of space)
 		;	l	Use a "long" number for numerical formatting code (dword, else word)
 		;	0-9	Specify field width (zero- or space-filled), may contain more digits
@@ -3323,6 +3324,14 @@ _sprintf_12:
 	cmp al, 'l'					; long flag ?
 	jz _sprintf_16					; yes -->
 
+	mov cx, SPRINTF_FAR
+	cmp al, 'f'
+	je _sprintf_16
+
+	mov cx, SPRINTF_IMMEDIATE
+	cmp al, 'i'
+	je _sprintf_16
+
 	mov cx, SPRINTF_LEFTALIGN
 	cmp al, '-'					; left justify
 	jz _sprintf_16					; yes -->
@@ -3373,7 +3382,11 @@ _sprintf_22:
 	cmp al, '%'					; percent percent ?
 	je _sprintf_46
 
-	; jmp _sprintf_10
+	push dx
+	mov dx, msg.invalid_sprintf_format
+	call DisplayLine
+	pop dx
+
 	jmp _sprintf_06
 		; Don't store the unknown code itself.
 
@@ -3382,18 +3395,30 @@ _sprintf_22:
 _sprintf_26:
 	push si
 	getarg si, _varg				; get pointer to next variable argument
-	mov si, word [ si ]				; get argument pointer
+	mov bx, word [ si ]				; get argument pointer
 	add word [ _varg + bp ], byte 2
 	inc word [ _args + bp ]
 
+	push ds
+	test word [ bp + _fieldflags ], SPRINTF_FAR
+	jz @F
+
+	inc si
+	inc si
+	add word [ bp + _varg ], 2
+	inc word [ bp + _args ]
+	mov ds, word [ si ]	
+
+@@:
 	xor dx, dx
-	mov ax, word [ si ]				; get number
+	mov ax, word [ bx ]				; get number
 	test word [ _fieldflags + bp ], SPRINTF_LONGFLAG
 	jz _sprintf_28
 
-	mov dx, word [ si+2 ]				; get higher word of number
+	mov dx, word [ bx + 2 ]				; get higher word of number
 
 _sprintf_28:
+	pop ds
 	mov bx, word [ _fieldflags + bp ]		; flags
 	or bx, cx
 	mov cx, word [ _fieldwidth + bp ]		; width
@@ -3406,18 +3431,30 @@ _sprintf_28:
 		; character
 _sprintf_32:
 	push si
-	getarg si, _varg				; get variable arg ptr
-	mov si, word [ si ]				; get argument pointer
+	getarg si, _varg				; get pointer to next variable argument
+	mov bx, word [ si ]				; get argument pointer
 	add word [ _varg + bp ], byte 2
 	inc word [ _args + bp ]
 
+	push ds
+	test word [ bp + _fieldflags ], SPRINTF_FAR
+	jz @F
+
+	inc si
+	inc si
+	add word [ bp + _varg ], 2
+	inc word [ bp + _args ]
+	mov ds, word [ si ]	
+
+@@:
 	mov cx, word [ _fieldwidth + bp ]		; width
 	call _sprintfInitField
 		; Not really useful ? (Only to create spaces.)
 
-	mov al, byte [ si ]
+	mov al, byte [ bx ]
 	stosb						; store character
 
+	pop ds
 	pop si
 
 	mov cx, word [ _fieldwidth + bp ]		; width
@@ -3432,14 +3469,26 @@ _sprintf_32:
 		; string
 _sprintf_36:
 	push si
-	getarg si, _varg				; get variable arg ptr
-	mov si, word [ si ]				; get argument pointer
+	getarg si, _varg				; get pointer to next variable argument
+	mov bx, word [ si ]				; get argument pointer
 	add word [ _varg + bp ], byte 2
 	inc word [ _args + bp ]
 
+	push ds
+	test word [ bp + _fieldflags ], SPRINTF_FAR
+	jz @F
+
+	inc si
+	inc si
+	add word [ bp + _varg ], 2
+	inc word [ bp + _args ]
+	mov ds, word [ si ]	
+
+@@:
 	mov cx, word [ _fieldwidth + bp ]		; width
 	call _sprintfInitField
 
+	mov si, bx
 _sprintf_38:
 	lodsb
 	or al, al					; null terminator ?
@@ -3450,8 +3499,7 @@ _sprintf_38:
 
 _sprintf_40:
 	add di, cx					; advance field length
-
-_sprintf_42:
+	pop ds
 	pop si
 	jmp _sprintf_06
 
@@ -6430,6 +6478,8 @@ msg:
 .ver_r_true:	asciz "Reported true DOS version (Int21.3306): %d.%z2d",13,10
 .ver_r_str:	asciz "Version string (Int21.33FF): "
 .ver_r_no_str:	asciz "(None)"
+.invalid_sprintf_format:
+		asciz "Internal error: Invalid sprintf format!",13,10
 
 		; Other Variables
 RxDOS_NewLine:			asciz 13,10
