@@ -5114,10 +5114,6 @@ _VerifyExit:
 		; /R	Display kernel information
 _Ver:
 	entry
-	def	majorversion
-	def	minorversion
-	def	oemversion
-
 	defbytes	printbuffer, 128
 
 	xor cx, cx					; min args
@@ -5158,16 +5154,12 @@ _Ver:
 	mov ax, 3306h
 	int 21h
 	xor cx, cx
-	mov cl, bl
-	mov word [ bp + _majorversion ], cx
 	mov cl, bh
-	mov word [ bp + _minorversion ], cx
+	push cx			; minor version
+	mov cl, bl
+	push cx			; major version
 
 	mov bx, msg.ver_r_true
-	lea di, [ _minorversion + bp ]			; pointer to current disk
-	push di						; current disk
-	lea di, [ _majorversion + bp ]			; pointer to current disk
-	push di						; current disk
 	push bx						; format
 	lea di, [ _printbuffer + bp ]
 	push di
@@ -6484,7 +6476,7 @@ msg:
 .error_load_program:	asciz "Error loading program."
 .int3:			asciz "Breaking into debugger.",13,10
 .ver_r_30:	asciz 13,10,"Reported DOS version (Int21.3000): %id.%z2id OEM: %z2iXh",13,10
-.ver_r_true:	asciz "Reported true DOS version (Int21.3306): %d.%z2d",13,10
+.ver_r_true:	asciz "Reported true DOS version (Int21.3306): %id.%z2id",13,10
 .ver_r_str:	asciz "Version string (Int21.33FF): "
 .ver_r_no_str:	asciz "(None)"
 .invalid_sprintf_format:
