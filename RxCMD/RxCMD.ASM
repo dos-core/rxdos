@@ -3618,9 +3618,9 @@ _sprintfNum_12:
 	lea si, [ _decDisplay + bp ]			; where data stored
 	cmp word [ _fieldwidth + bp ], byte 0		; left justified output ?
 	 push cx
-	jz _sprintfNum_20				; yes -->
-
-
+	jnz @F
+	mov word [ _fieldwidth + bp ], cx
+@@:
 		; right justified
 	add di, word [ _fieldwidth + bp ]		; blank fill field first
 
@@ -3642,16 +3642,6 @@ _sprintfNum_18:
 	dec di
 	mov byte [ di ], al
 	loop _sprintfNum_18
-	jmp short _sprintfNum_32
-
-
-		; left justified
-_sprintfNum_20:
-.l:
-	lodsb						; get character
-	stosb
-	loop .l
-
 
 		; done
 _sprintfNum_32:
