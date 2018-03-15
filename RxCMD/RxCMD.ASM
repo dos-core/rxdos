@@ -3121,7 +3121,7 @@ DisplayLine:
 	call DisplayLine_ByCount
 
 DisplayLine_22:
-	RestoreRegisters di, cx, ax
+	RestoreRegisters ax, cx, di
 	retn
 
 
