@@ -2932,9 +2932,9 @@ _loadProgram_20:
 	mov cl, 0					; mode: execute
 	stc
 	Int21 LFNExecuteProgram
-	mov ax, cs
-	mov ds, ax
-	mov es, ax					; restore registers
+	mov bx, cs
+	mov ds, bx
+	mov es, bx					; restore registers
 	jc .error
 
 		; get return status when done
@@ -2949,7 +2949,8 @@ _loadProgram_20:
 
 .error:
 	mov dx, msg.error_load_program
-	call DisplayErrorMessage
+	call DisplayLine
+	call DisplayErrorCode
 	mov word [ RxDOS_ExecReturnCode ], 127
 	jmp short .return
 
@@ -3037,20 +3038,20 @@ returnVolumeName_18:
 		; Usage:
 		; ax	error code
 DisplayErrorCode:
-
 	push bx
 	cmp ax, CmndError_RefTableEntries
-	jae DisplayErrorCode_08
+	jae .unknown
 
 	mov bx, ax
 	add bx, bx
 	add bx, CmndError_TextReferenceTable
 	mov dx, word [ cs:bx ]			; get address of message
-	cmp dx, byte 0000			; error not defined ?
-	je DisplayErrorCode_08
+	test dx, dx				; error not defined ?
+	jnz .known				; known -->
+.unknown:
+	mov dx, CmndError_TextReferenceTable.unknown_error
+.known:
 	call DisplayErrorMessage		; display message
-
-DisplayErrorCode_08:
 	pop bx
 	ret
 
@@ -6425,42 +6426,61 @@ RxDOS_VersionCopyright:
 	align 2, db 0
 
 CmndError_TextReferenceTable:
-
-	dw 0						; 0000
-	dw 0						; 0001
-	dw CmndError_FileNotFound			; 0002
-	dw CmndError_InvalidDirectory			; 0003
-	dw 0						; 0004
-	dw CmndError_AccessDenied			; 0005
-	dw 0						; 0006
-	dw 0						; 0007
-	dw 0						; 0008
-	dw 0						; 0009
-	dw 0						; 0010
-	dw 0						; 0011
-	dw 0						; 0012
-	dw 0						; 0013
-	dw 0						; 0014
-	dw 0						; 0015
-	dw CmndError_CurrentDirectory			; 0016
+	dw .no_error			; 0000
+	dw .invalid_function		; 0001
+	dw .file_not_found		; 0002
+	dw .path_not_found		; 0003
+	dw .no_handles_available	; 0004
+	dw .access_denied		; 0005
+	dw .invalid_handle		; 0006
+	dw .memory_block_corrupted	; 0007
+	dw .out_of_memory		; 0008
+	dw .invalid_memory_block	; 0009
+	dw .environment_invalid		; 000A
+	dw .format_invalid		; 000B
+	dw .access_code_invalid		; 000C
+	dw .data_invalid		; 000D
+	dw .fixup_overflow		; 000E
+	dw .invalid_drive		; 000F
+	dw .current_directory		; 0010
+	dw .not_same_device		; 0011
+	dw .no_more_files		; 0012
 
 CmndError_RefTableEntries	equ ($ - CmndError_TextReferenceTable)/2
 
+.no_error:		asciz "no error"
+.invalid_function:	asciz "invalid function"
+CmndError_FileNotFound: equ $
+.file_not_found:	asciz "file not found"
+.path_not_found:	asciz "path not found"
+.no_handles_available:	asciz "no handles available"
+.access_denied:		asciz "access denied"
+.invalid_handle:	asciz "invalid handle"
+.memory_block_corrupted:asciz "memory block corrupted"
+.out_of_memory:		asciz "out of memory"
+.invalid_memory_block:	asciz "invalid memory block"
+.environment_invalid:	asciz "environment invalid"
+.format_invalid:	asciz "format invalid"
+.access_code_invalid:	asciz "access code invalid"
+.data_invalid:		asciz "data invalid"
+.fixup_overflow:	asciz "fixup overflow"
+.invalid_drive:		asciz "invalid drive"
+.current_directory:	asciz "cannot remove current directory"
+.not_same_device:	asciz "not same device"
+.no_more_files:		asciz "no more files"
+.unknown_error:		asciz "unknown error"
+
 
 		; Error Messages
-CmndError_AccessDenied:			asciz "access denied"
 CmndError_BadCommandOrFileName:		asciz "bad command: could not find or execute '"
 CmndError_EndOfBadCommand:		asciz "'",13,10
 CmndError_BadSwitch:			asciz "bad switch - "
 CmndError_CannotCopyOverSelf:		asciz "file cannot be copied over itself"
 CmndError_CannotCreateFile:		asciz "cannot create destination file"
 CmndError_ContentsLostBeforeCopy:	asciz "contents of file lost before copy"
-CmndError_CurrentDirectory:		asciz "cannot remove current directory"
 CmndError_FileAlreadyExists:		asciz "file not found or already exists"
-CmndError_FileNotFound:			asciz "file not found"
 CmndError_NoFilesFound:			asciz " no files found",13,10
 CmndError_InvalidDate:			asciz "invalid date"
-CmndError_InvalidDirectory:		asciz "invalid directory"
 CmndError_InvalidDrive:			asciz "invalid drive"
 CmndError_InvalidTime:			asciz "invalid time"
 CmndError_MustSpecifyOnOff:		asciz "must specify ON or OFF"
@@ -6477,7 +6497,7 @@ CmndError_OutOfEnvironmentSpace:	asciz "out of environment space"
 CmndError_ReadErrorAbort:		asciz "error reading file"
 
 msg:
-.error_load_program:	asciz "Error loading program."
+.error_load_program:	asciz "Error loading program: "
 .int3:			asciz "Breaking into debugger.",13,10
 .ver_r_30:	asciz 13,10,"Reported DOS version (Int21.3000): %id.%z2id OEM: %z2iXh",13,10
 .ver_r_true:	asciz "Reported true DOS version (Int21.3306): %id.%z2id",13,10
