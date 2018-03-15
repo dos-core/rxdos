@@ -3399,6 +3399,20 @@ _sprintf_26:
 	add word [ _varg + bp ], byte 2
 	inc word [ _args + bp ]
 
+	test word [ bp + _fieldflags ], SPRINTF_IMMEDIATE
+	jz .num_not_imm
+
+	xor dx, dx
+	mov ax, bx
+	test word [ bp + _fieldflags ], SPRINTF_LONG
+	jz _sprintf_28.num_was_imm
+
+	mov dx, word [ si + 2 ]
+	add word [ bp + _varg ], byte 2
+	inc word [ bp + _args ]
+	jmp _sprintf_28.num_was_imm
+
+.num_not_imm:
 	push ds
 	test word [ bp + _fieldflags ], SPRINTF_FAR
 	jz @F
@@ -3419,6 +3433,7 @@ _sprintf_26:
 
 _sprintf_28:
 	pop ds
+.num_was_imm:
 	mov bx, word [ _fieldflags + bp ]		; flags
 	or bx, cx
 	mov cx, word [ _fieldwidth + bp ]		; width
@@ -3436,6 +3451,15 @@ _sprintf_32:
 	add word [ _varg + bp ], byte 2
 	inc word [ _args + bp ]
 
+	test word [ bp + _fieldflags ], SPRINTF_IMMEDIATE
+	jz .char_not_imm
+
+	mov cx, word [ _fieldwidth + bp ]		; width
+	call _sprintfInitField
+	mov al, bl
+	jmp .char_was_imm
+
+.char_not_imm:
 	push ds
 	test word [ bp + _fieldflags ], SPRINTF_FAR
 	jz @F
@@ -3455,6 +3479,7 @@ _sprintf_32:
 	stosb						; store character
 
 	pop ds
+.char_was_imm:
 	pop si
 
 	mov cx, word [ _fieldwidth + bp ]		; width
