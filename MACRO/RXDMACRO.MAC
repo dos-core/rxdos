@@ -645,34 +645,32 @@ the file LICENSE.TXT.
 
 %if %0 >= 2
 	ifidni %2,_16segregs,_16oregs
-%if __idni
+ %if __idni
 		push %2
-%assign %$pushedseg 1
-%endif ; __idni
-
-%if %0 >= 3
-	ifidni %3,_16segregs,_16oregs
-%if __idni
-		push %3
-%assign %$pushedreg 1
-%endif ; __idni
-
-%endif ; %0 >= 3
-
+  %assign %$pushedseg 1
+ %endif ; __idni
 %endif ; %0 >= 2
 
 %if %$pushedseg == 0
 		push ax
-%if %0 >= 2
+ %if %0 >= 2
 		mov word [bp+_segment+_%1], %2	; really a value
+ %endif
 %endif
-%endif
+
+%if %0 >= 3
+	ifidni %3,_16segregs,_16oregs
+ %if __idni
+		push %3
+  %assign %$pushedreg 1
+ %endif ; __idni
+%endif ; %0 >= 3
 
 %if %$pushedreg == 0
 		push ax
-%if %0 >= 3
+ %if %0 >= 3
 		mov word [bp+_pointer+_%1], %3	; really a value
-%endif
+ %endif
 %endif
 %pop
 	%endmacro
