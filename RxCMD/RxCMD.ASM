@@ -5139,20 +5139,14 @@ _Ver:
 	mov ax, 3000h
 	int 21h
 	xor cx, cx
-	mov cl, al
-	mov word [ bp + _majorversion ], cx
-	mov cl, ah
-	mov word [ bp + _minorversion ], cx
 	mov cl, bh
-	mov word [ bp + _oemversion ], cx
+	push cx			; OEM id
+	mov cl, ah
+	push cx			; minor version
+	mov cl, al
+	push cx			; major version
 
 	mov bx, msg.ver_r_30
-	lea di, [ _oemversion + bp ]
-	push di
-	lea di, [ _minorversion + bp ]
-	push di
-	lea di, [ _majorversion + bp ]
-	push di
 	push bx						; format
 	lea di, [ _printbuffer + bp ]
 	push di
@@ -6489,7 +6483,7 @@ CmndError_ReadErrorAbort:		asciz "error reading file"
 msg:
 .error_load_program:	asciz "Error loading program."
 .int3:			asciz "Breaking into debugger.",13,10
-.ver_r_30:	asciz 13,10,"Reported DOS version (Int21.3000): %d.%z2d OEM: %z2Xh",13,10
+.ver_r_30:	asciz 13,10,"Reported DOS version (Int21.3000): %id.%z2id OEM: %z2iXh",13,10
 .ver_r_true:	asciz "Reported true DOS version (Int21.3306): %d.%z2d",13,10
 .ver_r_str:	asciz "Version string (Int21.33FF): "
 .ver_r_no_str:	asciz "(None)"
