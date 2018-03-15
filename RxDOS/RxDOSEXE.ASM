@@ -498,8 +498,14 @@ loadExe_Program:
 	shl ax, 1					; 16
 	shl ax, 1					; 32
 	sub ax, word [ _exeHeader + exeHeaderSize + bp ]
+	jc @F
 	add ax, dx					; actual paragr needed
+	jc @F
 	add ax, word [ _exeHeader + exeMinAlloc + bp ]
+	jnc @FF
+@@:
+	mov ax, -1
+@@:
 	storarg _SizePara, ax				; save as paragraphs needed
 
 	getarg bx, _pLoadEnvelope
