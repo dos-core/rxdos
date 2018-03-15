@@ -2249,7 +2249,9 @@ RxDOS_initialize:
 		; initialize data segment
 	Entry
 	defbytes	execBlock, sizeEXEC
-	ddef	InitBlockPtr, es, di
+
+	mov ax, word [ es:di + initBIOVersion ]
+	mov word [ patch_rxbio_version ], ax
 
 	mov dl, byte [ es:di + initBootDrive ]
 	mov byte [ _RxDOS_CurrentDrive ], dl		; current drive = boot drive (A: = 0, ...)

@@ -148,6 +148,7 @@ RxBIO_INITBLOCK:
 	istruc SYSINIT
 at initDeviceChain,	dw con, 70h
 at initMemParagraphs,	dw 0
+at initBIOVersion,	dw RXDOS_VERP
 at initBootDrive,	db -1
 at initTotalDrives,	db 0
 	iend
