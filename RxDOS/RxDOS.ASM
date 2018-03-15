@@ -634,6 +634,7 @@ sizepspSysHandleTable equ $-pspSysHandleTable
 
 _RxDOS_DOSROMStatusFlag:
 _RxDOS_DOSLocation	db RXDOS_DOSLOCATION	; DOS in ROM and DOS moved to HMA status
+			align 2
 _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
 
 	; ** ROMABLE BEYOND THIS ADDRESS **
@@ -646,7 +647,8 @@ _RxDOS_DOSVersionString:
 			db " [",__DATE__,"]"
 			asciz
 
-_RxDOS_DOSProgramName	db 'RxDOS7.23'		; Product Name. First 8 bytes copied into system MCBs
+_RxDOS_DOSProgramName	asciz RXDOS_S,RXDOSVERSION_S
+			; Product Name. First 8 bytes copied into system MCBs
 
 _RxDOS_ContrlC_Message	asciz '^C',13,10
 
@@ -656,7 +658,7 @@ dos_msg:
 
 
 		; Device Assign Table
-
+			align 4
 stdDeviceAssignTable:
 	STDREDIREC 'CON', stdRedirec_Con, (sftIsDevice + sftIsstdout + sftIsstdin)
 	STDREDIREC 'AUX', stdRedirec_Aux, (sftIsDevice)
@@ -3951,7 +3953,7 @@ _CtrlBreakCheck:
 	mov word [ si + _AX ], "Rx"			; 7852h
 	mov word [ si + _CX ], 2018
 	mov word [ si + _DX ], 03<<8|09			; cx:dx = build (2018-03-09)
-	mov word [ si + _BX ], 7<<8|23			; bx = version (7.23)
+	mov word [ si + _BX ], RXDOS_VERP		; bx = version
 	mov word [ si + _DI ], 0			; RxBIO compatibility level gets patched in here
 patch_rxbio_version equ $-2
 	retn
