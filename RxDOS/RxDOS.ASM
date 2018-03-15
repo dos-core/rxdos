@@ -639,7 +639,12 @@ _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
 	; ** ROMABLE BEYOND THIS ADDRESS **
 
 _RxDOS_DOSVersionString:
-			asciz RXDOSLONG_S, " version ", RXDOSVERSIONLONG_S
+			db RXDOSLONG_S, " version ", RXDOSVERSIONLONG_S
+%ifnidn _REVISIONID, ""
+			db " [",_REVISIONID,"]"
+%endif
+			db " [",__DATE__,"]"
+			asciz
 
 _RxDOS_DOSProgramName	db 'RxDOS7.23'		; Product Name. First 8 bytes copied into system MCBs
 

@@ -6355,7 +6355,12 @@ RxDOS_ForArgs:
 
 
 		; Version number
-RxDOS_Version:	asciz RXCMDLONG_S, " version ", RXCMDVERSIONLONG_S
+RxDOS_Version:	db RXCMDLONG_S, " version ", RXCMDVERSIONLONG_S
+%ifnidn _REVISIONID, ""
+		db 13,10," Source Control Revision ID: ",_REVISIONID
+%endif
+		db 13,10," Build on ",__DATE__
+		asciz
 
 RxDOS_VersionCopyright:
 		db 13,10

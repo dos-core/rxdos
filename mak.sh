@@ -9,11 +9,16 @@
 export NASMENV="$@"
 
 function nasmbin() {
-	nasm -Ox -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
+	nasm -Ox -D_REVISIONID="'$build_revision_id'" -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
 }
 function nasmobj() {
-	nasm -Ox -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
+	nasm -Ox -D_REVISIONID="'$build_revision_id'" -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
 }
+
+(($use_build_revision_id)) &&
+  if [ -z "$build_revision_id" ]; then {
+    build_revision_id="hg $(hg id -i)"
+  } fi
 
 cd "${0%/*}"
 toolsdir="${PWD}/../dostools"
@@ -116,7 +121,8 @@ if [ -f RxBIO.ASM ]; then {
 
 	cd ../ldosboot
 	echo Building RxDOS.COM
-	nasm -Ox -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ \
+	nasm -Ox -D_REVISIONID="'$build_revision_id'" \
+	  -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ \
 	  -d__MAPFILE__=../map/iniload.map -d_MAP=../map/iniload.map \
 	  -l../lst/iniload.lst -fbin \
 	  -o../bin/RxDOS.COM iniload.asm -D_PAYLOAD_FILE"'RxDOS.BIN'"

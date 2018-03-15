@@ -25,6 +25,7 @@ numdef DEBUG2,		0		; 3rd level debug - show warnings on unsupported DOS/AMIS cal
 numdef DEBUG3,		0		; 4th level debug - include d3 code/breakpoints
 numdef DEBUG4,		0		; 5th level debug - include d4 code/breakpoints
 				; Note:	All debug levels are independent and can be combined in any way.
+strdef REVISIONID,	""
 numdef EBDA,		1		; move EBDA (restore on hot boot)
 numdef HOTBOOT,		1		; hot boot when Int19 called (else warm boot)
 numdef LFN,		0		; use LFNs (RxCMD) or provide LFNs (RxDOS)
