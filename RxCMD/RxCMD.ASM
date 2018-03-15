@@ -3651,10 +3651,11 @@ _sprintfNum_32:
 	 pop cx
 	pop di
 	mov si, word [ _fieldwidth + bp ]
-	test si, si
-	jnz @F
+	cmp cx, si
+	jbe .use_si
+.use_cx:
 	mov si, cx
-@@:
+.use_si:
 	add di, si					; point past field
 
 	pop si
