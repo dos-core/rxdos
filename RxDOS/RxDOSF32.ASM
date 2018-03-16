@@ -443,7 +443,8 @@ ExtAbsDiskAccess:
 	retn
 
 .invalid_drive:
-	mov ax, 0101h
+	mov ax, 0101h		; ah = 01h "bad command",
+				; al = 01h "unknown unit for driver"
 	stc
 	retn
 

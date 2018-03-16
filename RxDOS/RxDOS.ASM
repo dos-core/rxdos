@@ -1533,11 +1533,22 @@ _Interrupt_26:
 	pop di
 	pop es					; buffer to es:di
 
-	call int_25_26_217305_common
+	call int_25_26_common
 
 _Int25_08:
 	restoreSegments bx, cx, dx, bp, si, di
 	retf						; Leaves interrupt flags on stack
+
+
+		; INP, OUT:	as for next function
+int_25_26_common:
+	push es
+	push bx
+	call getDPB
+	cmp word [ es:bx + _dpbSectorsPerFat ], 0
+	pop bx
+	pop es
+	jz int_25_26_217305_common.fat32_invalid
 
 		; INP:	si = DevRead or DevWrite
 		;	al = drive (0 = A:)
@@ -1554,18 +1565,25 @@ int_25_26_217305_common:
 						; sector number in cx:dx,
 						; number of sectors in bx
 	cmp bx, byte -1					; points to DISKIO struct ?
-	jnz _Int25_06					; no -->
+	jnz .oldint					; no -->
 
 	mov bx, word [ di + diskioSectors ]
 	mov cx, word [ di + diskioStartSector + _high ]
 	mov dx, word [ di + diskioStartSector + _low ]
 	les di, [ di + diskioBuffer ]
 
-_Int25_06:
+.oldint:
 	or bx, bx					; nothing to read ?
-	jz _Int25_08					; if none (flags: NC, ZR) -->
+	jz .skip					; if none (flags: NC, ZR) -->
 
 	call si
+.skip:
+	retn
+
+.fat32_invalid:
+	mov ax, 0207h	; ah = 02h "bad address mark",
+			; al = 07h "unknown media type"
+	stc
 	retn
 
 
