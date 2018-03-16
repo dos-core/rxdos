@@ -1548,6 +1548,7 @@ int_25_26_common:
 	cmp word [ es:bx + _dpbSectorsPerFat ], 0
 	pop bx
 	pop es
+	jc int_25_26_217305_common.drive_invalid
 	jz int_25_26_217305_common.fat32_invalid
 
 		; INP:	si = DevRead or DevWrite
@@ -1583,6 +1584,12 @@ int_25_26_217305_common:
 .fat32_invalid:
 	mov ax, 0207h	; ah = 02h "bad address mark",
 			; al = 07h "unknown media type"
+	stc
+	retn
+
+.drive_invalid:
+	mov ax, 0101h		; ah = 01h "bad command",
+				; al = 01h "unknown unit for driver"
 	stc
 	retn
 
