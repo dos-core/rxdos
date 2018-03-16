@@ -1533,6 +1533,22 @@ _Interrupt_26:
 	pop di
 	pop es					; buffer to es:di
 
+	call int_25_26_217305_common
+
+_Int25_08:
+	restoreSegments bx, cx, dx, bp, si, di
+	retf						; Leaves interrupt flags on stack
+
+		; INP:	si = DevRead or DevWrite
+		;	al = drive (0 = A:)
+		;	cx = -1 if packet method,
+		;	 ds:di -> disk access packet
+		;	else,
+		;	 cx = count of sectors
+		;	 dx = start sector
+		;	 es:di -> buffer
+		; OUT:	CF = error status
+int_25_26_217305_common:
 	mov bx, cx					; sectors
 	xor cx, cx					; extended sector address
 						; sector number in cx:dx,
@@ -1542,8 +1558,7 @@ _Interrupt_26:
 
 	mov bx, word [ di + diskioSectors ]
 	mov cx, word [ di + diskioStartSector + _high ]
-	mov dx, word [ di ]	; word [ di + diskioStartSector + _low ]
-				; RxDOS 7.20N:	Commented operand would generate a zero offset in NASM
+	mov dx, word [ di + diskioStartSector + _low ]
 	les di, [ di + diskioBuffer ]
 
 _Int25_06:
@@ -1551,10 +1566,7 @@ _Int25_06:
 	jz _Int25_08					; if none (flags: NC, ZR) -->
 
 	call si
-
-_Int25_08:
-	restoreSegments bx, cx, dx, bp, si, di
-	retf						; Leaves interrupt flags on stack
+	retn
 
 
 		; Interrupt 27

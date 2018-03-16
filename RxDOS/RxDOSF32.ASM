@@ -62,7 +62,7 @@ _Int21Function73:
 %if 0
 	Goto FAT32SetExtDPBFormatting_,	SetDPB_Format		; 04h
 %endif
-	; Goto FAT32ExtAbsDiskAccess_,	ExtAbsDiskAccess	; 05h
+	Goto FAT32ExtAbsDiskAccess_,	ExtAbsDiskAccess	; 05h
 
 	mov ax, pexterrInvalidFunction
 	stc
@@ -408,4 +408,42 @@ SetDPB_Format_GetSetFAT32root:
 	jz .get
 ;*****
 %endif
-	
+
+		; INP:	ax = 7305h
+		;	cx = FFFFh (ignored by us)
+		;	dl = drive number (01h = A:)
+		;	si & 1 == 0 if read, == 1 if write
+		;	ds:bx -> disk packet, struc DISKIO
+		;	dword [ds:bx + diskioStartSector] = sector number
+		;	word [ds:bx + diskioSectors] = number of sectors
+		;	dword [ds:bx + diskioBuffer] = buffer pointer
+ExtAbsDiskAccess:
+	cmp dl, 0
+	je .invalid_drive
+	mov al, dl
+	dec ax
+	mov cx, -1
+	test si, 1
+	jz .read
+.write:
+	mov si, DevWrite
+	jmp @F
+.read:
+	mov si, DevRead
+@@:
+	push es
+	pop ds
+	mov di, bx
+	call int_25_26_217305_common
+
+	pushf
+	RetCallersStackFrame ds, bx
+	mov word [ bx + _AX ], ax
+	popf
+	retn
+
+.invalid_drive:
+	mov ax, 0101h
+	stc
+	retn
+
