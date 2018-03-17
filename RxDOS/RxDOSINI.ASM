@@ -1635,14 +1635,10 @@ _scanToEndofName_08:
 RxDOSini_MemorySubSystem:
 	saveSegments
 
-		; RxDOS 7.30: Should use results of Int12 and Int2F.4A06 here.
-	mov ax, 40h
-	mov es, ax					; BIOS communications area
-	mov ax, word [ es:_BIOS_Memory ]		; = KiB of LMA
-times 6 shl ax, 1					; multiply *64 (* 2**6)
-							; -> behind last available segment
-	sub ax, word [ _RxDOS_pStartMemBlock ]		; available memory
-	dec ax						; adjust for memory header
+	mov ax, [ _RxDOS_MaxMemory ]		; (ldMemoryTop)
+						; => behind last available
+	sub ax, word [ _RxDOS_pStartMemBlock ]	; available memory
+	dec ax					; adjust for memory header
 	push ax
 
 	mov bx, _RxDOS_PARENT_SIGNATURE			; system block (0008)
