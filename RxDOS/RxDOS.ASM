@@ -1573,7 +1573,37 @@ int_25_26_217305_common:
 	mov dx, word [ di + diskioStartSector + _low ]
 	les di, [ di + diskioBuffer ]
 
+	jmp .common
 .oldint:
+
+	push es
+	push bx
+	push cx
+	push ax
+	push dx
+	call getDPB
+	mov ax, [ es:bx + _dpbMaxClusterNumber ]
+	dec ax	; -2 = max cluster number 0-based, +1 = number of clusters
+	xor dx, dx
+	xor cx, cx
+	mov cl, [ es:bx + _dpbClusterSizeShift ]
+@@:
+	shl ax, 1
+	rcl dx, 1
+	loop @B
+
+	add ax, [ es:bx + _dpbFirstDataSector ]
+	adc dx, 0
+
+	test dx, dx	
+	pop dx
+	pop ax
+	pop cx
+	pop bx
+	pop es
+	jnz .size_invalid
+
+.common:
 	or bx, bx					; nothing to read ?
 	jz .skip					; if none (flags: NC, ZR) -->
 
@@ -1581,6 +1611,7 @@ int_25_26_217305_common:
 .skip:
 	retn
 
+.size_invalid:
 .fat32_invalid:
 	mov ax, 0207h	; ah = 02h "bad address mark",
 			; al = 07h "unknown media type"
