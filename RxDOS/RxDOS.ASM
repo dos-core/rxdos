@@ -1545,7 +1545,10 @@ int_25_26_common:
 	push es
 	push bx
 	call getDPB
+	jc @F
 	cmp word [ es:bx + _dpbSectorsPerFat ], 0
+	clc
+@@:
 	pop bx
 	pop es
 	jc int_25_26_217305_common.drive_invalid
@@ -1582,6 +1585,7 @@ int_25_26_217305_common:
 	push ax
 	push dx
 	call getDPB
+	jc @FF
 	mov ax, [ es:bx + _dpbMaxClusterNumber ]
 	dec ax	; -2 = max cluster number 0-based, +1 = number of clusters
 	xor dx, dx
@@ -1595,12 +1599,15 @@ int_25_26_217305_common:
 	add ax, [ es:bx + _dpbFirstDataSector ]
 	adc dx, 0
 
-	test dx, dx	
+	test dx, dx
+	clc
+@@:
 	pop dx
 	pop ax
 	pop cx
 	pop bx
 	pop es
+	jc .drive_invalid
 	jnz .size_invalid
 
 .common:
