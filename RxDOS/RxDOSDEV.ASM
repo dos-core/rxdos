@@ -318,22 +318,27 @@ maxBlockDevices:
 
 	push es
 	currSegment es
-	mov bx, _RxDOS_NULLDev			; get start of chain
-	xor cx, cx					; # blocked devices
+	mov bx, _RxDOS_NULLDev		; get start of chain
+	xor cx, cx			; # blocked devices
 
-maxBlockDev_08:
-	cmp bx, byte -1					; end of list ?
-	jz maxBlockDev_16				; if end of list -->
+.08:
+	cmp bx, byte -1			; end of list ?
+	jz .16				; if end of list -->
 
-	test word [ es:devAttributes + bx ], ( DEV_CHAR )
-	jnz maxBlockDev_14				; if a character device -->
-	add cl, byte [ es:devName + bx ]
+	test word [ es:bx + devAttributes ], ( DEV_CHAR )
+	jnz .14				; if a character device -->
+	add cl, byte [ es:bx + devName ]
+	jc .max
+	cmp cl, 32
+	ja .max
 
-maxBlockDev_14:
-	les bx, [ es:devLink + bx ]
-	jmp short maxBlockDev_08			; go to next ->
+.14:
+	les bx, [ es:bx + devLink ]
+	jmp short .08			; go to next ->
 
-maxBlockDev_16:
+.max:
+	mov cl, 32
+.16:
 	pop es
 	retn
 
