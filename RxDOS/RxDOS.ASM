@@ -1580,7 +1580,7 @@ _Interrupt_26:
 	retf						; Leaves interrupt flags on stack
 
 
-		; INP, OUT:	as for next function
+		; INP, OUT, STT:	as for next function
 int_25_26_common:
 	push es
 	push bx
@@ -1603,6 +1603,7 @@ int_25_26_common:
 		;	 dx = start sector
 		;	 es:di -> buffer
 		; OUT:	CF = error status
+		; STT:	ss = DOS data
 int_25_26_217305_common:
 	mov bx, cx					; sectors
 	xor cx, cx					; extended sector address
@@ -1634,21 +1635,21 @@ int_25_26_217305_common:
 @@:
 	shl ax, 1
 	rcl dx, 1
-	loop @B
+	loop @B		; >>= clust size shift, *= cluster size, = data sectors
 
 	add ax, [ es:bx + _dpbFirstDataSector ]
-	adc dx, 0
+	adc dx, 0	; add in reserved, FAT, root sectors
 
-	test dx, dx
-	clc
+	test dx, dx	; does it fit in 16 bits?
+	clc		; not error
 @@:
 	pop dx
 	pop ax
 	pop cx
 	pop bx
 	pop es
-	jc .drive_invalid
-	jnz .size_invalid
+	jc .drive_invalid	; error -->
+	jnz .size_invalid	; doesn't fit in 16 bits, old-style invalid -->
 
 .common:
 	or bx, bx					; nothing to read ?
