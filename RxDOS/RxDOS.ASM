@@ -1573,7 +1573,7 @@ _Interrupt_26:
 	pop bx						; sp
 
 	pop ss						; restore caller's ss
-	mov sp, bx					; restore caller's sp (with stack frame)
+	mov sp, bx					; restore caller's sp
 	sti
 
 	restoreSegments bx, cx, dx, bp, si, di
