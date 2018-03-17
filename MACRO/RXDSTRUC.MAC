@@ -1415,6 +1415,9 @@ S_SECTOR	equ 0Eh					; Single sector buffer
 S_NLS		equ 0Fh					; NLS related
 S_EBDA		equ 10h					; EBDA
 						; System initialization
+S_INITFATSEG	equ 1Ah
+S_INITSECTORSEG	equ 1Bh
+S_INITSTACKBPB	equ 1Ch
 S_INITPSP	equ 1Dh					; Initialization PSP
 S_ENVIRONMENT	equ 1Eh					; Master environment
 S_INITIALIZE	equ 1Fh					; DOSINITIALIZE, data
@@ -1429,7 +1432,6 @@ S_EXCLDDOS	equ 33h					; Excluded by DOS (usually 21.4B or 21.714B)
 						; Values F0h-FFh are defined by other software.
 						; _smcbLink then contains an address of either a
 						; valid MCB or PSP. Other software mustn't
-
 						; recognize an S MCB with _smcbType solely using
 						; this value, it must also insure that _smcbLink
 						; points to an owner known to the software.
