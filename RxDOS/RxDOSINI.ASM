@@ -1752,7 +1752,8 @@ RxDOSini_DPBSubSystem:
 
 	mov al, sizeDPB
 	mul byte [ _RxDOS_bLastDrive ]			; number of logical devices
-	call AllocateSystemSpace			; allocate DPBs for all used devices
+	mov cl, S_DPB
+	call AllocateSystemSpace_with_type		; allocate DPBs for all used devices
 
 	mov word [ _RxDOS_pDPB + _pointer ], di
 	mov word [ _RxDOS_pDPB + _segment ], es
@@ -1846,7 +1847,8 @@ RxDOSini_CDSSubSystem:
 	xor bx, bx
 	mov bl, [ _RxDOS_bLastDrive ]			; ax contains offset to current drive
 	mul bx
-	call AllocateSystemSpace
+	mov cl, S_CDS
+	call AllocateSystemSpace_with_type
 	mov word [ _RxDOS_pCDS + _segment ], es
 	mov word [ _RxDOS_pCDS + _pointer ], di
 
@@ -1856,7 +1858,8 @@ RxDOSini_CDSSubSystem:
 
 	mov ax, sizeLFNCDS
 	mul word [ _RxDOS_bLastDrive ]			; ax contains offset to current drive
-	call AllocateSystemSpace
+	mov cl, S_LFNCDS
+	call AllocateSystemSpace_with_type
 	mov word [ _RxDOS_pLFNCDS + _segment ], es
 	mov word [ _RxDOS_pLFNCDS + _pointer ], di
 
@@ -1929,7 +1932,8 @@ RxDOSini_SFTSubSystem:
 	mul cx						; total bytes for the actual SFT entries
 	add ax, byte sizeFT
 
-	call AllocateSystemSpace
+	mov cl, S_SFT
+	call AllocateSystemSpace_with_type
 
 	push di
 	xor ax, ax
@@ -1961,7 +1965,8 @@ RxDOSini_CCBSubSystem:
 	mov cx, sizeCCB
 	mul cx						; total bytes for cache blocks
 
-	call AllocateSystemSpace
+	mov cl, S_CCB
+	call AllocateSystemSpace_with_type
 	mov word [ _RxDOS_BufferList + _segment ], es
 	mov word [ _RxDOS_BufferList + _pointer ], di
 
