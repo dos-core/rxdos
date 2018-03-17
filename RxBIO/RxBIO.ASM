@@ -3675,11 +3675,13 @@ SaveInterruptsTable:
 
 		; Reallocated Space
 
+	align 16
 RxBIO_DiskBuffer:
 	times sizeSector db 0
 
 		; The address remains valid but the contents are destroyed
 
+	align 16
 RxBIO_LastAddress:
 RxDOS_StartBlockedDeviceTable:
 
