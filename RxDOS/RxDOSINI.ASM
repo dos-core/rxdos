@@ -1693,6 +1693,7 @@ AllocateSystemSpace_with_type:
 
 	dec ax
 	mov es, ax
+	mov word [es:_smcbOwner], 8	; system-owned MCB
 	mov word [es:_smcbName], "S"	; S MCB
 	mov ch, 0
 	mov word [es:_smcbType], cx	; type = cl, reserved = 0
