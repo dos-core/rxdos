@@ -1533,9 +1533,49 @@ _Interrupt_26:
 	pop di
 	pop es					; buffer to es:di
 
+		; switch to stack in DOS data segment
+		;  -- some of the code we call expects this!
+	mov di, ss
+	mov bx, sp
+
+	push cs
+	pop ss
+	mov sp, word [ ss:_RxDOS_CurrentStackTop ]	; point to current stack.
+
+	push di					; ss
+	push bx					; sp
+	entry
+	def	FctAddress			; (unused)
+
+	push word [ ss:_RxDOS_CurrentStackTop ]
+	sub word [ ss:_RxDOS_CurrentStackTop ], RXDOS_PERCALL_STACKRESERVE
+
+	push word [ ss:_RxDOS_CurrentInstance ]		; base address of current stack
+	mov word [ ss:_RxDOS_CurrentInstance ], bp	; base address of current stack
+
+	push word [ ss:_RxDOS_INDOSFlag ]
+	push word [ ss:_RxDOS_StackLongJump ]		; long jump
+
+	mov word [ ss:_RxDOS_StackLongJump ], sp	; save stack long jump
+
+		; call into the common part
 	call int_25_26_common
 
-_Int25_08:
+		; restore stack
+	cli
+	pop word [ ss:_RxDOS_StackLongJump ]		; long jump
+	pop word [ ss:_RxDOS_INDOSFlag ]		; restore InDOS
+	pop word [ ss:_RxDOS_CurrentInstance ]		; _Instance
+	pop word [ ss:_RxDOS_CurrentStackTop ]
+
+	pop bx						; function address (useless)
+	pop bx						; caller's bp
+	pop bx						; sp
+
+	pop ss						; restore caller's ss
+	mov sp, bx					; restore caller's sp (with stack frame)
+	sti
+
 	restoreSegments bx, cx, dx, bp, si, di
 	retf						; Leaves interrupt flags on stack
 
