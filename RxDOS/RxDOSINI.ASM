@@ -1664,55 +1664,81 @@ RxDOSini_MemorySubSystem:
 
 		; Sub allocate system space
 		;
-		; Input:
-		; ax	space in bytes to sub allocate
-		;
-		; Output:
-		; es:di-> allocated space
-		; ax = cx = space in bytes allocated
+		; INP:	ax = space in bytes to allocate
+		; OUT:	es:di-> allocated space
+		;	ax = cx = space in bytes allocated
 AllocateSystemSpace:
+	mov cl, S_OTHER
 
-	push bx
-	push ax						; save bytes to allocate
-	xor di, di
-
-	add ax, (sizeMEMBLOCK) - 1			; round up to next block
+		; INP:	ax = space in bytes to allocate
+		;	cl = allocation type
+		; OUT:	es:di-> allocated space
+		;	ax = cx = space in bytes allocated
+AllocateSystemSpace_with_type:
+	add ax, 15
+	jnc @F
+	mov ax, 1_0000h >> 1
+	db __TEST_IMM16
+@@:
 	shr ax, 1
 	shr ax, 1
 	shr ax, 1
-	shr ax, 1					; create para address
+	shr ax, 1			; = paragraphs
 
-	mov es, word [ _RxDOS_pStartMemBlock ]		; get start of system memory
-	mov bx, es
-	add bx, word [ es:di + _memAlloc ]		; point to end segment
-	add word [ es:di + _memAlloc ], ax		; add new allocation bytes
-	mov dx, word [ es:di + _memAlloc ]
+	mov bx, ax
+	mov ah, 48h
+	stc
+	int 21h
+	jc .alloc_fail
 
-	inc bx
-	mov es, bx					; point to free segment
-	sub ax, word [ es:di + _memAlloc ]		; get free segments
-	neg ax
+	dec ax
+	mov es, ax
+	mov word [es:_smcbName], "S"	; S MCB
+	mov ch, 0
+	mov word [es:_smcbType], cx	; type = cl, reserved = 0
+	mov cl, 0
+	mov word [es:_smcbLink], cx	; link = 0
+	mov word [es:_smcbLink + 2], cx	; reserved = 0
 
-	inc dx
-	add dx, word [ _RxDOS_pStartMemBlock ]		; get start of system memory
-	mov es, dx					; where new allocation
-
-	push bx						; segment address available
-	xor bx, bx
-	call _initializeMemoryBlock			; puts end block at es:bx
-	mov byte [ es:di + _memSignature ], _RxDOS_ENDSIGNATURE
-
-	pop es						; segment address available
-	pop cx						; space allocated (bytes)
-	push cx						; save
-	xor di, di
-	clearMemory					; clear area
-
-	pop cx						; space allocated (bytes)
-	pop bx						; original bx
-	xor di, di
+	inc ax
+	mov es, ax
+	xor di, di			; -> allocated space
+	mov cx, bx
+	shl cx, 1
+	shl cx, 1
+	shl cx, 1			; = number of words
+	xor ax, ax
+	push di
+	push cx
+	rep stosw			; initialise allocated memory to zeros
+	pop cx
+	pop di
+	shl cx, 1
 	mov ax, cx
 	retn
+
+
+.alloc_fail:
+	mov si, init_msg.alloc_error
+	call RxDOSIni_TypeMessage
+	call init_disp_ax_hex
+	mov si, init_msg.alloc_error_q
+	call RxDOSIni_TypeMessage
+
+	cmp ax, init_msg_errors.count
+	jb .valid
+	mov si, init_msg_errors.unknown_error
+	jmp short .disp_error
+.valid:
+	mov bx, ax
+	add bx, bx
+	mov si, [ init_msg_errors + bx ]
+.disp_error:
+	call RxDOSIni_TypeMessage
+	mov si, init_msg.linebreak
+	call RxDOSIni_TypeMessage
+
+	jmp RxDOS_init_68
 
 
 		; RxDOS Disk Parameter Blocks subsystem initialize
@@ -2689,6 +2715,8 @@ init_msg:
 .loading_shell_after:	db '"', 13, 10, 0
 .loaded_shell_error:	db "init: Error ",0
 .loaded_shell_error_q:	db "h: ",0
+.alloc_error:		db "init: Error ",0
+.alloc_error_q:		db "h while allocating memory: ",0
 .linebreak:		db 13,10,0
 .reboot_prompt:		db "Halted. Press Ctrl+Alt+Del to reboot.",13,10
 .double_null:		db 0,0
