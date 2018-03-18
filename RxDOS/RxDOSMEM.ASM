@@ -37,7 +37,6 @@ the file LICENSE.TXT.
 
 	extern _RxDOS_CurrentPSP
 	extern _RxDOS_pStartMemBlock
-	extern _RxDOS_DOSProgramName
 	extern _RxDOS_AllocStrategy
 	extern _RetCallersStackFrame
 
@@ -113,26 +112,6 @@ _initializeMemoryBlock:
 	mov byte [ es:_memSignature ], _RxDOS_ENDSIGNATURE
 	mov word [ es:_memAlloc ], ax
 	mov word [ es:_memParent ], bx
-
-		; if system MCB, copy RxDOS program name to memory block
-	cmp bx, byte _RxDOS_PARENT_SIGNATURE		; RxDOS Block ?
-	jnz _initMemory_20				; if not RxDOS -->
-
-	push ds
-	push si
-	push di
-
-	currSegment ds					; point to data segment
-	mov si, _RxDOS_DOSProgramName
-	lea di, [ word _memPgmName + di ]
-	mov cx, 4					; (size _RxDOS_DOSProgramName)/2
-	repe movsw					; copy RxDOS name to memory block
-
-	pop di
-	pop si
-	pop ds
-
-_initMemory_20:
 	retn
 
 

@@ -125,7 +125,6 @@ Performs the actual disk (Int13) access.
 	global _RxDOS_CurrentInstance
 	global _RxDOS_CurrentPSP
 	global _RxDOS_data
-	global _RxDOS_DOSProgramName
 	global _RxDOS_DOSVersion
 	global _RxDOS_ExtendedMem
 	global _RxDOS_INDOSFlag
@@ -646,9 +645,6 @@ _RxDOS_DOSVersionString:
 %endif
 			db " [",__DATE__,"]"
 			asciz
-
-_RxDOS_DOSProgramName	asciz RXDOS_S,RXDOSVERSION_S
-			; Product Name. First 8 bytes copied into system MCBs
 
 _RxDOS_ContrlC_Message	asciz '^C',13,10
 
