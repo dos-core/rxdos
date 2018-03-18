@@ -1634,30 +1634,13 @@ _scanToEndofName_08:
 		; ds = DOS data segment
 RxDOSini_MemorySubSystem:
 	saveSegments
-
 	mov ax, [ _RxDOS_MaxMemory ]		; (ldMemoryTop)
 						; => behind last available
 	sub ax, word [ _RxDOS_pStartMemBlock ]	; available memory
 	dec ax					; adjust for memory header
-	push ax
-
-	mov bx, _RxDOS_PARENT_SIGNATURE			; system block (0008)
-	mov es, word [ _RxDOS_pStartMemBlock ]		; available memory
-	call _initializeMemoryBlock			; initialize memory block.
-
-	mov ax, word [ es:_memAlloc ]
-	mov word [ es:_memAlloc ], 0			; original now is allocate 1 block
-	mov byte [ es:_memSignature ], _RxDOS_MEMSIGNATURE
-
-	dec ax
-	mov dx, es
-	inc dx
-	mov es, dx					; where to allocate next
-	xor bx, bx					; system block
-	call _initializeMemoryBlock			; initialize memory block
-	mov byte [ es:_memSignature ], _RxDOS_ENDSIGNATURE
-
-	pop ax						; memory available
+	xor bx, bx				; free block (0000)
+	mov es, word [ _RxDOS_pStartMemBlock ]	; available memory
+	call _initializeMemoryBlock		; initialize memory block.
 	restoreSegments
 	retn
 
