@@ -1731,6 +1731,8 @@ AllocateSystemSpace_with_type:
 RxDOSini_DPBSubSystem:
 
 	push ds
+	push es
+
 	setDS cs
 	setES cs
 
@@ -1751,7 +1753,7 @@ RxDOSini_DPBSubSystem:
 		; actual values are assigned later by calling driver
 RxDOS_DPBinit_12:
 	mov byte [ _dpbDrive + di ], al
-	mov byte [ _dpbUnit + di ], al
+	mov byte [ _dpbUnit + di ], 0
 	mov word [ _dpbBytesPerSector + di ], 512
 	mov byte [ _dpbClusterSizeMask + di ], 0FEh
 	mov byte [ _dpbClusterSizeShift + di ], 0
@@ -1763,8 +1765,8 @@ RxDOS_DPBinit_12:
 
 	mov word [ _dpbSectorsPerFat + di ], 2
 	mov word [ _dpbFirstDirSector + di ], 5
-	mov word [ _dpbptrDeviceDriver + _segment + di ], NULL
-	mov word [ _dpbptrDeviceDriver + _pointer + di ], NULL
+	mov word [ _dpbptrDeviceDriver + _segment + di ], 0
+	mov word [ _dpbptrDeviceDriver + _pointer + di ], 0
 	mov byte [ _dpbMediaDescriptor + di ], 0
 	mov byte [ _dpbAccessFlag + di ], -1		; UNACCESSED
 
@@ -1786,32 +1788,109 @@ RxDOS_DPBinit_12:
 		; loop through DPB's and assign drivers
 	setES cs
 	mov bx, _RxDOS_NULLDev				; get start of chain
-	mov ax, sizeDPB
-	mul byte [ cs:_RxDOS_bNumBlockDev ]
-	add ax, word [ cs:_RxDOS_pDPB + _pointer ]
-	mov di, ax					; points nth + 1 entry
+.loop_end_devicechain:
+	cmp word [ es:bx + devLink ], -1
+	je .found_end_devicechain
+	les bx, [ es:bx + devLink ]
+	jmp .loop_end_devicechain
 
-RxDOS_DPBinit_08:
-	cmp bx, byte -1					; end of list ?
-	jz RxDOS_DPBinit_22				; if end of list -->
-
-	test word [ es:bx + devAttributes ], ( DEV_CHAR )
-	jnz RxDOS_DPBinit_14				; if a character device -->
+		; es:bx -> last device header
+.found_end_devicechain:
+	lds si, [ cs:_RxDOS_pDPB ]
+	xor di, di
+.loop_devices:
+	test word [ es:bx + devAttributes ], DEV_CHAR
+	jnz .after_add_devices		; if a character device -->
 
 	xor cx, cx
-	mov cl, byte [ es:bx + devUnits ]		; number of logical devices
+	or cl, [ es:bx + devName ]
+	jz .after_add_devices
+	xor dx, dx
+	jmp .first_unit
 
-RxDOS_DPBinit_10:
-	sub di, byte sizeDPB
-	mov word [ _dpbptrDeviceDriver + _segment + di ], es
-	mov word [ _dpbptrDeviceDriver + _pointer + di ], bx
-	loop RxDOS_DPBinit_10
+.next_unit:
+	cmp word [ si + _dpbNextDPB ], -1
+	je .dpb_fail
+	lds si, [ si + _dpbNextDPB ]
+.first_unit:
+	cmp di, 32
+	jb @F
+	mov si, init_msg.too_many_block_units
+	call RxDOSIni_TypeMessage
+	jmp @FF
+@@:
+	inc di				; increment total drives counter
+	mov byte [ si + _dpbUnit ], dl	; set unit
+	inc dx				; increment unit-within-block-device
+	mov word [ si + _dpbptrDeviceDriver ], bx
+	mov word [ si + _dpbptrDeviceDriver + 2 ], es	; set device
+@@:
+	loop .next_unit
 
-RxDOS_DPBinit_14:
+.after_add_devices:
+	mov cx, bx
+	mov dx, es
+
+	push cs
+	pop es
+	mov bx, _RxDOS_NULLDev	; -> NUL device
+
+	cmp word [ es:bx + devLink ], cx	; points to prior one ?
+	jne @F
+	cmp word [ es:bx + devLink + 2 ], dx
+	je .all_devices_done			; yes, all done
+						;  (NUL is no block device) -->
+@@:
+
+.loop_find_next_device:
+	cmp word [ es:bx + devLink ], cx
+	jne @F
+	cmp word [ es:bx + devLink + 2 ], dx
+	je .loop_devices
+@@:
+
+	cmp word [ es:bx + devLink ], -1
+	je .devices_fail
 	les bx, [ es:bx + devLink ]
-	jmp short RxDOS_DPBinit_08			; go to next ->
+	jmp .loop_find_next_device
 
-RxDOS_DPBinit_22:
+.devices_fail:
+	 push cs
+	 pop ds
+	mov si, init_msg.devices_error
+	call RxDOSIni_TypeMessage
+	mov ax, es
+	call init_disp_ax_hex
+	mov si, init_msg.devices_error_colon
+	call RxDOSIni_TypeMessage
+	mov ax, bx
+	call init_disp_ax_hex
+	mov si, init_msg.devices_error_after
+	call RxDOSIni_TypeMessage
+
+.68:
+	jmp RxDOS_init_68
+
+.dpb_fail:
+	push si
+	push ds
+	 push cs
+	 pop ds
+	mov si, init_msg.dpb_error
+	call RxDOSIni_TypeMessage
+	pop ax
+	call init_disp_ax_hex
+	mov si, init_msg.dpb_error_colon
+	call RxDOSIni_TypeMessage
+	pop ax
+	call init_disp_ax_hex
+	mov si, init_msg.dpb_error_after
+	call RxDOSIni_TypeMessage
+
+	jmp .68
+
+.all_devices_done:		
+	pop es
 	pop ds
 	retn
 
@@ -2707,6 +2786,13 @@ init_msg:
 .alloc_error:		db "init: Error ",0
 .alloc_error_q:		db "h while allocating memory: ",0
 .linebreak:		db 13,10,0
+.dpb_error:		db "init: Error while walking DPB chain, last=",0
+.devices_error:		db "init: Error while walking device chain, last=",0
+.dpb_error_colon:
+.devices_error_colon:	db "h:",0
+.dpb_error_after:
+.devices_error_after:	db "h.",13,10,0
+.too_many_block_units:	db "init: Too many block device units, ignoring!",13,10,0
 .reboot_prompt:		db "Halted. Press Ctrl+Alt+Del to reboot.",13,10
 .double_null:		db 0,0
 
