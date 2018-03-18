@@ -1536,7 +1536,7 @@ _setProgName_16:
 	jz _setProgName_22				; if end of name -->
 	cmp al, '.'					; extension ?
 	je _setProgName_22				; if end of name -->
-
+	_uppercase al
 	stosb						; save character in mem block
 	loop _setProgName_16
 
