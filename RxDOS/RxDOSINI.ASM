@@ -951,13 +951,10 @@ processLastDrive_08:
 	xor ax, ax
 	mov al, byte [ es:di ]
 	_upperCase al					; upper case
-	cmp al, 'A'
-	jc processLastDrive_12
-	cmp al, 'Z'+1
-	jnc processLastDrive_12
-%if 0
-	sub al, 'A'
-%endif
+	sub al, 'A'-1
+	jbe processLastDrive_12				; A: = 1, B: = 2, ...
+	cmp al, 32					; above 32 ?
+	ja processLastDrive_12				; yes -->
 	storarg _LastDrive, ax
 
 processLastDrive_12:
@@ -970,9 +967,6 @@ processLastDrive_12:
 		; return
 processLastDrive_24:
 	getarg ax, _LastDrive				; get last drive info, if any
-%if 1
-	and ax, 1Fh
-%endif
 	mov byte [ _RxDOS_bLastDrive ], al		; save in DOS
 
 	call RxDOSini_DPBSubSystem			; (order important)
