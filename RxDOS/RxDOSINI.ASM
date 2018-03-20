@@ -1908,8 +1908,8 @@ RxDOSini_CDSSubSystem:
 	setDS cs
 	mov ax, sizeCDS
 	xor bx, bx
-	mov bl, [ _RxDOS_bLastDrive ]			; ax contains offset to current drive
-	mul bx
+	mov bl, [ _RxDOS_bLastDrive ]
+	mul bx					; (dx:)ax = size of CDS
 	mov cl, S_CDS
 	call AllocateSystemSpace_with_type
 	mov word [ _RxDOS_pCDS + _segment ], es
@@ -1917,10 +1917,12 @@ RxDOSini_CDSSubSystem:
 
 	xor ax, ax
 	shr cx, 1
-	repe stosw					; init entire space to nulls
+	repe stosw				; init entire space to nulls
 
 	mov ax, sizeLFNCDS
-	mul word [ _RxDOS_bLastDrive ]			; ax contains offset to current drive
+	xor cx, cx
+	mov cl, byte [ _RxDOS_bLastDrive ]
+	mul cx			 		; (dx:)ax = size of LFN CDS
 	mov cl, S_LFNCDS
 	call AllocateSystemSpace_with_type
 	mov word [ _RxDOS_pLFNCDS + _segment ], es
@@ -1928,7 +1930,7 @@ RxDOSini_CDSSubSystem:
 
 	xor ax, ax
 	shr cx, 1
-	repe stosw					; init entire space to nulls
+	repe stosw				; init entire space to nulls
 
 	xor cx, cx
 	mov cl, byte [ _RxDOS_bLastDrive ]
