@@ -1901,10 +1901,8 @@ RxDOS_DPBinit_12:
 		;
 		; cs = DOS data segment
 RxDOSini_CDSSubSystem:
-
-%if 0
 	push ds
-%endif
+
 	setDS cs
 	mov ax, sizeCDS
 	xor bx, bx
@@ -1979,9 +1977,8 @@ RxDOS_CDSinit_12:
 	add ax, byte sizeDPB
 	add di, byte sizeCDS
 	loop RxDOS_CDSinit_12
-%if 0
+
 	pop ds
-%endif
 	retn
 
 
