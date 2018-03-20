@@ -1876,7 +1876,7 @@ RxDOS_DPBinit_12:
 	push ds
 	 push cs
 	 pop ds
-	mov si, init_msg.dpb_error
+	mov si, init_msg.dpb_error_dev
 	call RxDOSIni_TypeMessage
 	pop ax
 	call init_disp_ax_hex
@@ -1902,6 +1902,7 @@ RxDOS_DPBinit_12:
 		; cs = DOS data segment
 RxDOSini_CDSSubSystem:
 	push ds
+	push es
 
 	setDS cs
 	mov ax, sizeCDS
@@ -1966,20 +1967,41 @@ RxDOS_CDSinit_08:
 	setDS cs
 	xor cx, cx
 	les di, [ _RxDOS_pCDS ]
-	mov ax, word [ _RxDOS_pDPB + _pointer ]
-	mov dx, word [ _RxDOS_pDPB + _segment ]
+	mov si, _RxDOS_pDPB - _dpbNextDPB
 	mov cl, byte [ _RxDOS_bNumBlockDev ]
 
 RxDOS_CDSinit_12:
+	cmp word [ si + _dpbNextDPB ], -1
+	je .dpb_fail
+	lds si, [ si + _dpbNextDPB ]
 	or word [ es:di + _cdsFlags ], _CDS_PHYSICALDRIVE
-	mov word [ es:di + _cdsPtrToDPB + _pointer ], ax
-	mov word [ es:di + _cdsPtrToDPB + _segment ], dx
-	add ax, byte sizeDPB
+	mov word [ es:di + _cdsPtrToDPB + _pointer ], si
+	mov word [ es:di + _cdsPtrToDPB + _segment ], ds
 	add di, byte sizeCDS
 	loop RxDOS_CDSinit_12
 
+	pop es
 	pop ds
 	retn
+
+
+.dpb_fail:
+	push si
+	push ds
+	 push cs
+	 pop ds
+	mov si, init_msg.dpb_error_cds
+	call RxDOSIni_TypeMessage
+	pop ax
+	call init_disp_ax_hex
+	mov si, init_msg.dpb_error_colon
+	call RxDOSIni_TypeMessage
+	pop ax
+	call init_disp_ax_hex
+	mov si, init_msg.dpb_error_after
+	call RxDOSIni_TypeMessage
+
+	jmp RxDOS_init_68
 
 
 		; RxDOS System File Tables subsystem initialize
@@ -2785,8 +2807,9 @@ init_msg:
 .alloc_error:		db "init: Error ",0
 .alloc_error_q:		db "h while allocating memory: ",0
 .linebreak:		db 13,10,0
-.dpb_error:		db "init: Error while walking DPB chain, last=",0
-.devices_error:		db "init: Error while walking device chain, last=",0
+.dpb_error_dev:		db "init: Error while walking DPB chain linking devices, last=",0
+.dpb_error_cds:		db "init: Error while walking DPB chain linking CDS, last=",0
+.devices_error:		db "init: Error while walking device chain linking devices, last=",0
 .dpb_error_colon:
 .devices_error_colon:	db "h:",0
 .dpb_error_after:
