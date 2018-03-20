@@ -1737,7 +1737,7 @@ RxDOSini_DPBSubSystem:
 	setES cs
 
 	mov al, sizeDPB
-	mul byte [ _RxDOS_bLastDrive ]			; number of logical devices
+	mul byte [ _RxDOS_bNumBlockDev ]		; number of logical devices
 	mov cl, S_DPB
 	call AllocateSystemSpace_with_type		; allocate DPBs for all used devices
 
@@ -1746,7 +1746,7 @@ RxDOSini_DPBSubSystem:
 
 	xor ax, ax
 	xor cx, cx
-	mov cl, byte [ _RxDOS_bLastDrive ]
+	mov cl, byte [ _RxDOS_bNumBlockDev ]
 	setDS es					; point to PDB area
 
 		; values are defaults without special meaning
