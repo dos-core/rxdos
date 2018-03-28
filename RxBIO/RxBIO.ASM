@@ -2100,9 +2100,11 @@ _hdInit:
 	jc _hdInit_12					; then exit 
 
 	getdarg ds, bx, _packet
+	push di
 	lea di, [ di + _dskBPB ]
 	mov word [ bx + irParamAddress + _pointer ], di
 	mov word [ bx + irParamAddress + _segment ], es
+	pop di
 
 	call stampTimerCount
 
@@ -2164,6 +2166,7 @@ _hdBuildBPB:
 	call BuildDiskParameterBlock			; es:di
 	jc _hdBuildBPB_12
 
+	push di
 	mov al, cl					; Media Descriptor
 	lea di, [ di + _dskBPB ]
 
@@ -2171,6 +2174,7 @@ _hdBuildBPB:
 	mov byte [ bx + bbrMediaID ], al		; media ID
 	mov word [ bx + bbrBPBAddress + _pointer ], di
 	mov word [ bx + bbrBPBAddress + _segment ], es
+	pop di
 
 	call stampTimerCount
 
