@@ -2226,7 +2226,8 @@ _hdRead_08:
 
 	getdarg es, bx, _buffer				; buffer address
 	getdarg dx, ax, _logSector
-	call word [ cs:di + _dskExtReadFct ]		; do read
+	getdarg ds, di, _diskparameters
+	call word [ di + _dskExtReadFct ]		; do read
 	mov word [ bp + _numSectorsTotal ], ax
 
 _hdRead_Return:
@@ -2293,8 +2294,9 @@ _hdWrite_08:
 
 	getdarg es, bx, _buffer				; buffer address
 	getdarg dx, ax, _logSector
+	getdarg ds, di, _diskparameters
 	push word [ bp + _Verify ]
-	call word [ cs:di + _dskExtWriteFct ]		; do Write
+	call word [ di + _dskExtWriteFct ]		; do write
 	mov word [ bp + _numSectorsTotal ], ax
 
 _hdWrite_Return:
@@ -2358,6 +2360,7 @@ _hdRemovableMedia_12:
 		;	cl = sector
 		;	dh = head
 		;	dl = unit
+		; CHG:	ax
 ConvertLBAtoCHS:
 
 	add ax, word [ di + _dskBPB + _bpbHiddenSectors + _low ]
@@ -2397,14 +2400,14 @@ ConvertLBAtoCHS:
 		; es:bx	buffer
 		; dx:ax	sector address
 		; cx	sectors to transfer
-		; di	disk parameter block
+		; ds:di	disk parameter block
 _nonLBARead:
 _NonLBARead:
 
 	entry
 	ddef	buffer, es, bx
 	ddef	logSector, dx, ax
-	def	diskparameters, di
+	ddef	diskparameters, ds, di
 	def	numSectorsRemain, cx
 	def	numSectorsRead, cx
 	def	numSectorsTotal, 0000
@@ -2413,8 +2416,7 @@ _NonLBARead:
 	jz _NonLBARead_Return				; just a read test -->
 
 _NonLBARead_12:
-	setds cs
-	getarg di, _diskparameters
+	getdarg ds, di, _diskparameters
 	getdarg dx, ax, _logSector
 	call ConvertLBAtoCHS
 
@@ -2524,7 +2526,7 @@ _NonLBAWrite:
 
 	ddef	buffer, es, bx
 	ddef	logSector, dx, ax
-	def	diskparameters, di
+	ddef	diskparameters, ds, di
 	def	numSectorsRemain, cx
 	def	numSectorsWritten, 0000
 	def	numSectorsTotal, 0000
@@ -2533,8 +2535,7 @@ _NonLBAWrite:
 	jz _NonLBAWrite_Return				; just a write test -->
 
 _NonLBAWrite_12:
-	setds cs
-	getarg di, _diskparameters
+	getdarg ds, di, _diskparameters
 	getdarg dx, ax, _logSector
 	call ConvertLBAtoCHS
 
@@ -2779,7 +2780,7 @@ RebuildBPB:
 	ddef	dskParameterTable, es, di
 
 	push ds
-	setds cs
+	setds cs				; (used to access DiskBuffer)
 
 		; Rebuild BIOS Parameter Block
 _RebuildBPB_12:
@@ -2789,7 +2790,7 @@ _RebuildBPB_12:
 	mov ax, 0201h
 
 	setes cs
-	mov bx, RxBIO_DiskBuffer
+	mov bx, RxBIO_DiskBuffer		; -> DiskBuffer
 	call DiskFunctionsWithRetry
 	ifc _RebuildBPB_38
 
@@ -2801,57 +2802,57 @@ _RebuildBPB_12:
 	repe movsb
 
 	mov di, word [ bp + _dskParameterTable + _pointer ]
-	mov byte [ di + _dskDeviceType ], DSKFILESYSTYPE_IsValid
+	mov byte [ es:di + _dskDeviceType ], DSKFILESYSTYPE_IsValid
 
-	mov ax, word [ di + _dskExtHiddenSectors + _low ]
-	mov dx, word [ di + _dskExtHiddenSectors + _high ]
-	add word [ di + _dskBPB + _bpbHiddenSectors + _low ], ax
-	adc word [ di + _dskBPB + _bpbHiddenSectors + _high ], dx
+	mov ax, word [ es:di + _dskExtHiddenSectors + _low ]
+	mov dx, word [ es:di + _dskExtHiddenSectors + _high ]
+	add word [ es:di + _dskBPB + _bpbHiddenSectors + _low ], ax
+	adc word [ es:di + _dskBPB + _bpbHiddenSectors + _high ], dx
 
 	mov ax, word [ RxBIO_DiskBuffer + _bsVolumeId + _low ]
 	mov dx, word [ RxBIO_DiskBuffer + _bsVolumeId + _high ]
-	mov word [ di + _dskSerialNumber + _low ], ax
-	mov word [ di + _dskSerialNumber + _high ], dx
+	mov word [ es:di + _dskSerialNumber + _low ], ax
+	mov word [ es:di + _dskSerialNumber + _high ], dx
 
-	mov dl, byte [ di + _dskPartitionEndCylinder ]
-	mov dh, byte [ di + _dskPartitionEndSector ]
+	mov dl, byte [ es:di + _dskPartitionEndCylinder ]
+	mov dh, byte [ es:di + _dskPartitionEndSector ]
 	rol dh, 1
 	rol dh, 1
 	and dx, 3ffh
 
-	mov cl, byte [ di + _dskPartitionBeginCylinder ]
-	mov ch, byte [ di + _dskPartitionBeginSector ]
+	mov cl, byte [ es:di + _dskPartitionBeginCylinder ]
+	mov ch, byte [ es:di + _dskPartitionBeginSector ]
 	rol ch, 1
 	rol ch, 1
 	and cx, 3ffh
 	sub dx, cx
 	inc dx
-	mov word [ di + _dskCylinders ], dx
+	mov word [ es:di + _dskCylinders ], dx
 
 		; see if Extended LBA Supported
-	mov word [ di + _dskExtReadFct ], _nonLBARead
-	mov word [ di + _dskExtWriteFct ], _nonLBAWrite
+	mov word [ es:di + _dskExtReadFct ], _nonLBARead
+	mov word [ es:di + _dskExtWriteFct ], _nonLBAWrite
 
-	mov dl, byte [ di + _dskPhysDriveNumber ]
+	mov dl, byte [ es:di + _dskPhysDriveNumber ]
 	call seeIfSupportsExtendedReadWrite
-	mov byte [ di + _dskExtReadWrite ], al
+	mov byte [ es:di + _dskExtReadWrite ], al
 	jc _RebuildBPB_24
 
-	mov word [ di + _dskExtReadFct ], ExtendedRead
-	mov word [ di + _dskExtWriteFct ], ExtendedWrite
+	mov word [ es:di + _dskExtReadFct ], ExtendedRead
+	mov word [ es:di + _dskExtWriteFct ], ExtendedWrite
 
 		; see if FAT32 logical drive
 _RebuildBPB_24:
-	mov al, byte [ di + _dskFATSystemType ]		; get logical device type
+	mov al, byte [ es:di + _dskFATSystemType ]	; get logical device type
 	call isFAT32Device				; is device FAT32 ?
 	jnz _RebuildBPB_34				; no -->
 
 	mov ax, word [ RxBIO_DiskBuffer + _bsxVolumeId + _low ]
 	mov dx, word [ RxBIO_DiskBuffer + _bsxVolumeId + _high ]
-	mov word [ di + _dskSerialNumber + _low ], ax
-	mov word [ di + _dskSerialNumber + _high ], dx
+	mov word [ es:di + _dskSerialNumber + _low ], ax
+	mov word [ es:di + _dskSerialNumber + _high ], dx
 
-	mov word [ di + _dskBPB + _bpbSectorsPerFat ], 0000
+	mov word [ es:di + _dskBPB + _bpbSectorsPerFat ], 0000
 
 	lea si, [ RxBIO_DiskBuffer + _bsxBigSectorsPerFat ]
 	lea di, [ di + _dskBPB + _bpbxBigSectorsPerFat ]
@@ -2866,26 +2867,26 @@ _RebuildBPB_24:
 	mov ax, 0201h
 
 	setes cs
-	mov bx, RxBIO_DiskBuffer
+	mov bx, RxBIO_DiskBuffer			; -> DiskBuffer
 	call DiskFunctionsWithRetry
 	jc _RebuildBPB_38
 
 	mov si, RxBIO_DiskBuffer + sizeSector - (BIGFATBOOTFSINFO_size) - 4
-	mov di, word [ bp + _dskParameterTable ]
+	les di, [ bp + _dskParameterTable ]
 	mov cx, word [ si + _bfFSInfoFreeClusterCnt + _high ]
 	mov dx, word [ si + _bfFSInfoFreeClusterCnt + _low ]
-	mov word [ di + _dskBPB + _bpbxFreeClusters + _low ], dx
-	mov word [ di + _dskBPB + _bpbxFreeClusters + _high ], cx
+	mov word [ es:di + _dskBPB + _bpbxFreeClusters + _low ], dx
+	mov word [ es:di + _dskBPB + _bpbxFreeClusters + _high ], cx
 
 	mov cx, word [ si + _bfFSInfoNextFreeCluster + _high ]
 	mov dx, word [ si + _bfFSInfoNextFreeCluster + _low ]
-	mov word [ di + _dskBPB + _bpbxNextFreeCluster + _low ], dx
-	mov word [ di + _dskBPB + _bpbxNextFreeCluster + _high ], cx
+	mov word [ es:di + _dskBPB + _bpbxNextFreeCluster + _low ], dx
+	mov word [ es:di + _dskBPB + _bpbxNextFreeCluster + _high ], cx
 
 		; Return with media descriptor
 _RebuildBPB_34:
-	mov di, word [ bp + _dskParameterTable ]
-	mov cl, byte [ di + _dskBPB + _bpbMediaDescriptor ]
+	les di, [ bp + _dskParameterTable ]
+	mov cl, byte [ es:di + _dskBPB + _bpbMediaDescriptor ]
 	clc
 
 _RebuildBPB_38:
@@ -3337,7 +3338,7 @@ ReadPartitionTable:
 	jc ReadPartitionTable_12
 
 	mov ax, 0201h
-	mov bx, RxBIO_DiskBuffer
+	mov bx, RxBIO_DiskBuffer		; -> DiskBuffer
 	call DiskFunctionsWithRetry
 	jc ReadPartitionTable_12
 
@@ -3436,7 +3437,7 @@ _extendedReadWrite_NotSupported:
 		; cx	num blocks
 		; dx:ax	sector address
 		; es:bx	buffer address
-		; cs:di	disk parameter block
+		; ds:di	disk parameter block
 		; 
 		; Output:
 		; cy	not supported
@@ -3447,11 +3448,10 @@ ExtendedRead:
 	def	unit
 	def	numblocks, cx
 	ddef	buffer, es, bx
-	ddef	diskParameterBlock, cs, di
+	ddef	diskParameterBlock, ds, di
 	ddef	sectoraddress, dx, ax
 	defbytes	packet, sizeEXTENDEDREQUESTPACKET
 
-	setds cs
 	add ax, word [ di + _dskBPB + _bpbHiddenSectors + _low ]
 	adc dx, word [ di + _dskBPB + _bpbHiddenSectors + _high ]
 	stordarg _sectoraddress, dx, ax
@@ -3494,7 +3494,7 @@ ExtendedRead:
 		; cx	num blocks
 		; dx:ax	sector address
 		; es:bx	buffer address
-		; cs:di	disk parameter block
+		; ds:di	disk parameter block
 		; 
 		; Output:
 		; cy	not supported
@@ -3507,13 +3507,12 @@ ExtendedWrite:
 	def	unit
 	def	numblocks, cx
 	ddef	buffer, es, bx
-	ddef	diskParameterBlock, cs, di
+	ddef	diskParameterBlock, ds, di
 	ddef	sectoraddress, dx, ax
 	defbytes	packet, sizeEXTENDEDREQUESTPACKET
 
 	or word [ bp + _Verify ], byte 40h
 
-	setds cs
 	add ax, word [ di + _dskBPB + _bpbHiddenSectors + _low ]
 	adc dx, word [ di + _dskBPB + _bpbHiddenSectors + _high ]
 	stordarg _sectoraddress, dx, ax
