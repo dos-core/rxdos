@@ -825,9 +825,9 @@ _DevInterrupt:
 
 	xor ax, ax
 	mov si, [ bp + _InfoPointer ]
-	lodsb
+	cs lodsb
 	mov word [ bp + _LogicalUnit ], ax
-	lodsw
+	cs lodsw
 	mov word [ bp + _StrategyTable ], ax
 
 	lds bx, [ cs:Strategy ]				; compliant strategy call
