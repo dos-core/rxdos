@@ -542,8 +542,8 @@ fnExtension		resb 3
 		; See Functions:
 		; _SearchFirstFileFCB	11h
 		; _SearchNextFileFCB	12h
-	struc DIRENTRY
-deName			resb 8
+	struc DIRENTRY2
+de2Name			resb 8
 deExtension		resb 3
 deAttributes		resb 1
 deExtAttributes		resb 1				; FAT+ size bits/NT pseudo-LFN flags
@@ -552,11 +552,11 @@ deReserved2		resw 1
 deReserved3		resw 1
 deReserved4		resw 1
 deStartClusterExt	resw 1				; upper 16 bits of FAT32 cluster
-deTime			resw 1				; Time Format
+de2Time			resw 1				; Time Format
 							;	0 - 4	Two second intervals
 							;	5 - 10	Minutes (0 - 59)
 							;	11 - 15	Hours (0 - 23)
-deDate			resw 1				; Date Format
+de2Date			resw 1				; Date Format
 							;	0 - 4	Day (1 - 31)
 							;	5 - 8	Month (1 - 12)
 							;	9 -15	Year since 1980
@@ -567,13 +567,13 @@ deFileSize		resd 1
 
 		; Attribute bits
 ATTR_NORMAL		equ 00h
-ATTR_READONLY		equ 01h
-ATTR_HIDDEN		equ 02h
-ATTR_SYSTEM		equ 04h
+ATTR_READONLY2		equ 01h
+ATTR_HIDDEN2		equ 02h
+ATTR_SYSTEM2		equ 04h
 ATTR_LABEL		equ 08h
 ATTR_VOLUME		equ ATTR_LABEL
-ATTR_DIRECTORY		equ 10h
-ATTR_ARCHIVE		equ 20h
+ATTR_DIRECTORY2		equ 10h
+ATTR_ARCHIVE2		equ 20h
 ATTR_DEVICE		equ 40h
 ATTR_TEMP		equ 80h
 
@@ -1375,7 +1375,7 @@ _MEM_LASTFIT_HIGHTHENLOW	equ 0082h
 
 
 		; Memory Control Block
-	struc MCB
+	struc MCB2
 _mcbSignature:		resb 1				; indicates link ('M') or last ('Z')
 _mcbOwner:		resw 1				; PSP of owner or system (1-4Fh) or free (0)
 _mcbSize:		resw 1				; allocated size in paragraphs
@@ -1395,6 +1395,7 @@ _smcbLink:		resw 1				; 0 or associated MCB/PSP
 			resw 1				; reserved, 0
 	endstruc
 
+%if 0
 		; Values for _smcbType
 S_OTHER		equ 00h					; Other/Undefined
 						; DOS internal
@@ -1438,6 +1439,7 @@ S_EXCLDDOS	equ 33h					; Excluded by DOS (usually 21.4B or 21.714B)
 						; Undefined or other allocations not associated
 						; or accessed by other software shouldn't use
 						; F0h-FFh but S_OTHER.
+%endif
 
 _MCB_LINK		equ 'M'
 _MCB_LAST		equ 'Z'

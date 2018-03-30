@@ -19,11 +19,13 @@ the file LICENSE.TXT.
 %assign __RXDMACRO_MAC__ 1
 
 
+%if 0
 %ifdef __lMACROS1_MAC__
  %fatal "lmacros1.mac already included"
 %endif
 %ifdef __lMACROS2_MAC__
  %fatal "lmacros2.mac already included"
+%endif
 %endif
 %ifdef __RXOPTION_MAC__
  %fatal "RXOPTION.MAC or replacement already included"
