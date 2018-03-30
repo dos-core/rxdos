@@ -830,10 +830,10 @@ getDaysSince1980:
 	mov byte [ _day	+ bp ], dl
 
 	dec dh
-	jnz getDaysSince1980_06
+	jnz .06
 	mov word [ _m14_12 + bp ], -1
 
-getDaysSince1980_06:
+.06:
 	xor dx, dx
 	mov ax, word [ _m14_12 + bp ]
 	mov cx, 12
@@ -893,7 +893,7 @@ getDaysSince1980_06:
 	sub ax, 4BD0h
 	sbb dx, byte 25h
 
-getDaysSince1980_12:
+.12:
 	pop dx
 	pop cx
 	pop bx

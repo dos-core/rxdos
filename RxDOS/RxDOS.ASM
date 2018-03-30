@@ -315,8 +315,10 @@ Performs the actual disk (Int13) access.
 
 ..start:
 %else	; not _BUILD_OBJ
+%if 0
 			org 0
 			[map all __MAPFILE__]
+%endif
 %endif
 
 RxDOS_start:		jmp near RxDOS_initialize
@@ -1820,12 +1822,12 @@ setFCBErrorIfCarry_08:
 		; dx:ax	numerator
 		; cx	multiplier
 _mul32: or dx, dx					; simple multiply ?
-	jnz _mul32_12					; not really -->
+	jnz .12						; not really -->
 
 	mul cx
 	retn
 
-_mul32_12:
+.12:
 	push bx
 	mov bx, ax
 	mov ax, dx
@@ -1848,9 +1850,10 @@ _mul32_12:
 		; dx:ax	result
 		; cx	remainder
 		; cy	error: divide by zero
-_div32: or cx, cx					; protect from zero divisor
+_div32:
+	or cx, cx					; protect from zero divisor
 	stc						; in case of error
-	jz _div32_return				; if so, just return with carry
+	jz .return					; if so, just return with carry
 
 	push bx
 	mov bx, dx
@@ -1869,7 +1872,7 @@ _div32: or cx, cx					; protect from zero divisor
 	or bx, ax					; or all 32-bits, set zr flag if zero
 	pop bx
 
-_div32_return:
+.return:
 	retn
 
 
@@ -1889,11 +1892,11 @@ _cmp32: Entry 2
 	darg ArgumentB
 
 	cmp cx, word [ bp + _ArgumentB + _high ]	; To set flags correctly, compare high word first
-	jnz _cmp32Return				; Low word compare (higher precision) only required if
+	jnz .Return					; Low word compare (higher precision) only required if
 							;  high words were the same
 	cmp dx, word [ bp + _ArgumentB + _low ]
 
-_cmp32Return:
+.Return:
 	return
 
 
