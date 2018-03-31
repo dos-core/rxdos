@@ -305,18 +305,14 @@ movp:
 	pop cx
 	retn
 
-.far:
-	call movp
-	retf
-
-.len:
-
 
 		; INP:	ss:bp -> EBPB, BPBN
 		;	ss:bp-16 -> LOADSTACKVARS
 		;	ss:bp-32 -> LOADDATA
-		;	cs:0 -> both kernel parts
-		;	cs = anywhere
+		;	cs:0 -> BIO kernel part
+		;	cs = 70h
+		;	word [cs:dos_park_segment] = combined DOSDATA + DOSCODE
+		;	word [cs:dos_park_segment - 1] = DOSDATA S MCB
 RxBIO_initialize:
 
 	cli
@@ -329,47 +325,6 @@ RxBIO_initialize:
 	mov dx, word [bp + bsBPB + bpbHiddenSectors + 2]
 	mov word [BootPartition], ax
 	mov word [BootPartition + 2], dx	; partition start sector
-
-	mov dx, word [ bp + ldLoadTop ]
-	mov ax, cs
-	add ax, (payload - $$) >> 4
-	mov cx, (payload.end - payload + 15) >> 4
-	sub dx, cx
-	cmp dx, ax
-	jb error_memory_layout
-	call movp
-	mov word [ cs:dos_park_segment ], dx
-
-	mov dx, 70h
-	mov ax, cs
-
-	cmp dx, ax
-	ja error_memory_layout
-
-	mov ax, .relocated
-
-	 push dx
-	 push ax
-	mov si, movp
-	push cs
-	pop ds
-	xor di, di
-	push dx
-	sub dx, (movp.len - movp + 15) >> 4
-	mov es, dx
-	pop dx
-	mov cx, ((movp.len - movp + 15) & ~15) >> 1
-	mov ax, movp.far - movp
-	 push es
-	 push ax
-	rep movsw
-
-	mov ax, cs
-	mov cx, (payload - $$) >> 4
-
-	retf
-
-.relocated:
 	sti
 
 	xor ax, ax
@@ -402,16 +357,6 @@ RxBIO_initialize:
 
 	mov ax, word [ bp + ldMemoryTop ]
 	mov word [ RxBIO_INITBLOCK + initMemParagraphs ], ax
-
-%if 0
-	sub ax, 64 * (1024 / sizePARAGRAPH)		; subtract 64k in segment form
-
-		; switch stacks so it doesn't get clobbered during load
-	cli
-	mov ss, ax					; new stack
-	mov sp, 0FFFEh
-	sti
-%endif
 
 
 		; Reset Interrupts
@@ -573,12 +518,16 @@ RxBIO_EvalHardware_22:
 	push ax				; on stack: far address of DOS
 
 	mov ax, [ dos_park_segment ]
-	mov cx, (payload.end - payload + 15) >> 4
+	mov cx, (dosdata_end - dosdata_start) >> 4
 
 	cmp dx, ax
 	ja error_memory_layout
 
 	call movp			; move DOS into place
+
+	dec ax
+	mov es, ax
+	mov word [es:mcbOwner], 0	; free the DOSDATA S MCB
 
 	 push cs
 	 pop es
@@ -3630,10 +3579,4 @@ RxBIO_DiskBuffer:
 	align 16
 RxBIO_LastAddress:
 RxDOS_StartBlockedDeviceTable:
-
-	align 16
-payload:
-	incbin "RxDOS.SYS"
-	align 16
-.end:
 
