@@ -335,7 +335,7 @@ RxBIO_initialize:
 		;  we move it here to maintain some strange compatability with the other DOS.
 	xor ax, ax
 	mov di, 500h
-	mov cx, 200h >> 1
+	mov cx, 100h >> 1
 	repe stosw					; clear drive, communications area
 
 	lds si, [ es:1Eh * 4 ]				; where to copy table
