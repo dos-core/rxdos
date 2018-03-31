@@ -218,41 +218,6 @@ InitInterruptVectors:
 	retn
 
 
-		; Save Interrupt Vectors
-		;
-		; INP:	-
-		; CHG:	ax, ds, es, si, bx, dx
-SaveInterruptVectors:
-	push cs
-	pop ds
-
-	xor ax, ax
-	mov es, ax
-
-	mov si, SaveInterruptsTable
-
-.08:
-	xor bx, bx
-	mov bl, byte [ si ]
-	cmp bl, -1
-	jz .16
-
-	inc si
-	add bx, bx
-	add bx, bx					; compute interrupt address
-							; save interrupt:
-	mov dx, word [ es:bx + 2 ]			; _segment
-	mov ax, word [ es:bx ]				; _pointer
-	mov word [ si + 2 ], dx				; _segment
-	mov word [ si ], ax				; _pointer
-
-	add si, byte 4
-	jmp short .08
-
-.16:
-	retn
-
-
 	align 16
 		; Move paragraphs
 		;
@@ -362,8 +327,6 @@ RxBIO_initialize:
 	mov word [BootPartition], ax
 	mov word [BootPartition + 2], dx	; partition start sector
 	sti
-
-	call SaveInterruptVectors
 
 	xor ax, ax
 	mov ds, ax
