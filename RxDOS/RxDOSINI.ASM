@@ -1635,6 +1635,7 @@ RxDOSini_MemorySubSystem:
 	xor bx, bx				; free block (0000)
 	mov es, word [ _RxDOS_pStartMemBlock ]	; available memory
 	call _initializeMemoryBlock		; initialize memory block.
+	mov byte [ es:_memSignature ], 'M'
 	restoreSegments
 	retn
 
