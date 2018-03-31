@@ -138,6 +138,40 @@ RXDOSBIO_MSGLoadingRxDOS:	db "Starting RxDOS...", cr, lf, 0
 RXDOSBIO_MSGErrorLoadingSystem: db cr, lf, "Error loading RxDOS. Please reboot. ", 0
 
 
+%assign num 100h-($-$$)
+%warning RxBIO: num bytes in front of SIT
+	_fill 100h, 0, RxBIO_Start
+		; Save Interrupts Table
+SaveInterruptsTable:
+	savint 10h
+	savint 13h
+	savint 15h
+	savint 19h
+	savint 1Bh
+		; Above interrupts are in the order MS-DOS 6.x saves them
+		;  (FDEMM386?/Jemm expects the Int19 storage inside the first five entries)
+
+	savint 00h
+	savint 01h
+	savint 03h
+	savint 04h
+	savint 06h
+	savint 08h
+
+	savint 16h
+	savint 1Eh
+
+	savint 21h
+	savint 23h
+	savint 24h
+	savint 29h
+	savint 2Fh
+
+	savint 33h
+
+	savint -1					; End of table
+
+
 error_memory_layout:
 	mov si, bio_msg.error_memory_layout
 	call _DisplayMsg
@@ -186,20 +220,22 @@ InitInterruptVectors:
 
 		; Save Interrupt Vectors
 		;
-		; INP:	ds = kernel segment
-		; CHG:	ax, es, si, bx, dx
+		; INP:	-
+		; CHG:	ax, ds, es, si, bx, dx
 SaveInterruptVectors:
+	push cs
+	pop ds
 
 	xor ax, ax
 	mov es, ax
 
 	mov si, SaveInterruptsTable
 
-SaveInterruptVectors_08:
+.08:
 	xor bx, bx
 	mov bl, byte [ si ]
 	cmp bl, -1
-	jz SaveInterruptVectors_16
+	jz .16
 
 	inc si
 	add bx, bx
@@ -211,9 +247,9 @@ SaveInterruptVectors_08:
 	mov word [ si ], ax				; _pointer
 
 	add si, byte 4
-	jmp short SaveInterruptVectors_08
+	jmp short .08
 
-SaveInterruptVectors_16:
+.16:
 	retn
 
 
@@ -327,6 +363,8 @@ RxBIO_initialize:
 	mov word [BootPartition + 2], dx	; partition start sector
 	sti
 
+	call SaveInterruptVectors
+
 	xor ax, ax
 	mov ds, ax
 	mov es, ax					; ES:
@@ -439,8 +477,6 @@ RxBIO_EvalHardware_20:
 
 		; Setup remainder of INIT Block
 RxBIO_EvalHardware_22:
-
-	call SaveInterruptVectors
 
 		; Set Interrupt Vectors
 	xor ax, ax
@@ -3533,39 +3569,6 @@ BIOSErrorCodeTable:
 	db devErrCRCerr					; 17 - dskErrECCCorrectedErr
 
 Max_BIOSErrorCodeTable		equ ($ - BIOSErrorCodeTable - 1)
-
-
-		; Save Interrupts Table
-SaveInterruptsTable:
-		; RxDOS 7.20N:	This table must move to 70:100 (== 80:0 == 0:800)
-
-	savint 10h
-	savint 13h
-	savint 15h
-	savint 19h
-	savint 1Bh
-		; Above interrupts are in the order MS-DOS 6.x saves them
-		;  (FDEMM386?/Jemm expects the Int19 storage inside the first five entries)
-
-	savint 00h
-	savint 01h
-	savint 03h
-	savint 04h
-	savint 06h
-	savint 08h
-
-	savint 16h
-	savint 1Eh
-
-	savint 21h
-	savint 23h
-	savint 24h
-	savint 29h
-	savint 2Fh
-
-	savint 33h
-
-	savint -1					; End of table
 
 
 		; Reallocated Space
