@@ -1882,7 +1882,7 @@ Interrupt_19:
 	xor ax, ax
 	mov es, ax
 
-	mov si, SaveInterruptsTable
+	mov si, InterruptRestorationTable
 
 Interrupt_19_08:
 	xor bx, bx
