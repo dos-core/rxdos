@@ -81,7 +81,8 @@ RxBIO_Start:		jmp RxBIO_initialize
 
 
 		align 2
-dos_park_segment:		dw 0
+dosdata_segment:		dw 0
+doscode_segment:		dw 0
 		; Data
 BootDrive:			db 0
 		align 4
@@ -512,19 +513,21 @@ RxBIO_EvalHardware_22:
 
 	mov dx, cs					; current segment
 	add dx, ax					; seg address to load next module.
+	inc dx
 	xor ax, ax
 	push dx
 	push ax				; on stack: far address of DOS
+	dec dx
 
-	mov ax, [ dos_park_segment ]
-	mov cx, (dosdata_end - dosdata_start) >> 4
+	mov ax, [ dosdata_segment ]
+	dec ax				; => DOSDATA S MCB
+	mov cx, (16 + (dosdata_end - dosdata_start)) >> 4
 
 	cmp dx, ax
 	ja error_memory_layout
 
 	call movp			; move DOS into place
 
-	dec ax
 	mov es, ax
 	mov word [es:mcbOwner], 0	; free the DOSDATA S MCB
 
