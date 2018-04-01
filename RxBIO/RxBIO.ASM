@@ -497,6 +497,9 @@ RxBIO_EvalHardware_22:
 	inc dx
 	mov word [dosdata_segment], dx
 	mov word [doscode_segment], dx
+	xor bx, bx
+	mov es, bx
+	mov word [es:30h * 4 + 6], dx	; update DR-DOS compatible reference
 	mov es, ax
 	mov word [es:mcbOwner], 0	; free the DOSDATA S MCB
 
