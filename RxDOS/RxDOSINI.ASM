@@ -2895,3 +2895,6 @@ _RxDOSini_compatibilityshell:
 	align 16, db 0
 
 RxDOS_EndOfInitCode:
+	times 3 * RXDOS_PERCALL_STACKRESERVE db 0
+	align 16, db 0
+
