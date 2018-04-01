@@ -2057,12 +2057,12 @@ _hdRead_08:
 	getdarg ds, di, _diskparameters
 
 	test byte [ di + _dskExtReadWrite ], 1
-	jz .chs_write
-.lba_write:
+	jz .chs_read
+.lba_read:
 	call ExtendedRead
 	jmp .common
 
-.chs_write:
+.chs_read:
 	call _nonLBARead
 .common:
 	mov word [ bp + _numSectorsTotal ], ax
@@ -2630,15 +2630,26 @@ RebuildBPB:
 
 		; Rebuild BIOS Parameter Block
 _RebuildBPB_12:
-	mov dl, byte [ es:di + _dskPhysDriveNumber ]
-	mov dh, byte [ es:di + _dskPartitionBeginHead ]
-	mov cx, word [ es:di + _dskPartitionBeginSector ]
-	mov ax, 0201h
+	getdarg ds, di, _dskParameterTable		; ds:di -> UPB
+	push cs
+	pop es
+	mov bx, RxBIO_DiskBuffer			; es:bx -> DiskBuffer
 
-	setes cs
-	mov bx, RxBIO_DiskBuffer		; -> DiskBuffer
-	call DiskFunctionsWithRetry
-	ifc _RebuildBPB_38
+	xor ax, ax
+	xor dx, dx					; dx:ax = sector number
+
+	mov cx, 1					; cx = 1
+
+	test byte [ di + _dskExtReadWrite ], 1
+	jz .chs_read
+.lba_read:
+	call ExtendedRead
+	jmp .common
+
+.chs_read:
+	call _nonLBARead
+.common:
+	jc _RebuildBPB_38
 
 		; Copy standard boot sector info
 	getdarg es, di, _dskParameterTable
@@ -2705,16 +2716,25 @@ _RebuildBPB_24:
 	mov cx, ( _bpbxReserved - _bpbxBigSectorsPerFat )
 	rep movsb
 
-	getdarg es, di, _dskParameterTable
-	mov dl, byte [ es:di + _dskPhysDriveNumber ]
-	mov dh, byte [ es:di + _dskPartitionBeginHead ]
-	mov cx, word [ es:di + _dskPartitionBeginSector ]
-	add cl, byte [ es:di + _dskBPB + _bpbxFSINFOSector ]
-	mov ax, 0201h
+	getdarg ds, di, _dskParameterTable		; ds:di -> UPB
+	push cs
+	pop es
+	mov bx, RxBIO_DiskBuffer			; es:bx -> DiskBuffer
 
-	setes cs
-	mov bx, RxBIO_DiskBuffer			; -> DiskBuffer
-	call DiskFunctionsWithRetry
+	mov ax, word [ es:di + _dskBPB + _bpbxFSINFOSector ]
+	xor dx, dx					; dx:ax = sector number
+
+	mov cx, 1					; cx = 1
+
+	test byte [ di + _dskExtReadWrite ], 1
+	jz .chs_read
+.lba_read:
+	call ExtendedRead
+	jmp .common
+
+.chs_read:
+	call _nonLBARead
+.common:
 	jc _RebuildBPB_38
 
 	mov si, RxBIO_DiskBuffer + sizeSector - (BIGFATBOOTFSINFO_size) - 4
