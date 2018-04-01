@@ -2404,6 +2404,7 @@ RxDOS_initialize:
 	mov word [ _pointer + bx ], _Interrupt_21
 	mov word [ _segment + bx ], cs
 
+%if 0
 	mov bx, ( 20h * 4 )				; Int20
 	mov word [ _pointer + bx ], _Interrupt_20
 	mov word [ _segment + bx ], cs
@@ -2415,6 +2416,7 @@ RxDOS_initialize:
 	mov bx, ( 24h * 4 )				; Int24
 	mov word [ _pointer + bx ], _Interrupt_24
 	mov word [ _segment + bx ], cs
+%endif
 
 	mov bx, ( 25h * 4 )				; Int25
 	mov word [ _pointer + bx ], _Interrupt_25

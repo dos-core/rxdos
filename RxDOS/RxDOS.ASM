@@ -874,6 +874,7 @@ dos_disp_msg:
 	retn
 
 
+relocated i00:
 _Interrupt_00:
 	mov si, dos_msg.int0
 	call dos_disp_msg
@@ -881,6 +882,7 @@ _Interrupt_00:
 	int 21h
 
 
+relocated i06:
 _Interrupt_06:
 	mov si, dos_msg.int6
 	call dos_disp_msg
@@ -892,6 +894,7 @@ _Interrupt_06:
 		;
 		; ah = requested function
 		; all other registers possible parameters for function
+relocated i21:
 _Interrupt_21:
 
 %if 0
@@ -1202,6 +1205,7 @@ saveStackFrame_08:
 
 
 		; Call DOS interface for CP/M compatibility, "CALL 5"
+relocated call5:
 _CallDOS:
 		; The CALL 5 interface isn't just a far call to this address.
 		; Rather it's a near call (inside the program's PSP) to address 5, which
@@ -1248,16 +1252,18 @@ _CallDOS:
 		;		CALL 5s and it's even shorter than the code used by RxDOS <= 7.20N
 
 
+%if 0
 		; Interrupt 20
 		;
 		; Terminate program
 _Interrupt_20:
 	xor ax, ax
 	jmp _Interrupt_21
+%endif
 
 
 		; Where Data Segment Relocated
-
+			align 2
 _RxDOS_CurrentSeg	dw 0000				; Current Segment
 
 		; System Wide Functions
@@ -1284,6 +1290,7 @@ null_interrupt:
 		retf
 
 
+%if 0
 		; Interrupt 23 - Control-Break Exit Address
 		;
 		; This is a default Int 23 handler.
@@ -1294,6 +1301,7 @@ null_interrupt:
 _Interrupt_23:
 	stc
 	retf						; indicate to terminate current application
+%endif
 
 
 		; Interrupt 24 - Critical Error Handler
@@ -1320,6 +1328,7 @@ _Interrupt_23:
 		;		and will always report fail. The prompt is only inside COMMAND.COM there.
 		;
 		; RxDOS 7.30:	Will move into resident RxCMD. All changed code moved into RxCMDRES.ASM.
+%if 0
 _Interrupt_24:
 %if 1
 	mov al, CRITERROR_FAIL				; default DOS handler always returns fail
@@ -1490,6 +1499,7 @@ perr_devErrLockViolation:	asciz "Error Lock Violation"
 perr_devErrInvalidDiskChange:	asciz "Error Invalid Disk Change"
 perr_OnDrive:			asciz " On Drive "
 %endif
+%endif
 
 
 		; Interrupt 25 - Read From Disk
@@ -1519,6 +1529,7 @@ perr_OnDrive:			asciz " On Drive "
 		; [ 4 ]		Word number of sectors to access
 		; [ 6 ]		Buffer address pointer
 		; [ 8 ]		Buffer address segment
+relocated i25:
 _Interrupt_25:
 
 	saveSegments di, si, bp, dx, cx, bx
@@ -1526,6 +1537,7 @@ _Interrupt_25:
 	mov si, DevRead
 	jmp _Interrupt_26.common
 
+relocated i26:
 _Interrupt_26:
 
 	saveSegments di, si, bp, dx, cx, bx
@@ -1686,6 +1698,7 @@ int_25_26_217305_common:
 		; OUT:	ax = 3100h
 		;	dx = number of paragraphs to keep
 		;	jumps to interrupt 21h handler
+relocated i27:
 _Interrupt_27:
 	mov cl, 4
 	mov ax, dx
@@ -1702,6 +1715,7 @@ _Interrupt_27:
 		; Interrupt 28
 		;
 		; DOS idle loop
+relocated i28:
 _Interrupt_28:
 ;	iret
 
@@ -1709,6 +1723,7 @@ _Interrupt_28:
 		; Interrupt 2A
 		;
 		; DOS critical sections
+relocated i2A:
 _Interrupt_2a:
 ;	iret
 
@@ -1716,6 +1731,7 @@ _Interrupt_2a:
 		; Interrupt 2F
 		;
 		; DOS hard-coded multiplex, MS Windows, many services
+relocated i2F:
 _Interrupt_2f:
 ;	iret
 
