@@ -358,7 +358,8 @@ _RxDOS_wDOSHIGHOffset	dw 0			; DOS High offset A20 fix
 			dw 0			; DOS High PSP
 _RxDOS_Buffers		dw 0			; BUFFERS x
 _RxDOS_BuffersY		dw 0			; BUFFERS y (lookahead buffers)
-_RxDOS_BootDrive	db 0			; Boot Drive (A: = 1, ...)
+_RxDOS_BootDrive:
+bootdrive:		db 0			; Boot Drive (A: = 1, ...)
 %if _386
 					; RxDOS with _386 option will check for 386+ on startup and fail
 					; if the CPU isn't high enough anyway, so we can preset this flag.
@@ -387,6 +388,7 @@ _RxDOS_StackLongJump	dw 0			; long jump
 		; UMB Control Status Word
 _RxDOS_UMBEnabled	dw 0			; set by init
 _RxDOS_UMBAllowed	dw 0			; selectable by user (Int21.5802, .5803)
+first_umcb:		dw 0
 
 		; Tab Expansion
 _RxDOS_TabPosition	dw 0			; tab position
@@ -638,6 +640,11 @@ _RxDOS_DOSLocation	db RXDOS_DOSLOCATION	; DOS in ROM and DOS moved to HMA status
 			align 2
 _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
 
+	align 16
+bootname:
+.drive:		db " :\"			; "C:\"
+.filename:	times (8 + 1 + 3 + 1) db 0	; "FILENAME.EXT",0
+
 	; ** ROMABLE BEYOND THIS ADDRESS **
 
 _RxDOS_DOSVersionString:
@@ -653,7 +660,6 @@ _RxDOS_ContrlC_Message	asciz '^C',13,10
 dos_msg:
 .int0:		db "Interrupt 00h: Divide by zero.", 13, 10, 0
 .int6:		db "Interrupt 06h: Invalid opcode.", 13, 10, 0
-
 
 		; Device Assign Table
 			align 4
@@ -3982,7 +3988,7 @@ _GetDriveParameterBlock_08:
 		;  06h = Get DOS Version
 		;  07h = Unknown
 		; (RxDOS extension) 5Eh = Get extended DOS version
-		; (RxDOS extension) 5Fh = Reserved for RxDOS
+		; (RxDOS extension) 5Fh = Get boot drive and filename
 		; (RxDOS extension) 60h = Get DOS capabilities
 		; (DOS-C extension) FCh = Set returned DOS version (get with Int21.30)
 		; (DOS-C extension) FDh = Toggle disk access debug dump flag*
@@ -4006,6 +4012,7 @@ _CtrlBreakCheck:
 	Gotos GetExtDosVersion,	.gettrueversion
 	Gotos 07h,		.unknown		; Set bit5 of DOS_FLAG
 	Gotos 5Eh,		.getextendedversion
+	Gotos 5Fh,		.getbootname
 	Gotos 60h,		.capabilities
 	Gotos 0FCh,		.setversion		; DOS-C
 	Gotos 0FFh,		.getversionstring	; DOS-C
@@ -4093,6 +4100,11 @@ patch_rxbio_version equ $-2
 .getversionstring:
 	mov word [ si + _DX ], ss
 	mov word [ si + _AX ], _RxDOS_DOSVersionString
+	retn
+
+.getbootname:
+	mov word [ si + _DX ], ss
+	mov word [ si + _AX ], bootname
 	retn
 
 
