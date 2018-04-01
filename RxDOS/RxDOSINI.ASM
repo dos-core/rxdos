@@ -2386,66 +2386,6 @@ RxDOS_initialize:
 	mov ax, 0500h					; set page zero
 	int 10h
 
-		; set interrupt vectors for interrupt 00, 06, 21, 23, ... 28, 2F, 30
-	xor ax, ax
-	mov ds, ax
-
-%ifn _DEBUG4
-	mov bx, ( 00h * 4 )				; Int00
-	mov word [ _pointer + bx ], _Interrupt_00
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 06h * 4 )				; Int06
-	mov word [ _pointer + bx ], _Interrupt_06
-	mov word [ _segment + bx ], cs
-%endif
-
-	mov bx, ( 21h * 4 )				; Int21
-	mov word [ _pointer + bx ], _Interrupt_21
-	mov word [ _segment + bx ], cs
-
-%if 0
-	mov bx, ( 20h * 4 )				; Int20
-	mov word [ _pointer + bx ], _Interrupt_20
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 23h * 4 )				; Int23
-	mov word [ _pointer + bx ], _Interrupt_23
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 24h * 4 )				; Int24
-	mov word [ _pointer + bx ], _Interrupt_24
-	mov word [ _segment + bx ], cs
-%endif
-
-	mov bx, ( 25h * 4 )				; Int25
-	mov word [ _pointer + bx ], _Interrupt_25
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 26h * 4 )				; Int26
-	mov word [ _pointer + bx ], _Interrupt_26
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 27h * 4 )				; Int27
-	mov word [ _pointer + bx ], _Interrupt_27
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 28h * 4 )				; Int28
-	mov word [ _pointer + bx ], _Interrupt_28
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 2Ah * 4 )				; Int2A
-	mov word [ _pointer + bx ], _Interrupt_2a
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 2fh * 4 )				; Int2F
-	mov word [ _pointer + bx ], _Interrupt_2f
-	mov word [ _segment + bx ], cs
-
-	mov bx, ( 30h * 4 )				; "jmp far _CallDOS" at Int30/Int31
-	mov byte [ bx ], 0EAh				; "jmp far" instruction
-	mov word [ (1 + _pointer) + bx ], _CallDOS
-	mov word [ (1 + _segment) + bx ], cs
 
 		; compute number of block devices installed
 	setDS cs
