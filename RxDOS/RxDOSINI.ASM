@@ -1618,26 +1618,46 @@ _scanToEndofName_08:
 	retn
 
 
-		; RxDOS memory subsystem initialize
-		;
-		; No Parameters Required.
-		;
-		; The memory subsystem used by RxDOS is initialized. All
-		; previous memory allocations are lost.
+		; Allocated DPBs, CDSs, LFNCDSs, SFTs, and CCBs are freed.
 		;
 		; ds = DOS data segment
 RxDOSini_MemorySubSystem:
-	saveSegments
-	mov ax, [ _RxDOS_MaxMemory ]		; (ldMemoryTop)
-						; => behind last available
-	sub ax, word [ _RxDOS_pStartMemBlock ]	; available memory
-	dec ax					; adjust for memory header
-	xor bx, bx				; free block (0000)
-	mov es, word [ _RxDOS_pStartMemBlock ]	; available memory
-	call _initializeMemoryBlock		; initialize memory block.
-	mov byte [ es:_memSignature ], 'M'
-	restoreSegments
+	push ds
+	mov ax, [_RxDOS_pStartMemBlock]
+.loop:
+	mov ds, ax
+	cmp word [mcbOwner], 8
+	jne .next
+	cmp word [smcbName], "S"
+	jne .next
+
+	cmp byte [smcbType], S_DPB
+	je .free
+	cmp byte [smcbType], S_CDS
+	je .free
+	cmp byte [smcbType], S_LFNCDS
+	je .free
+	cmp byte [smcbType], S_SFT
+	je .free
+	cmp byte [smcbType], S_CCB
+	jne .next
+.free:
+	mov word [mcbOwner], 0
+.next:
+	add ax, word [mcbSize]
+	inc ax
+	cmp byte [mcbSignature], "M"
+	je .loop
+	cmp byte [mcbSignature], "Z"
+	jne .fail
+	pop ds
 	retn
+
+
+.fail:
+	mov si, init_msg.mcb_chain_corrupted_error
+	call RxDOSIni_TypeMessage
+	jmp RxDOS_init_68
 
 
 		; Sub allocate system space
@@ -2369,14 +2389,6 @@ RxDOS_initialize:
 	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
 	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
 
-	mov cx, cs
-	add cx, (RxDOS_EndOfInitCode - $$ + 3 * RXDOS_PERCALL_STACKRESERVE \
-		+ 15) >> 4				; round up to nearest para
-	mov word [ _RxDOS_pStartMemBlock ], cx		; allocate from here
-
-	mov ax, word [ es:di + initMemParagraphs ]	; available memory size
-	mov word [ _RxDOS_MaxMemory ], ax		; memory available
-
 	mov ax, word [ es:di + initDeviceChain + _pointer ]
 	mov dx, word [ es:di + initDeviceChain + _segment ]
 	mov word [ _RxDOS_NULLDev + _pointer ], ax
@@ -2744,6 +2756,7 @@ init_msg:
 .alloc_error:		db "init: Error ",0
 .alloc_error_q:		db "h while allocating memory: ",0
 .linebreak:		db 13,10,0
+.mcb_chain_corrupted_error:	asciz "init: Error, MCB chain corrupted.",13,10
 .dpb_error_dev:		db "init: Error while walking DPB chain linking devices, last=",0
 .dpb_error_cds:		db "init: Error while walking DPB chain linking CDS, last=",0
 .devices_error:		db "init: Error while walking device chain linking devices, last=",0
