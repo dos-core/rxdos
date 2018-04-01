@@ -139,40 +139,6 @@ RXDOSBIO_MSGLoadingRxDOS:	db "Starting RxDOS...", cr, lf, 0
 RXDOSBIO_MSGErrorLoadingSystem: db cr, lf, "Error loading RxDOS. Please reboot. ", 0
 
 
-%assign num 100h-($-$$)
-%warning RxBIO: num bytes in front of SIT
-	_fill 100h, 0, RxBIO_Start
-		; Save Interrupts Table
-SaveInterruptsTable:
-	savint 10h
-	savint 13h
-	savint 15h
-	savint 19h
-	savint 1Bh
-		; Above interrupts are in the order MS-DOS 6.x saves them
-		;  (FDEMM386?/Jemm expects the Int19 storage inside the first five entries)
-
-	savint 00h
-	savint 01h
-	savint 03h
-	savint 04h
-	savint 06h
-	savint 08h
-
-	savint 16h
-	savint 1Eh
-
-	savint 21h
-	savint 23h
-	savint 24h
-	savint 29h
-	savint 2Fh
-
-	savint 33h
-
-	savint -1					; End of table
-
-
 error_memory_layout:
 	mov si, bio_msg.error_memory_layout
 	call _DisplayMsg
