@@ -494,6 +494,9 @@ RxBIO_EvalHardware_22:
 
 	call movp			; move DOS into place
 
+	inc dx
+	mov word [dosdata_segment], dx
+	mov word [doscode_segment], dx
 	mov es, ax
 	mov word [es:mcbOwner], 0	; free the DOSDATA S MCB
 
