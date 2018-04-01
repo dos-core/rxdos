@@ -2055,7 +2055,16 @@ _hdRead_08:
 	getdarg es, bx, _buffer				; buffer address
 	getdarg dx, ax, _logSector
 	getdarg ds, di, _diskparameters
-	call word [ di + _dskExtReadFct ]		; do read
+
+	test byte [ di + _dskExtReadWrite ], 1
+	jz .chs_write
+.lba_write:
+	call ExtendedRead
+	jmp .common
+
+.chs_write:
+	call _nonLBARead
+.common:
 	mov word [ bp + _numSectorsTotal ], ax
 
 _hdRead_Return:
@@ -2124,7 +2133,16 @@ _hdWrite_08:
 	getdarg dx, ax, _logSector
 	getdarg ds, di, _diskparameters
 	push word [ bp + _Verify ]
-	call word [ di + _dskExtWriteFct ]		; do write
+
+	test byte [ di + _dskExtReadWrite ], 1
+	jz .chs_write
+.lba_write:
+	call ExtendedWrite
+	jmp .common
+
+.chs_write:
+	call _nonLBAWrite
+.common:
 	mov word [ bp + _numSectorsTotal ], ax
 
 _hdWrite_Return:
