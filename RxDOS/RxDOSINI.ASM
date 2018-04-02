@@ -2448,6 +2448,11 @@ RxDOS_initialize:
 
 	call far [init_relocate_function]
 
+	push cs
+	pop ds
+	push ss
+	pop es
+
 	lea di, [ word _execBlock + bp ]
 	clearMemory sizeEXEC				; clear load exec block
 
