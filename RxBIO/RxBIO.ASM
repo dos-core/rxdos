@@ -2650,6 +2650,8 @@ _RebuildBPB_12:
 	call _nonLBARead
 .common:
 	jc _RebuildBPB_38
+	push cs
+	pop ds
 
 		; Copy standard boot sector info
 	getdarg es, di, _dskParameterTable
@@ -2731,6 +2733,8 @@ _RebuildBPB_24:
 	call _nonLBARead
 .common:
 	jc _RebuildBPB_38
+	push cs
+	pop ds
 
 	mov si, RxBIO_DiskBuffer + sizeSector - (BIGFATBOOTFSINFO_size) - 4
 	les di, [ bp + _dskParameterTable ]
