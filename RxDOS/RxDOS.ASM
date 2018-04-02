@@ -4092,8 +4092,8 @@ _CtrlBreakCheck:
 	mov word [ si + _CX ], 2018
 	mov word [ si + _DX ], 03<<8|09			; cx:dx = build (2018-03-09)
 	mov word [ si + _BX ], RXDOS_VERP		; bx = version
-	mov word [ si + _DI ], 0			; RxBIO compatibility level gets patched in here
-patch_rxbio_version equ $-2
+	mov word [ si + _DI ], RXDOS_VERP
+		; RxBIO compatibility level (can no longer differ)
 	retn
 
 .capabilities:

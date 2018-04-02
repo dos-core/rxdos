@@ -2356,16 +2356,25 @@ Config_CommonSelector:	db 'COMMON', 0
 
 		; Initialize
 		;
-		; Expects from RxBIO:
-		; INP:	es:di -> SYSINIT structure
-RxDOS_initialize:
+		; INP:	cs = combined DOSDATA DOSCODE segment
+		;	ip = 0
+		;	cx = number of default block device's units (<= 32)
+		;	dx:ax -> far function to relocate DOSDATA (and DOSCODE)
 
+RxDOS_initialize:
 	cli						; disable interrupts
 	cld						; set direction
+
+	mov word [cs:init_relocate_function], ax
+	mov word [cs:init_relocate_function + 2], dx
+
 	mov ax, cs
 	mov ds, ax
 	mov ss, ax
 	mov sp, RxDOS_EndOfInitCode + RXDOS_PERCALL_STACKRESERVE
+
+	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
+	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
 
 	mov ax, (RxDOS_EndOfInitCode + 3 * RXDOS_PERCALL_STACKRESERVE)
 	mov word [ _RxDOS_CurrentStackTop ], ax
@@ -2377,29 +2386,8 @@ RxDOS_initialize:
 	Entry
 	defbytes	execBlock, sizeEXEC
 
-	mov ax, word [ es:di + initBIOVersion ]
-	mov word [ patch_rxbio_version ], ax
-
-	mov dl, byte [ es:di + initBootDrive ]
-	mov byte [ _RxDOS_CurrentDrive ], dl		; current drive = boot drive (A: = 0, ...)
-
-	inc dl
-	mov byte [ _RxDOS_BootDrive ], dl		; boot drive (A: = 1, ...)
-
-	mov cl, byte [ es:di + initTotalDrives ]	; number of block devices
-	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
-	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
-
-	mov ax, word [ es:di + initDeviceChain + _pointer ]
-	mov dx, word [ es:di + initDeviceChain + _segment ]
-	mov word [ _RxDOS_NULLDev + _pointer ], ax
-	mov word [ _RxDOS_NULLDev + _segment ], dx
-
-	push word [es:di + initRelocate + 2]
-	push word [es:di + initRelocate]
-	pop word [cs:init_relocate_function]
-	pop word [cs:init_relocate_function + 2]
-
+	mov word [ _RxDOS_NULLDev + _pointer ], con
+	mov word [ _RxDOS_NULLDev + _segment ], 70h
 
 	mov ax, 0500h					; set page zero
 	int 10h
