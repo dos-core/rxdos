@@ -2220,6 +2220,7 @@ Init_AttachedFileSystem_16:
 F5_SkipConfigProcessing dw 0000				; non-zero if skipping
 F8_PromptRequired	dw 0000				; non-zero if prompt required
 init_verbose:		dw 1
+init_relocate_function:	dd 0
 
 
 		; CONFIG.SYS keywords
@@ -2394,6 +2395,11 @@ RxDOS_initialize:
 	mov word [ _RxDOS_NULLDev + _pointer ], ax
 	mov word [ _RxDOS_NULLDev + _segment ], dx
 
+	push word [es:di + initRelocate + 2]
+	push word [es:di + initRelocate]
+	pop word [cs:init_relocate_function]
+	pop word [cs:init_relocate_function + 2]
+
 
 	mov ax, 0500h					; set page zero
 	int 10h
@@ -2439,6 +2445,8 @@ RxDOS_initialize:
 		; parse command line
 	setDS cs
 	setES ss
+
+	call far [init_relocate_function]
 
 	lea di, [ word _execBlock + bp ]
 	clearMemory sizeEXEC				; clear load exec block
