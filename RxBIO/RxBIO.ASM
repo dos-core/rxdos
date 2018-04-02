@@ -65,6 +65,7 @@ doscode_segment:		dw 0
 RxBIO_INITBLOCK:
 	istruc SYSINIT
 at initDeviceChain,	dw con, 70h
+at initRelocate,	dw init1_relocate, 0
 at initMemParagraphs,	dw 0
 at initBIOVersion,	dw RXDOS_VERP
 at initBootDrive,	db -1
