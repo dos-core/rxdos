@@ -2209,8 +2209,8 @@ _hdRemovableMedia_12:
 		; CHG:	ax
 ConvertLBAtoCHS:
 
-	add ax, word [ di + _dskBPB + _bpbHiddenSectors + _low ]
-	adc dx, word [ di + _dskBPB + _bpbHiddenSectors + _high ]
+	add ax, word [ di + _dskExtHiddenSectors + _low ]
+	adc dx, word [ di + _dskExtHiddenSectors + _high ]
 
 	mov cx, word [ di + _dskBPB + _bpbSectorsPerTrack ]
 	call _div32		; dx:ax = track number, cx = sector in track
@@ -2661,11 +2661,6 @@ _RebuildBPB_12:
 	mov di, word [ bp + _dskParameterTable + _pointer ]
 	mov byte [ es:di + _dskDeviceType ], DSKFILESYSTYPE_IsValid
 
-	mov ax, word [ es:di + _dskExtHiddenSectors + _low ]
-	mov dx, word [ es:di + _dskExtHiddenSectors + _high ]
-	add word [ es:di + _dskBPB + _bpbHiddenSectors + _low ], ax
-	adc word [ es:di + _dskBPB + _bpbHiddenSectors + _high ], dx
-
 	mov ax, word [ RxBIO_DiskBuffer + _bsVolumeId + _low ]
 	mov dx, word [ RxBIO_DiskBuffer + _bsVolumeId + _high ]
 	mov word [ es:di + _dskSerialNumber + _low ], ax
@@ -3019,9 +3014,9 @@ _initDiskParams_36:
 @@:
 
 			; do we have a match for the partition ?
-	cmp word [es:di + _dskBPB + bpbHiddenSectors], ax
+	cmp word [es:di +_dskExtHiddenSectors], ax
 	jne .next	; no -->
-	cmp word [es:di + _dskBPB + bpbHiddenSectors + 2], dx
+	cmp word [es:di + _dskExtHiddenSectors + 2], dx
 	jne .next	; no -->
 			; yes
 
@@ -3318,8 +3313,8 @@ ExtendedRead:
 	ddef	sectoraddress, dx, ax
 	defbytes	packet, sizeEXTENDEDREQUESTPACKET
 
-	add ax, word [ di + _dskBPB + _bpbHiddenSectors + _low ]
-	adc dx, word [ di + _dskBPB + _bpbHiddenSectors + _high ]
+	add ax, word [ di + _dskExtHiddenSectors + _low ]
+	adc dx, word [ di + _dskExtHiddenSectors + _high ]
 	stordarg _sectoraddress, dx, ax
 
 	xor dh, dh
@@ -3379,8 +3374,8 @@ ExtendedWrite:
 
 	or word [ bp + _Verify ], byte 40h
 
-	add ax, word [ di + _dskBPB + _bpbHiddenSectors + _low ]
-	adc dx, word [ di + _dskBPB + _bpbHiddenSectors + _high ]
+	add ax, word [ di + _dskExtHiddenSectors + _low ]
+	adc dx, word [ di + _dskExtHiddenSectors + _high ]
 	stordarg _sectoraddress, dx, ax
 
 	xor dh, dh
