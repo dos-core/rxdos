@@ -53,40 +53,14 @@ RxCMD
 
 %endif
 
-%if 0
-	%macro startseg 2-3+
-	cpu 8086
-%ifidni __OUTPUT_FORMAT__, obj
-	segment %1 %3 start=%2
-%elifidni __OUTPUT_FORMAT__, bin
-	[map all __MAPFILE__]
-	org %2
-%else
- %error "__OUTPUT_FORMAT__ neither obj nor bin"
-%endif
-	segment %1
-	%endmacro
-
-startseg RXBIO, 0, align=16 class=RXBIO use16 public
-%endif
-
 
 %include "RXDMACRO.MAC"
 %include "RXDSTRUC.MAC"
 
 
-		; Startup Code
-	global RxBIO_Start
-RxBIO_Start:		jmp RxBIO_initialize
-
-
 		align 2
 dosdata_segment:		dw 0
 doscode_segment:		dw 0
-		; Data
-BootDrive:			db 0
-		align 4
-BootPartition:			dd 0
 
 RxBIO_INITBLOCK:
 	istruc SYSINIT
@@ -97,12 +71,8 @@ at initBootDrive,	db -1
 at initTotalDrives,	db 0
 	iend
 
-		; Hardware Configuration Tables and Data
-_FloppyDrives:			dw 0		; # floppy drives
-_FixedDrives:			dw 0		; # fixed drives
-
-ptrStartBlockedDeviceTable:	dw RxDOS_StartBlockedDeviceTable, -1
-						; ptr to Disk Parameter Blocks
+		align 4
+ptrStartBlockedDeviceTable:	dd -1		; -> first UPB
 
 RxDOS_CLOCKDATA:		times CLOCKDATA_size db 0
 
@@ -130,303 +100,7 @@ RW_Disabled			equ 0200h		; read/ write disabled
 RxBIOS_FIXEDDRIVEMASK		equ 80h			; fixed drive mask
 
 
-		; messages
-bio_msg:
-.error_memory_layout:		db 13,10,"Memory layout error!",0
-RXDOSBIO_MSGDivideByZero:	db "Interrupt 00h: Divide by zero.", cr, lf
-				db "Press any key to reboot.", cr, lf, 0
-RXDOSBIO_MSGLoadingRxDOS:	db "Starting RxDOS...", cr, lf, 0
-RXDOSBIO_MSGErrorLoadingSystem: db cr, lf, "Error loading RxDOS. Please reboot. ", 0
-
-
-error_memory_layout:
-	mov si, bio_msg.error_memory_layout
-	call _DisplayMsg
-
-		; Error Display
-RxBIO_Error:
-
-	mov si, RXDOSBIO_MSGErrorLoadingSystem
-	call _DisplayMsg
-
-RxBIO_Error_04:
-	xor ax, ax
-	int 16h
-	jmp short RxBIO_Error_04
-
-
-		; Display Message
-_DisplayMsg:
-_DisplayMsg_02:
-	cs lodsb					; get character (cs:si)
-
-	or al, al					; null terminator ?
-	jnz _DisplayMsg_06				; not yet -->
-	retn
-
-_DisplayMsg_06:
-	push si
-	mov ah, 0Eh
-	mov bx, 0007h
-	int 10h
-	pop si
-	jmp short _DisplayMsg_02
-
-
-		; Init Interrupt Vectors
-InitInterruptVectors:
-
-	mov word [ es:bx + 2 ], cs			; _segment
-	mov word [ es:bx ], IntReturn			; _pointer
-
-	add bx, byte 4
-	loop InitInterruptVectors
-
-	retn
-
-
-	align 16
-		; Move paragraphs
-		;
-		; INP:	ax:0-> source
-		;	dx:0-> destination
-		;	cx = number of paragraphs
-		; CHG:	-
-		; OUT:	NC
-		; Note:	Doesn't work correctly on HMA; doesn't always wrap to LMA either.
-		;	Do not provide a wrapped/HMA source or destination!
-movp:
-	push cx
-	push ds
-	push si
-	push es
-	push di
-
-	cmp ax, dx		; source below destination ?
-	jb .down		; yes, move from top down -->
-	je .return		; same, no need to move --> (NC)
-
-	push ax
-	push dx
-.uploop:
-	mov ds, ax
-	mov es, dx
-	xor di, di
-	xor si, si		; -> start of segment
-	sub cx, 1000h		; 64 KiB left ?
-	jbe .uplast		; no -->
-	push cx
-	mov cx, 10000h /2
-	rep movsw		; move 64 KiB
-	pop cx
-	add ax, 1000h
-	add dx, 1000h		; -> next segment
-	jmp short .uploop	; proceed for more -->
-.uplast:
-	add cx, 1000h		; restore counter
-	shl cx, 1
-	shl cx, 1
-	shl cx, 1		; *8, paragraphs to words (NC)
-	rep movsw		; move last part
-	pop dx
-	pop ax
-	jmp short .return
-
-.down:
-	std
-.dnloop:
-	sub cx, 1000h		; 64 KiB left ?
-	jbe .dnlast		; no -->
-	push ax
-	push dx
-	add ax, cx
-	add dx, cx
-	mov ds, ax		; -> 64 KiB not yet moved
-	mov es, dx
-	pop dx
-	pop ax
-	mov di, -2
-	mov si, di		; moved from last word down
-	push cx
-	mov cx, 10000h /2
-	rep movsw		; move 64 KiB
-	pop cx
-	jmp short .dnloop	; proceed for more -->
-.dnlast:
-	add cx, 1000h		; restore counter
-	shl cx, 1
-	shl cx, 1
-	shl cx, 1		; *8, paragraphs to words
-	mov di, cx
-	dec di
-	shl di, 1		; words to offset, -> last word (NC)
-	mov si, di
-	mov ds, ax
-	mov es, dx		; first segment correct
-	rep movsw		; move first part
-	cld
-.return:
-	pop di
-	pop es
-	pop si
-	pop ds
-	pop cx
-	retn
-
-
-		; INP:	ss:bp -> EBPB, BPBN
-		;	ss:bp-16 -> LOADSTACKVARS
-		;	ss:bp-32 -> LOADDATA
-		;	cs:0 -> BIO kernel part
-		;	cs = 70h
-		;	word [cs:dos_park_segment] = combined DOSDATA + DOSCODE
-		;	word [cs:dos_park_segment - 1] = DOSDATA S MCB
-RxBIO_initialize:
-
-	cli
-	cld
-	push cs
-	pop ds
-	mov dl, byte [bp + bsBPB + ebpbNew + bpbnBootUnit]
-	mov byte [BootDrive], dl		; ROM-BIOS unit (0, 80h, ...)
-	mov ax, word [bp + bsBPB + bpbHiddenSectors]
-	mov dx, word [bp + bsBPB + bpbHiddenSectors + 2]
-	mov word [BootPartition], ax
-	mov word [BootPartition + 2], dx	; partition start sector
-	sti
-
-	xor ax, ax
-	mov ds, ax
-	mov es, ax					; ES:
-
-		; relocate disk parameter table to safe address ( at, surprisingly, 0:522 )
-		;  we move it here to maintain some strange compatability with the other DOS.
-	xor ax, ax
-	mov di, 500h
-	mov cx, 100h >> 1
-	repe stosw					; clear drive, communications area
-
-	lds si, [ es:1Eh * 4 ]				; where to copy table
-
-	mov di, 522h					; destination address (0:522)
-	push di
-	mov cx, 11
-	repe movsb
-
-	mov word [ es:1Eh * 4 + _segment ], es
-	pop word [ es:1Eh * 4 + _pointer ]
-
-	mov byte [ es:522h + _mdtHeadSettleTime ], 2
-
-		; relocate this loader up to the high end of lower memory
-	mov ax, cs
-	mov ds, ax
-	mov es, ax
-
-	mov ax, word [ bp + ldMemoryTop ]
-	mov word [ RxBIO_INITBLOCK + initMemParagraphs ], ax
-
-
-		; Reset Interrupts
-	mov al, 20h
-	out 20h, al
-
-		; Display startup banner
-	mov ax, 0500h					; set Page zero
-	int 10h
-
-	mov si, RXDOSBIO_MSGLoadingRxDOS
-	call _DisplayMsg				; Loading RxDOS ...
-
-
-		; Hardware Evaluation and Startup
-RxBIO_EvaluateHardware:
-
-		; Determine number of floppy drives
-	xor ax, ax
-	mov dl, 80h					; reset drives
-	int 13h
-
-	int 11h						; read hardware configuration
-
-	test ax, 1					; floppy disks listed ?
-	jz RxBIO_EvalHardware_08			; if no -->
-
-	shr ax, 1					; floppy bit
-	shr ax, 1					; math coprocessor
-	shr ax, 1					; memory (xt only)
-	shr ax, 1
-	shr ax, 1					; video mode bits
-	shr ax, 1
-	and ax, byte 0003h
-	inc ax
-	jmp short RxBIO_EvalHardware_12
-
-RxBIO_EvalHardware_08:
-	mov ah, 8					; read parameters 
-	mov dl, 0					; unit 0
-	int 13h
-
-	mov al, dl
-	mov ah, 0					; number of drives (if any )
-	jnc RxBIO_EvalHardware_12			; if drives reported -->
-	xor ax, ax
-
-RxBIO_EvalHardware_12:
-	mov word [ _FloppyDrives ], ax			; number of floppy disks
-
-		; Determine number of hard disk drives
-	mov ax, 40h
-	mov es, ax
-	mov al, byte [ es:_BIOS_NumFixedDrives ]
-
-	test ax, ax
-	jnz .got_fixed_units
-
-	mov ah, 8
-	mov dl, 80h
-	stc
-	int 13h
-	mov ax, 0
-	jc .got_fixed_units
-	mov al, dl
-
-.got_fixed_units:
-	mov word [ _FixedDrives ], ax			; number of fixed drives
-
-		; determine (manufacture) floppy drives
-	mov ax, word [ _FixedDrives ]			; get number of fixed drives
-	or ax, ax					; if no hard disk, total is fine
-	jnz RxBIO_EvalHardware_20			; make sure we add 2 floppy drives -->
-
-	cmp word [ _FloppyDrives ], byte 0000		; number of floppy disks
-	jz RxBIO_EvalHardware_22			; if diskless system -->
-
-RxBIO_EvalHardware_20:
-	mov word [ _FloppyDrives ], 2			; if hard disk or one floppy
-
-		; Setup remainder of INIT Block
-RxBIO_EvalHardware_22:
-
-
-		; Initialize Disk Parameter Tables
-	setds cs
-	mov cx, word [ _FixedDrives ]			; number of fixed drives
-	mov dx, word [ _FloppyDrives ]			; number of floppy disks
-	call initDiskParameterBlocks			; returns actual # devices
-	mov word [ RxBIO_INITBLOCK + initTotalDrives ], cx
-	mov byte [ block + devUnits ], cl		; block device header
-
-	cmp byte [RxBIO_INITBLOCK + initBootDrive], -1	; found any ?
-	jne @FF						; yes -->
-	mov al, [BootDrive]
-	cmp al, 2					; 0 or 1 ?
-	jb @F						; A: or B: -->
-	mov al, 2					; else use C:
-@@:
-	mov byte [RxBIO_INITBLOCK + initBootDrive], al
-@@:
-
+%if 0
 		; Load remainder of RxDOS
 	mov ax, sizeDISKBLOCK				; number of block devices
 	mul cx						; size required by table
@@ -469,7 +143,7 @@ RxBIO_EvalHardware_22:
 	 pop es
 	mov di, RxBIO_INITBLOCK		; -> SYSINIT structure
 	retf				; jump to DOS
-
+%endif
 
 	align 4
 		; Strategy Argument
@@ -592,7 +266,7 @@ aux_servicetable:	dw (.max - $ - 2) / 2
 .max:
 
 block_servicetable:	dw (.max - $ - 2) / 2
-			dw _hdInit			; = 0, Init
+			dw _NoAction			; = 0, Init
 			dw _hdMediaCheck		; = 1, Media Check
 			dw _hdBuildBPB			; = 2, Build BPB
 			dw _hdIOCTLRead			; = 3, IOCTL Read
@@ -1257,7 +931,8 @@ ConvBCDToBin:
 		; 
 
 
-_mul32: or dx, dx					; simple multiply ?
+_mul32:
+	or dx, dx					; simple multiply ?
 	jnz _mul32_12					; not really -->
 
 	mul cx
@@ -1289,7 +964,8 @@ _mul32_12:
 		; 
 
 
-_div32: or cx, cx					; protect from zero divisor
+_div32:
+	or cx, cx					; protect from zero divisor
 	stc						; in case of error
 	jz _div32_return				; if so, just return with carry
 
@@ -1789,57 +1465,9 @@ getComStatus_08:
 	retn
 
 
-		; Output Character
-		;
-		; al	character
-		;
-		; CHG: ah
-OutputCharacter:
-
-	cmp al, ControlJ		; 0Ah = LF
-	jnz OutputCharacter_08
-
-	push ds
-	push bx
-
-	xor bx, bx
-	mov ds, bx
-	mov ah, byte [ 451h ]		; get current row #
-	cmp ah, byte [ 484h ]		; is it equal to screen size ?
-
-	pop bx
-	pop ds	 
-	jz OutputCharacter_12
-
-OutputCharacter_08:
-	Int 29h				; internal Video Driver
-
-OutputCharacter_12:
-	retn
-
-
 		; General Interrupt Trap
 IntReturn:
 	iret
-
-
-		; Divide by Zero
-Interrupt_0:
-	sti
-	cld
-	mov si, RXDOSBIO_MSGDivideByZero
-	call _DisplayMsg
-.loop:
-	mov ah, 1
-	int 16h
-	jnz .gotkey
-	sti
-	hlt
-	jmp short .loop
-.gotkey:
-	xor ax, ax
-	int 16h
-	int 19h
 
 
 		; Interrupt 19 - Ctrl Alt Delete
@@ -1852,11 +1480,11 @@ Interrupt_19:
 
 	mov si, InterruptRestorationTable
 
-Interrupt_19_08:
+.08:
 	xor bx, bx
 	mov bl, byte [ si ]
 	cmp bl, -1
-	jz Interrupt_19_16
+	jz .16
 
 	inc si
 
@@ -1869,9 +1497,9 @@ Interrupt_19_08:
 	mov word [ es:bx ], ax				; _pointer
 
 	add si, byte 4
-	jmp short Interrupt_19_08
+	jmp short .08
 
-Interrupt_19_16:
+.16:
 	int 19h					 	; go to original int 19
 	iret
 
@@ -1892,52 +1520,6 @@ Interrupt_29:
 
 	restoreAllRegisters
 	iret
-
-
-
-		; Block Device Functions
-
-
-		; Block Device Init
-		; 
-		; Input:
-		; ds:bx	request header
-		; es:di	buffer
-		; cx	characters to transfer
-_hdInit:
-
-	entry
-	ddef	packet, ds, bx
-
-	mov al, byte [ cs:block + devUnits ]
-	mov byte [ bx + irUnits ], al			; set max units available
-
-	mov word [ byte bx + irEndAddress + _pointer ], RxBIO_LastAddress
-	mov word [ bx + irEndAddress + _segment ], cs
-
-	mov word [ bx + irParamAddress + _pointer ], NULL
-	mov word [ bx + irParamAddress + _segment ], NULL
-
-		; BPB address
-	mov al, byte [ bx + irUnit ]			; find Disk block
-	call BuildDiskParameterBlock			; es:di
-
-	push word [ bp + _packet + _segment ]
-	push word [ bp + _packet + _pointer ]
-	call SetInvalidDriveError			; if error, set error code -->
-	jc _hdInit_12					; then exit 
-
-	getdarg ds, bx, _packet
-	push di
-	lea di, [ di + _dskBPB ]
-	mov word [ bx + irParamAddress + _pointer ], di
-	mov word [ bx + irParamAddress + _segment ], es
-	pop di
-
-	call stampTimerCount
-
-_hdInit_12:
-	return
 
 
 		; Block Device Media Descriptor
@@ -2916,309 +2498,6 @@ _findBPB_Error:
 	retn
 
 
-		; Initialize Block Device Info
-		; 
-		; Input:
-		; cx	number of fixed disks to initialize
-		; dx	number of floppy disks to initialize
-initDiskParameterBlocks:
-
-	entry
-	def	fixeddevices, cx
-	def	floppydevices, dx
-	def	devices, 0002
-	def	physicalDrive, RxBIOS_FIXEDDRIVEMASK
-
-	mov ax, cs
-	mov es, ax
-	mov ds, ax
-
-	add cx, dx					; total # of devices
-	mov ax, sizeDISKBLOCK				; multiply by size
-	mul cx
-	mov cx, ax					; save size in cx
-	or cx, cx					; no devices ?
-	ifz _initDiskParams_36				; then exit -->
-
-	mov di, RxDOS_StartBlockedDeviceTable
-	clearMemory					; init clear
-
-		; make first two devices disk A: and B:
-	mov di, RxDOS_StartBlockedDeviceTable
-	mov byte [ di + _dskPhysDriveNumber ], 00h	; A:
-	mov byte [ di + _dskDOSLogicalDiskUnit ], 00h	; A:
-	mov byte [ di + _dskDeviceType ], -1		; say device init not done
-
-	mov byte [ di + _dskPartitionBeginHead ], 0
-	mov byte [ di + _dskPartitionBeginCylinder ], 0
-	mov byte [ di + _dskPartitionBeginSector ], 1	; as for all single-partition drives
-
-	lea bx, [ di + sizeDISKBLOCK ]
-	mov word [ di + _dskNextPointer + _segment ], ds
-	mov word [ di + _dskNextPointer + _pointer ], bx
-	mov di, bx					; go to next drive
-
-	mov byte [ di + _dskPhysDriveNumber ], 01h	; B:
-	mov byte [ di + _dskDOSLogicalDiskUnit ], 01h	; B:
-	mov byte [ di + _dskDeviceType ], -1		; say device init not done
-
-	mov byte [ di + _dskPartitionBeginHead ], 0
-	mov byte [ di + _dskPartitionBeginCylinder ], 0
-	mov byte [ di + _dskPartitionBeginSector ], 1	; as for all single-partition drives
-
-	lea bx, [ sizeDISKBLOCK + di ]
-	mov word [ _dskNextPointer + _segment + di ], ds
-	mov word [ _dskNextPointer + _pointer + di ], bx
-	mov di, bx					; go to next drive
-
-		; initialize all remaining devices to hard disks, link list all blocks
-	cmp word [ bp + _fixeddevices ], byte 0000	; any fixed devices ?
-	jz _initDiskParams_32				; no -->
-
-_initDiskParams_12:
-	mov dx, word [ bp + _physicalDrive ]		; physical disk unit
-	mov ax, word [ bp + _devices ]			; current devices counter
-	call mapAllStandardDOSPartitions
-	mov word [ bp + _devices ], ax			; additional devices
-
-	inc word [ bp + _physicalDrive ]		; physical disk unit
-	dec word [ bp + _fixeddevices ]			; more phys devices to go ?
-	jnz _initDiskParams_12				; if yes -->
-
-		; set end of list
-_initDiskParams_32:
-	mov word [ di - sizeDISKBLOCK + _dskNextPointer + _pointer ], -1
-
-		; end, return
-_initDiskParams_36:
-	mov word [ ptrStartBlockedDeviceTable + _segment ], cs
-	les di, [ptrStartBlockedDeviceTable]
-
-	mov ax, word [BootPartition]
-	mov dx, word [BootPartition + 2]
-	mov cl, byte [BootDrive]
-
-.loop:
-	cmp di, -1
-	je .end
-
-	cmp byte [es:di + _dskPhysDriveNumber], cl
-	je .try
-.next:
-	les di, [es:di + _dskNextPointer]
-	jmp .loop
-
-.try:
-			; do we have a default initialised value ?
-	mov ch, [es:di + _dskDOSLogicalDiskUnit]
-	cmp byte [RxBIO_INITBLOCK + initBootDrive], -1
-	jne @F		; yes -->
-			; no, so use the first partition on this ROM-BIOS unit
-	mov byte [RxBIO_INITBLOCK + initBootDrive], ch	; default initialise
-@@:
-
-			; do we have a match for the partition ?
-	cmp word [es:di +_dskExtHiddenSectors], ax
-	jne .next	; no -->
-	cmp word [es:di + _dskExtHiddenSectors + 2], dx
-	jne .next	; no -->
-			; yes
-
-	mov byte [RxBIO_INITBLOCK + initBootDrive], ch
-			; done
-.end:
-	getarg cx, _devices				; total devices (floppy + fixed)
-	Return
-
-
-		; Scan standard DOS partitions
-		; 
-		; Input:
-		; ax	current devices
-		; dh	read flag (NZ, read partition table)
-		; dl	BIOS drive
-		; ss:si	partition table physical address
-		; ds:di	drive table to create
-		; 
-		; Output:
-		; ds:di	drive table to create (points to end of table)
-		; ax	current devices
-mapAllStandardDOSPartitions:
-
-	d3bp
-
-	entry
-	def	devices, ax
-	def	entries, 4
-	def	physaddressDX, dx
-	ddef	additionalSectorOffset, 0000, 0000
-	ddef	PartitionTablePtr, ss, si
-	ddef	DiskParameterTablePtr, es, di
-	defbytes	PhysPartitionTable, sizePARTITIONTABLE
-
-	mov cx, 0001h					; assume at boot sector
-	or dh, dh					; extended or sec part table ?
-	jz _mapStandardPartitions_08			; no, arguments already in cx:dx
-
-	mov ax, word [ ss:si + _ptStartSector + _low ]
-	mov dx, word [ ss:si + _ptStartSector + _high ]
-	mov word [ bp + _additionalSectorOffset + _low ], ax
-	mov word [ bp + _additionalSectorOffset + _high ], dx
-
-	mov dl, byte [ bp + _physaddressDX ]		; physical drive 
-	mov dh, byte [ ss:si + _ptBeginHead ]		; begin head address
-	mov cx, word [ ss:si + _ptBeginSector ]		; begin sector address
-
-_mapStandardPartitions_08:
-	call ReadPartitionTable
-	ifc _mapStandardPartitions_36
-
-	setds es					; es:si --> ds:si
-	setes ss					; ss:di --> es:di
-	lea di, [ bp + _PhysPartitionTable ]
-	mov cx, sizePARTITIONTABLE
-	fastmove
-
-	lea si, [ bp + _PhysPartitionTable ]		; restore pointer
-	getdarg es, di, _DiskParameterTablePtr		; disk parameter table to build
-
-_mapStandardPartitions_12:
-	mov al, byte [ ss:si + _ptFileSystemName ] 
-
-	cmp al, FILESYSID_FAT12				; FAT12
-	jz _mapStandardPartitions_16 
-	cmp al, FILESYSID_FAT16MAX32			; FAT16 < 32 MiB
-	jz _mapStandardPartitions_16 
-	cmp al, FILESYSID_FAT16				; FAT16
-	jz _mapStandardPartitions_16 
-	cmp al, FILESYSID_FAT32				; FAT32
-	jz _mapStandardPartitions_16 
-
-	cmp al, FILESYSID_FAT32LBA			; FAT32 using LBA
-	jz _mapStandardPartitions_16 
-	cmp al, FILESYSID_FAT16LBA			; FAT16 using LBA
-	jz _mapStandardPartitions_16 
-
-	cmp al, FILESYSID_EXTENDEDLBA			; Extended DOS partition using LBA
-	jz _mapStandardPartitions_14			; process extended partition -->
-	cmp al, FILESYSID_EXTENDED			; Extended DOS partition
-	ifnz _mapStandardPartitions_24			; if not DOS file system -->
-
-		; process extended partition
-_mapStandardPartitions_14:
-	push si
-	mov ax, word [ bp + _devices ]			; device assignment
-	mov dl, byte [ bp + _physaddressDX ]		; physical drive 
-	mov dh, -1					; say read additional params from part table.
-	call mapAllStandardDOSPartitions		; recursive call; di preserved
-
-	mov word [ bp + _devices ], ax			; device assignment
-	pop si
-	jmp _mapStandardPartitions_24
-
-		; process standard partition
-_mapStandardPartitions_16:
-	clearMemory sizeDISKBLOCK			; clear area for each item
-
-	mov al, byte [ ss:si + _ptFileSystemName ] 
-	mov byte [ di + _dskFATSystemType ], al
-
-	mov al, byte [ bp + _physaddressDX ]
-	mov ah, byte [ bp + _devices ]
-	mov byte [ di + _dskPhysDriveNumber ], al
-	mov byte [ di + _dskDOSLogicalDiskUnit ], ah
-	mov word [ di + _dskStatusFlag ], IsNonRemovable
-	mov byte [ di + _dskDeviceType ], -1		; say device init not done
-
-	mov al, byte [ ss:si + _ptBeginHead ]		; begin head address
-	mov dx, word [ ss:si + _ptBeginSector ]		; begin sector address
-	mov byte [ di + _dskPartitionBeginHead ], al
-	mov word [ di + _dskPartitionBeginSector ], dx
-
-	mov al, byte [ ss:si + _ptEndHead ]		; end head address
-	mov dx, word [ ss:si + _ptEndSector ]		; end sector address
-	mov byte [ di + _dskPartitionEndHead ], al
-	mov word [ di + _dskPartitionEndSector ], dx
-
-	mov ax, word [ ss:si + _ptSectors + _low ]
-	mov dx, word [ ss:si + _ptSectors + _high ]
-	mov word [ di + _dskBPB + _bpbMaxSectors ], ax
-	or dx, dx					; small volume ?
-	jz _mapStandardPartitions_20			; yes -->
-
-	mov word [ di + _dskBPB + _bpbMaxSectors ], 0000
-	mov word [ di + _dskBPB + _bpbHugeSectors + _low ], ax
-	mov word [ di + _dskBPB + _bpbHugeSectors + _high ], dx
-
-_mapStandardPartitions_20:
-	mov ax, word [ bp + _additionalSectorOffset + _low ]
-	mov dx, word [ bp + _additionalSectorOffset + _high ]
-	mov word [ di + _dskExtHiddenSectors + _low ], ax
-	mov word [ di + _dskExtHiddenSectors + _high ], dx
-
-	add ax, word [ ss:si + _ptStartSector + _low ]
-	adc dx, word [ ss:si + _ptStartSector + _high ]
-	mov word [ di + _dskBPB + _bpbHiddenSectors + _low ], ax
-	mov word [ di + _dskBPB + _bpbHiddenSectors + _high ], dx
-
-	lea bx, [ di + sizeDISKBLOCK ]
-	mov word [ di + _dskNextPointer + _segment ], cs
-	mov word [ di + _dskNextPointer + _pointer ], bx
-	mov di, bx					; go to next drive
-	mov word [ bp + _DiskParameterTablePtr + _pointer ], di
-	inc word [ bp + _devices ]
-
-_mapStandardPartitions_24:
-	add si, byte sizePARTITION
-	dec word [ bp + _entries ]			; more entries ?
-	ifnz _mapStandardPartitions_12			; yes -->
-
-	clc
-	mov ax, word [ bp + _devices ]			; return updated devices
-
-_mapStandardPartitions_36:
-	return
-
-
-		; Read Partition Table
-		;
-		; Input:
-		; dl	drive
-		; cx,dh	CHS address
-		;
-		; Output:
-		; cs:si	partition table address
-		; ax	signature word
-ReadPartitionTable:
-
-	SaveSegments di, bx
-
-	setds cs
-	setes cs
-
-	push dx
-	xor ax, ax
-	call DiskFunctionsWithRetry 
-	pop dx
-	jc ReadPartitionTable_12
-
-	mov ax, 0201h
-	mov bx, RxBIO_DiskBuffer		; -> DiskBuffer
-	call DiskFunctionsWithRetry
-	jc ReadPartitionTable_12
-
-	mov si, RxBIO_DiskBuffer + sizeSector - 2 - sizePARTITIONTABLE
-	mov ax, word [ RxBIO_DiskBuffer + sizeSector - 2 ]
-	cmp ax, RxDOS_PARTITIONSIGNATURE
-	je .12			; (NC if ZR) valid signature -->
-	stc
-
-.12:
-ReadPartitionTable_12:
-	RestoreSegments bx, di
-	retn
-
-
 		; Disk Functions
 DiskFunctions:
 	push bp
@@ -3509,14 +2788,7 @@ Max_BIOSErrorCodeTable		equ ($ - BIOSErrorCodeTable - 1)
 
 
 		; Reallocated Space
-
 	align 16
 RxBIO_DiskBuffer:
 	times sizeSector db 0
-
-		; The address remains valid but the contents are destroyed
-
-	align 16
-RxBIO_LastAddress:
-RxDOS_StartBlockedDeviceTable:
 
