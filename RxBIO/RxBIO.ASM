@@ -2790,5 +2790,5 @@ Max_BIOSErrorCodeTable		equ ($ - BIOSErrorCodeTable - 1)
 		; Reallocated Space
 	align 16
 RxBIO_DiskBuffer:
-	times sizeSector db 0
+	times 8192 + 16 db 0
 
