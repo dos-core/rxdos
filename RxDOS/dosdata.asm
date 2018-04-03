@@ -173,6 +173,7 @@ _RxDOS_INDOSRecover	dw 0
 _RxDOS_CommandShell	times 128 db 0
 _RxDOS_SharedBuffer	times 128 db 0		; shared buffer.
 
+
 		; Swappable Data Area
 		;
 		; Variables whose names begin with _RxDOS are used and will

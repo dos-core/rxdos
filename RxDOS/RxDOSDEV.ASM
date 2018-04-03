@@ -974,9 +974,9 @@ CharDevRequest:
 
 	getdarg es, bx, _packet
 	cmp word [ es:bx + mrStatus ], byte 0
-	jz CharDevRequest_12
+	je CharDevRequest_12
 	test word [ es:bx + mrStatus ], OP_ERROR
-	jz CharDevRequest_16
+	jz CharDevRequest_16				; (NC) -->
 
 		; time out, other error exit
 CharDevRequest_12:

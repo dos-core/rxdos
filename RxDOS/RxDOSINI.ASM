@@ -2421,7 +2421,6 @@ RxDOS_initialize:
 
 	mov ax, (dosdata_stack + 3 * RXDOS_PERCALL_STACKRESERVE)
 	mov word [ _RxDOS_CurrentStackTop ], ax
-	mov word [ _RxDOS_CurrentSeg ], ss		; Current segment
 
 	sti
 

@@ -253,16 +253,12 @@ _RxDOS_functions:
 _RxDOS_maxFunctionCode equ ($ - _RxDOS_functions)/2
 
 
-		; Critical Section Patch Area
-_RxDOS_CritSectPatches	times 5 dw 0
-
-
 		; Display Message
 		;
 		; Uses Int10.0E
 		;
 		; INP:	cs:si -> 0-terminated message
-		; CHG:	ax, bx, si, bp
+		; CHG:	ax, bx, si
 		; OUT:	-
 dos_disp_msg:
 .:
@@ -271,9 +267,11 @@ dos_disp_msg:
 	or al, al					; null terminator ?
 	jz .end						; yes -->
 	push si
+	push bp
 	mov ah, 0Eh
 	mov bx, 0007h
 	int 10h
+	pop bp
 	pop si
 	jmp short .
 .end:
@@ -372,11 +370,16 @@ _Interrupt_21:
 	setes ss					; caller's stack
 	mov bx, bp					; caller's stack to es:bx
 
-	mov ds, word [ cs:_RxDOS_CurrentSeg ]		; current segment.
+	push ax
+	mov ax, 70h
+	mov ds, ax
+	mov ds, word [ dosdata_segment ]		; current segment.
+	pop ax
 	call _RxDOS_StackFrameRestore
 
-	mov ss, word [ cs:_RxDOS_CurrentSeg ]		; current segment.
-	mov sp, word [ ss:_RxDOS_CurrentStackTop ]	; point to current stack.
+	push ds
+	pop ss
+	mov sp, word [ _RxDOS_CurrentStackTop ]		; point to current stack.
 
 	push bx						; caller's stack reference
 	push es
@@ -419,7 +422,7 @@ _Interrupt_21_12:
 	xor bh, bh
 	mov bl, ah					; offset into functions table
 	add bx, bx
-	mov bx, word [ _RxDOS_functions + bx ]
+	mov bx, word [ cs:_RxDOS_functions + bx ]
 _Interrupt_21_21:
 	mov word [ byte bp + _FctAddress ], bx		; save dispatch address
 
@@ -668,12 +671,7 @@ _Interrupt_20:
 %endif
 
 
-		; Where Data Segment Relocated
-			align 2
-_RxDOS_CurrentSeg	dw 0000				; Current Segment
-
 		; System Wide Functions
-
 
 %if 0
 		; Interrupt 23 - Control-Break Exit Address
@@ -3499,7 +3497,7 @@ _CtrlBreakCheck:
 	retn
 
 .getversionstring:
-	mov word [ si + _DX ], ss
+	mov word [ si + _DX ], cs
 	mov word [ si + _AX ], _RxDOS_DOSVersionString
 	retn
 
