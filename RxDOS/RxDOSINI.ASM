@@ -176,6 +176,8 @@ configStatement		resb 1			; statement starts here
 		; Returns:
 		; ds = es = ss
 		; ax = current drive
+		;
+		; INP:	es:di -> CONFIG processing buffer
 configProcessing:
 
 	Entry
@@ -184,7 +186,7 @@ configProcessing:
 
 	def	comment	, ';'				; default comment character
 	def	charsread
-	def	linenumber , 0000
+	def	linenumber, 0000
 	def	dosFlags, 0000
 
 	defbytes	diskAccess, sizeDISKACCESS
@@ -2421,12 +2423,20 @@ RxDOS_initialize:
 	mov word [ _RxDOS_CurrCountryInfo + intlCaseMap + _segment ], cs
 
 		; parse RXCONFIG.SYS file
-	xor di, di
-	mov ax, word [ _RxDOS_MaxMemory ]		; available memory
-	sub ax, 64 * ( 1024 / 16 )			; segments
-	mov es, ax
+	mov cl, S_INITCONFIG
+	mov ax, 65535
+	call AllocateSystemSpace_with_type
 
+	push es	
 	call configProcessing				; process RXCONFIG.SYS file
+	pop es
+	xor di, di
+	mov cx, 8000h
+	xor ax, ax
+	rep stosw					; discard this space
+	mov ah, 49h
+	int 21h
+
 	d4bp
 	call RxDOSini_StdInStdOutDrivers		; initialize drivers
 
