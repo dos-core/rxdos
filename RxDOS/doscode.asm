@@ -673,27 +673,6 @@ _Interrupt_20:
 _RxDOS_CurrentSeg	dw 0000				; Current Segment
 
 		; System Wide Functions
-		;
-		; NULL Device Driver
-
-		; RxDOS 7.20N:	This is actually the way MS-DOS does it, and thinking about it,
-		;		this makes even sense. Nobody said you mustn't modify the request
-		;		header in the strategy code itself. And there es:bx must be set
-		;		correctly, at all.
-		;
-		;		I discovered DR-DOS has longer and, at all, better code for the
-		;		NUL device. It also modifies the request header inside the strategy
-		;		code, but it'll check if the function to get some characters was
-		;		requested and set the returned count to zero if it was so. (See
-		;		header.a86 inside directory IBMBIO/DRBIO of either Caldera DR-DOS
-		;		7.01 or any Enhanced DR-DOS release, label is nul_strat.)
-		;
-		; RxDOS 7.30:	Placing all code in the strategy entry is the design RxDOS 7.30
-		;		will implement fully backward compatible reentrant devices!
-null_strategy:
-		mov word [ byte es:bx + rhStatus ], OP_DONE
-null_interrupt:
-		retf
 
 
 %if 0
