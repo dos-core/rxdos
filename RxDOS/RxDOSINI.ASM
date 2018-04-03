@@ -688,9 +688,13 @@ processAnyDevice_28:
 	stordarg _loadSize, bx, cx			; load size
 	jnc processAnyDevice_32				; if succesful -->
 
+	push cs
+	pop ds
 	mov si, RxDOSmsg_CouldNotLoadDriver
 	call RxDOSIni_TypeMessage			; say couldn't load ...
 
+	push ss
+	pop ds
 	lea si, [ word _devicename + bp ]		; address of device name
 	call RxDOSIni_TypeMessage			; ... say which driver
 	jmp processAnyDevice_60				; go release memory when load failed -->
@@ -1660,6 +1664,8 @@ RxDOSini_MemorySubSystem:
 
 
 .fail:
+	push cs
+	pop ds
 	mov si, init_msg.mcb_chain_corrupted_error
 	call RxDOSIni_TypeMessage
 	jmp RxDOS_init_68
@@ -1723,6 +1729,8 @@ AllocateSystemSpace_with_type:
 
 
 .alloc_fail:
+	push cs
+	pop ds
 	mov si, init_msg.alloc_error
 	call RxDOSIni_TypeMessage
 	call init_disp_ax_hex
@@ -1835,8 +1843,12 @@ RxDOS_DPBinit_12:
 .first_unit:
 	cmp di, 32
 	jb @F
+	push ds
+	 push cs
+	 pop ds
 	mov si, init_msg.too_many_block_units
 	call RxDOSIni_TypeMessage
+	pop ds
 	jmp @FF
 @@:
 	inc di				; increment total drives counter
@@ -2477,6 +2489,8 @@ RxDOS_initialize:
 	mov al, ' '
 	mov cx, 128
 	mov di, _RxDOSini_CommandShell
+	 push cs
+	 pop es
 	cmp byte [ es:di ], 0				; starts with a null character ?
 	jz RxDOS_init_36				; yes, go do default -->
 
@@ -2498,7 +2512,7 @@ RxDOS_init_14:
 	dec di						; adj address
 	mov si, di
 	mov di, _RxDOSini_CommandTail			; command tail copy
-	mov word [ _execBlock + lexecCommandTail + _segment + bp ], ss
+	mov word [ _execBlock + lexecCommandTail + _segment + bp ], es
 	mov word [ _execBlock + lexecCommandTail + _pointer + bp ], di
 
 	inc di						; store address
@@ -2528,6 +2542,8 @@ RxDOS_init_24:
 	mov di, _RxDOS_CommandShell
 	repe movsb					; copy shell command/command line arguments
 
+	push ss
+	pop es
 	lea bx, [ word _execBlock + bp ]		; exec block address
 	mov dx, _RxDOS_CommandShell
 	call init_shell_verbose
@@ -2538,6 +2554,8 @@ RxDOS_init_24:
 	jnc RxDOS_init_68				; only branches if the main shell terminated
 
 RxDOS_init_36:
+	push ss
+	pop es
 	lea bx, [ word _execBlock + bp ]		; exec block address
 	mov dx, _RxDOSini_DefaultShell
 	call init_shell_verbose
@@ -2548,6 +2566,8 @@ RxDOS_init_36:
 	jnc RxDOS_init_68				; only branches if the main shell terminated
 		; RxDOS 7.30: This should check the error code returned here.
 
+	push ss
+	pop es
 	lea bx, [ word _execBlock + bp ]
 	mov dx, _RxDOSini_DefaultShell
 	mov word [ _RxDOSini_DefaultShellExt + 0 ], ".C"
@@ -2561,6 +2581,8 @@ RxDOS_init_36:
 	jnc RxDOS_init_68				; only branches if the main shell terminated
 		; RxDOS 7.30: This should check the error code returned here.
 
+	push ss
+	pop es
 	lea bx, [ word _execBlock + bp ]
 	mov dx, _RxDOSini_compatibilityshell
 	call init_shell_verbose
@@ -2641,8 +2663,9 @@ init_shell_verbose:
 		;	CY if error,
 		;	 ax = error code
 		; OUT:	-
-		; CHG:	ds, si, bx
+		; CHG:	si, bx
 init_shell_verbose_error:
+	push ds
 	pushf
 	push cs
 	pop ds
@@ -2669,6 +2692,7 @@ init_shell_verbose_error:
 	call RxDOSIni_TypeMessage
 .return:
 	popf
+	pop ds
 	retn
 
 
