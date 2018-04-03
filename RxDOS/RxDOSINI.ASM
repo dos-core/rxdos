@@ -196,6 +196,7 @@ configProcessing:
 	setDS cs
 	setES cs
 	xor dx, dx
+	xor cx, cx
 	mov al, byte [ ss:_RxDOS_CurrentDrive ]		; startup drive
 
 	mov di, _RxDOS_RXCONFIGSYS			; RXCONFIG.SYS filename
