@@ -31,24 +31,6 @@ if [ -f RxVDISK.ASM ]; then {
 	nasmbin RxVDISK RxVDISK SYS || exit
 } fi
 
-if [ -f RxBOOT.ASM ]; then {
-	echo Building RxBOOT
-	nasmbin RxBOOT RxBOOT SYS || exit
-} fi
-
-if [ -f RxMBR.ASM ]; then {
-	echo Building RxMBR
-	nasmbin RxMBR RxMBR SYS || exit
-} fi
-
-if [ -f RxD_BOOT.ASM ]; then {
-	echo Building RxD_BOOT
-	nasmbin RxD_BOOT RxD_BOOT SYS || exit
-	if [ -f ../bin/RxBOOT.SYS ]; then {
-	cat ../bin/RxD_BOOT.SYS ../bin/RxBOOT.SYS > ../bin/RxD_BOOT.COM
-	} fi
-} fi
-
 
 cd ../RxDOS
 
