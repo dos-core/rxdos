@@ -1797,23 +1797,6 @@ _BIOS_BREAK_STATE	equ 80h				; used to detect Break state
 _BIO_activeDJdrive	equ 0004h			; byte: logical drive associated with the single floppy drive
 
 
-		; SYSINIT Parameters
-		;
-		; These parameters are passed between RxBIO and RxDOS
-		; at startup.
-		;
-		; Obsolete. RxDOS 7.30 doesn't have a separate RxBIO.
-	struc SYSINIT
-initDeviceChain:	resd 1		; start of device chain (CON)
-initRelocate:		resd 1		; far function in init1 to call
-					;  to relocate DOSDATA and DOSCODE
-initMemParagraphs:	resw 1		; memory size
-initBIOVersion:		resw 1
-initBootDrive:		resb 1		; unit of block device
-initTotalDrives:	resb 1		; detected by RxBIO
-	endstruc
-
-
 		; Disk Parameter Block
 	struc DISKPARAM
 _dptControlTimers	resw 1				; see below for Definition
