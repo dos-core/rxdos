@@ -15,8 +15,8 @@ the file LICENSE.TXT.
 
 %endif
 
-%ifnnum __RXDSTRUC_MAC__
-%assign __RXDSTRUC_MAC__ 1
+%ifnnum __RXDSTRUC_NEW__
+%assign __RXDSTRUC_NEW__ 1
 
 
 %ifdef RxDOS_ROMVERSION
@@ -2473,6 +2473,6 @@ RXDOS_PERCALL_STACKRESERVE	equ ( 4 * 1024)
 RXDOS_STACKSIZE			equ ( 3 * RXDOS_PERCALL_STACKRESERVE)
 
 
-%endif ; __RXDSTRUC_MAC__
+%endif ; __RXDSTRUC_NEW__
 
 [list +]

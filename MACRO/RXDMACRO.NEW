@@ -15,8 +15,8 @@ the file LICENSE.TXT.
 
 %endif
 
-%ifndef __RXDMACRO_MAC__
-%assign __RXDMACRO_MAC__ 1
+%ifndef __RXDMACRO_NEW__
+%assign __RXDMACRO_NEW__ 1
 
 
 %if 0
@@ -1037,6 +1037,6 @@ the file LICENSE.TXT.
 	%endmacro
 
 
-%endif ; __RXDMACRO_MAC__
+%endif ; __RXDMACRO_NEW__
 
 [list +]
