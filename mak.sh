@@ -31,85 +31,30 @@ if [ -f RxVDISK.ASM ]; then {
 	nasmbin RxVDISK RxVDISK SYS || exit
 } fi
 
-
-cd ../RxDOS
-
-if [ -f RxDOS.ASM -a \
-	-f RxDOSCCB.ASM -a \
-	-f RxDOSDEV.ASM -a \
-	-f RxDOSEXE.ASM -a \
-	-f RxDOSFAT.ASM -a \
-	-f RxDOSFCB.ASM -a \
-	-f RxDOSFIL.ASM -a \
-	-f RxDOSLFN.ASM -a \
-	-f RxDOSF32.ASM -a \
-	-f RxDOSIFS.ASM -a \
-	-f RxDOSMEM.ASM -a \
-	-f RxDOSSFT.ASM -a \
-	-f RxDOSSTR.ASM -a \
-	-f RxDOSCTB.ASM -a \
-	-f RxDOSERR.ASM -a \
-	-f RxDOSINI.ASM ]; then {
-  if ((!_BUILD_OBJ)); then {
-	echo Building RxDOS
-	nasmbin RxDOS RxDOS SYS || exit
-  } else {
-	echo Building RxDOS
-	for x in RxDOS RxDOSCCB RxDOSDEV RxDOSEXE RxDOSFAT RxDOSFCB RxDOSFIL \
-		RxDOSLFN RxDOSF32 RxDOSIFS RxDOSMEM RxDOSSFT RxDOSSTR \
-		RxDOSCTB RxDOSERR RxDOSINI; do
-		nasmobj "$x" || exit;
+cd ../ldosboot
+echo Building boot12, boot16, boot32
+NAME=RXDOS
+SUFFIX=""
+for FAT in 12 16; do
+	nasm -D_COMPAT_LDOS -D_LOAD_NAME="'$NAME'" -D_CHS=1 -D_LBA_SKIP_CHECK \
+		-D_USE_PART_INFO=1 -D_QUERY_GEOMETRY=1 -D_FAT$FAT=1 boot.asm \
+		-o boot${FAT}${SUFFIX}.bin -D_MAP=boot${FAT}${SUFFIX}.map \
+		-l boot${FAT}${SUFFIX}.lst -I../lmacros/
 	done
+nasm -D_COMPAT_LDOS -D_LOAD_NAME="'$NAME'" -D_CHS=1 -D_LBA_SKIP_CHECK \
+	-D_USE_PART_INFO=1 -D_QUERY_GEOMETRY=1 boot32.asm \
+	-o boot32${SUFFIX}.bin -D_MAP=boot32${SUFFIX}.map \
+	-l boot32${SUFFIX}.lst -I../lmacros/
 
-	echo > STACK\$\$.ASM
-	echo	segment STACK\$\$ align=16 class=RXDOS use16 stack >> STACK\$\$.ASM
-	echo			resw 1 >> STACK\$\$.ASM
-	echo >> STACK\$\$.ASM
-	nasm -fobj -o../obj/STACK\$\$.OBJ STACK\$\$.ASM || exit
-	rm STACK\$\$.ASM
-
-	cd ../obj
-
-	echo "/s /mx /xt +" > warplink.lin
-		for x in RxDOS RxDOSCCB RxDOSDEV RxDOSEXE RxDOSFAT RxDOSFCB RxDOSFIL \
-			RxDOSLFN RxDOSF32 RxDOSIFS RxDOSMEM RxDOSSFT RxDOSSTR \
-			RxDOSCTB RxDOSERR RxDOSINI; do
-			echo $x.OBJ + >> warplink.lin
-		done
-
-	echo "STACK\$\$.OBJ,RxDOS.EXE,..\\map\\RxDOS.MAP,;" >> warplink.lin
-
-	unix2dos -q warplink.lin
-	cd ..
-	dosemu -q -dumb -E "doscmd.bat $(realpath "$toolsdir" |
-sed -re 's/\//\\/g') WARPLINK.EXE obj @warplink.lin" || exit
-
-#	exe2bin -r -l=0 RxDOS.EXE ..\bin\RxDOS.SYS || exit
-#	exe2bin -x -r -l=0 RxDOS.EXE ../bin/RxDOS.SYS || exit
-	dosemu -q -dumb -E "doscmd.bat $(realpath "$toolsdir" |
-sed -re 's/\//\\/g') X2B_IGNR.COM obj RxDOS.EXE ..\\bin\\RxDOS.SYS" || exit
-
-	cd obj
-	rm warplink.lin
-	rm STACK\$\$.OBJ
-  } fi
-} fi
-
-
-cd ../RxBIO
-if [ -f RxBIO.ASM ]; then {
-	echo Building RxBIO
-	nasmbin RxBIO RxDOS BIN || exit
-
-	cd ../ldosboot
-	echo Building RxDOS.COM
-	nasm -Ox -D_REVISIONID="'$build_revision_id'" \
-	  -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ \
-	  -d__MAPFILE__=../map/iniload.map -d_MAP=../map/iniload.map \
-	  -l../lst/iniload.lst -fbin \
-	  -o../bin/RxDOS.COM iniload.asm -D_PAYLOAD_FILE"'RxDOS.BIN'"
-} fi
-
+cd ../ldos
+echo Building RxDOS.COM
+nasm -Ox -D_REVISIONID="'$build_revision_id'" \
+	-I ../lmacros/ -I ../../lmacros/ -I ../MACRO/ -I ../RxBIO/ \
+	-I ../RxDOS/ -f bin -o lDOSLOAD.BIN -l lDZOSLOAD.LST init.asm \
+&& nasm -Ox -D_REVISIONID="'$build_revision_id'" \
+	-I ../lmacros/ -f bin -o ../bin/RxDOS.COM -l ../lst/RxDOS.LST \
+	-D_MAP=../map/RxDOS.MAP ../ldosboot/iniload.asm \
+|| exit
 
 cd ../RxCMD
 if [ -f RxCMD.ASM -a \
