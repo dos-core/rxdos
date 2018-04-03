@@ -278,6 +278,7 @@ configProcessing_20:
 	cmp dx, byte CONFIGTYPE_COMMENTS		; if comment, go process
 	jz configProcessing_26				; process comment -->
 
+	push es
 	push di
 	lea bx, [ _linebuffer + bp ]
 	getarg cx, _charsread
@@ -299,6 +300,7 @@ configProcessing_20:
 
 		; copy statement
 	pop si
+	pop ds
 	lea di, [ configStatement + di ]		; offset to statement
 	repe movsb
 
@@ -415,7 +417,8 @@ processCountry_12:
 	call FindCountryInfo
 	jc processCountry_24				; if country not found -->
 
-	setES cs
+	push ss
+	pop es
 	mov word [ _RxDOS_UserCountryCode ], ax		; country
 	mov word [ _RxDOS_SysCountryCode ], ax		; country
 
@@ -1534,6 +1537,7 @@ _getNumber_48:
 		; Returns:
 		; dx	command type
 		; di	pointer to argument past command
+		; si	-> cStmtName of table entry that matches
 		; cy	command not found
 _findCommand:
 	cmp word [ cs:si ], byte -1
@@ -1766,8 +1770,8 @@ RxDOSini_DPBSubSystem:
 	push ds
 	push es
 
-	setDS cs
-	setES cs
+	push ss
+	pop ds
 
 	mov al, sizeDPB
 	mul byte [ _RxDOS_bNumBlockDev ]		; number of logical devices
@@ -1819,7 +1823,8 @@ RxDOS_DPBinit_12:
 	mov word [ _dpbNextDPB + _pointer - sizeDPB + di ], -1
 
 		; loop through DPB's and assign drivers
-	setES cs
+	push ss
+	pop es
 	mov bx, _RxDOS_NULLDev				; get start of chain
 .loop_end_devicechain:
 	cmp word [ es:bx + devLink ], -1
@@ -1829,7 +1834,7 @@ RxDOS_DPBinit_12:
 
 		; es:bx -> last device header
 .found_end_devicechain:
-	lds si, [ cs:_RxDOS_pDPB ]
+	lds si, [ ss:_RxDOS_pDPB ]
 	xor di, di
 .loop_devices:
 	test word [ es:bx + devAttributes ], DEV_CHAR
@@ -1868,7 +1873,7 @@ RxDOS_DPBinit_12:
 	mov cx, bx
 	mov dx, es
 
-	push cs
+	push ss
 	pop es
 	mov bx, _RxDOS_NULLDev	; -> NUL device
 
@@ -1936,12 +1941,13 @@ RxDOS_DPBinit_12:
 		;
 		; No Parameters Required.
 		;
-		; cs = DOS data segment
+		; ss = DOS data segment
 RxDOSini_CDSSubSystem:
 	push ds
 	push es
 
-	setDS cs
+	push ss
+	pop ds
 	mov ax, sizeCDS
 	xor bx, bx
 	mov bl, [ _RxDOS_bLastDrive ]
@@ -2001,7 +2007,6 @@ RxDOS_CDSinit_08:
 	loop RxDOS_CDSinit_08
 
 		; init DPB values for each CDS
-	setDS cs
 	xor cx, cx
 	les di, [ _RxDOS_pCDS ]
 	mov si, _RxDOS_pDPB - _dpbNextDPB
@@ -2047,7 +2052,8 @@ RxDOS_CDSinit_12:
 RxDOSini_SFTSubSystem:
 
 	push ds
-	setDS cs
+	 push ss
+	 pop ds
 	push ax						; files
 	mov cx, sizeSFT
 	mul cx						; total bytes for the actual SFT entries
@@ -2078,6 +2084,7 @@ RxDOSini_SFTSubSystem:
 		; RxDOS Cache Control Buffers subsystem initialize
 		;
 		; ax = number of CCBs to initialize
+		; ds = DOSDATA
 RxDOSini_CCBSubSystem:
 	push ds
 	push es
@@ -2384,10 +2391,14 @@ Config_CommonSelector:	db 'COMMON', 0
 
 		; Initialize
 		;
-		; INP:	cs = combined DOSDATA DOSCODE segment
+		; INP:	cs = word [70h:doscode_segment] = DOSCODE segment
+		;	word [70h:dosdata_segment] = DOSDATA segment
 		;	ip = 0
 		;	cx = number of default block device's units (<= 32)
-		;	dx:ax -> far function to relocate DOSDATA (and DOSCODE)
+		;	dx:ax -> far function to relocate DOSDATA and DOSCODE
+		;	 this is to be called after all DEVICE= processing
+		;	si:di -> far function to relocate DOSCODE to HMA
+		;	 this is to be called after each DEVICE= processing
 
 RxDOS_initialize:
 	cli						; disable interrupts
@@ -2426,8 +2437,9 @@ RxDOS_initialize:
 
 
 		; compute number of block devices installed
-	setDS cs
 	call maxBlockDevices
+	 push ss
+	 pop ds
 	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
 
 		; initialized environment size
@@ -2468,6 +2480,8 @@ RxDOS_initialize:
 	int 21h
 
 	d4bp
+	 push ss
+	 pop ds
 	call RxDOSini_StdInStdOutDrivers		; initialize drivers
 
 		; parse command line
