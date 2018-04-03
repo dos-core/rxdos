@@ -201,11 +201,15 @@ configProcessing:
 
 	mov di, _RxDOS_RXCONFIGSYS			; RXCONFIG.SYS filename
 	call scanDirectory				; search RXCONFIG.SYS
-	ifnc configProcessing_08			; RXCONFIG.SYS found -->
+	jnc configProcessing_08				; RXCONFIG.SYS found -->
 							; open CONFIG.SYS instead if no RXCONFIG.SYS
+	push cs
+	pop es
 	mov di, _RxDOS_ConfigFile			; CONFIG.SYS filename
+	xor dx, dx
+	xor cx, cx
 	call scanDirectory				; search CONFIG.SYS
-	ifc configProcessing_Return			; if none found -->
+	jc configProcessing_Return			; if none found -->
 
 configProcessing_08:
 	push word [ es:si + deFileSize + _low ]
