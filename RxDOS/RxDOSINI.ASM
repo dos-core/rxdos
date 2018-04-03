@@ -197,12 +197,11 @@ configProcessing:
 	setES cs
 	xor dx, dx
 	mov al, byte [ ss:_RxDOS_CurrentDrive ]		; startup drive
-%if 0
+
 	mov di, _RxDOS_RXCONFIGSYS			; RXCONFIG.SYS filename
 	call scanDirectory				; search RXCONFIG.SYS
 	ifnc configProcessing_08			; RXCONFIG.SYS found -->
 							; open CONFIG.SYS instead if no RXCONFIG.SYS
-%endif
 	mov di, _RxDOS_ConfigFile			; CONFIG.SYS filename
 	call scanDirectory				; search CONFIG.SYS
 	ifc configProcessing_Return			; if none found -->
@@ -2233,9 +2232,7 @@ init_relocate_device_function:	dd 0
 
 
 		; CONFIG.SYS keywords
-%if 0
 _RxDOS_RXCONFIGSYS:	db "RXCONFIGSYS", 0
-%endif
 _RxDOS_ConfigFile:	db "CONFIG  SYS", 0
 
 _RxDOS_ConfigKeywords:	dw CONFIGTYPE_BREAK
