@@ -2062,6 +2062,8 @@ RxDOSini_SFTSubSystem:
 		;
 		; ax = number of CCBs to initialize
 RxDOSini_CCBSubSystem:
+	push ds
+	push es
 
 	d2bp
 
@@ -2098,6 +2100,9 @@ RxDOS_CCBinit_10:
 
 	mov di, dx					; at end set end marker
 	mov word [ es:di + ccbNext ], -1		; next of last is invalid
+
+	pop es
+	pop ds
 	retn
 
 
@@ -2435,7 +2440,7 @@ RxDOS_initialize:
 	mov ax, 65535
 	call AllocateSystemSpace_with_type
 
-	push es	
+	push es
 	call configProcessing				; process RXCONFIG.SYS file
 	pop es
 	xor di, di
