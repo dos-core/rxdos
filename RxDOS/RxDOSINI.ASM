@@ -2222,10 +2222,12 @@ Init_AttachedFileSystem_16:
 	retn
 
 
+		align 4
 		; CONFIG Switches
 F5_SkipConfigProcessing dw 0000				; non-zero if skipping
 F8_PromptRequired	dw 0000				; non-zero if prompt required
 init_verbose:		dw 1
+		align 4
 init_relocate_end_function:	dd 0
 init_relocate_device_function:	dd 0
 
