@@ -15,8 +15,8 @@ the file LICENSE.TXT.
 
 %endif
 
-%include "RXDMACRO.MAC"
-%include "RXDSTRUC.MAC"
+%include "RXDMACRO.NEW"
+%include "RXDSTRUC.NEW"
 
 	cpu 8086
 
@@ -49,7 +49,7 @@ the file LICENSE.TXT.
 	extern pexterrFileExists
 %endif
 
-		; RxDOS 7.20N:	Structs moved into RXDSTRUC.MAC
+		; RxDOS 7.20N:	Structs moved into RXDSTRUC.NEW
 
 
 		; 440Dh Generic IOCTL

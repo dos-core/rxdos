@@ -54,8 +54,8 @@ RxCMD
 %endif
 
 
-%include "RXDMACRO.MAC"
-%include "RXDSTRUC.MAC"
+%include "RXDMACRO.NEW"
+%include "RXDSTRUC.NEW"
 
 
 		align 2

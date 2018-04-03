@@ -33,8 +33,8 @@ Unfortunately there was never a December version.
 
 %endif
 
-%include "RXDMACRO.MAC"
-%include "RXDSTRUC.MAC"
+%include "RXDMACRO.NEW"
+%include "RXDSTRUC.NEW"
 
 	cpu 8086
 

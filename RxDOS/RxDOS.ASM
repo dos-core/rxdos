@@ -48,8 +48,8 @@ Performs the actual disk (Int13) access.
 
 	cpu 8086
 
-%include "RXDMACRO.MAC"
-%include "RXDSTRUC.MAC"
+%include "RXDMACRO.NEW"
+%include "RXDSTRUC.NEW"
 %include "RXOPTION.MAC"
 
 %if _BUILD_OBJ
@@ -1793,7 +1793,7 @@ _chgtoPathError_14:
 		; call _RetCallersStackFrame
 		; pop reg
 		; pop seg
-		;  (RXDMACRO.MAC provides the RetCallersStackFrame macro for this)
+		;  (RXDMACRO.NEW provides the RetCallersStackFrame macro for this)
 _retcallersstackframe:
 _RetCallersStackFrame:
 
@@ -4097,7 +4097,7 @@ _CtrlBreakCheck:
 	retn
 
 .capabilities:
-		; ax = DOS capability flags (refer to RXDSTRUC.MAC)
+		; ax = DOS capability flags (refer to RXDSTRUC.NEW)
 		; bh = bytes per SFT entry
 		; bl = bytes per CDS entry
 		; dh = bytes per DPB
