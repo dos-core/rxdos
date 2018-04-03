@@ -2376,15 +2376,17 @@ RxDOS_initialize:
 	mov word [cs:init_relocate_device_function], di
 	mov word [cs:init_relocate_device_function + 2], si
 
-	mov ax, cs
+	mov ax, 70h
+	mov ds, ax
+	mov ax, word [dosdata_segment]
 	mov ds, ax
 	mov ss, ax
-	mov sp, RxDOS_EndOfInitCode + RXDOS_PERCALL_STACKRESERVE
+	mov sp, dosdata_stack + RXDOS_PERCALL_STACKRESERVE
 
 	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
 	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
 
-	mov ax, (RxDOS_EndOfInitCode + 3 * RXDOS_PERCALL_STACKRESERVE)
+	mov ax, (dosdata_stack + 3 * RXDOS_PERCALL_STACKRESERVE)
 	mov word [ _RxDOS_CurrentStackTop ], ax
 	mov word [ _RxDOS_CurrentSeg ], ss		; Current segment
 
@@ -2867,11 +2869,4 @@ _RxDOSini_DefaultShellExt:
 
 _RxDOSini_compatibilityshell:
 	db "COMMAND.COM",0
-
-		; Stacks
-	align 16, db 0
-
-RxDOS_EndOfInitCode:
-	times 3 * RXDOS_PERCALL_STACKRESERVE db 0
-	align 16, db 0
 
