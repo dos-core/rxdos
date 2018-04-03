@@ -48,6 +48,8 @@ Performs the actual disk (Int13) access.
 %include "RXDSTRUC.NEW"
 %include "RXOPTION.MAC"
 
+%assign _BUILD_OBJ	0
+
 
 RxDOS_start:		jmp near RxDOS_initialize
 
