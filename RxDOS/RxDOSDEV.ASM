@@ -1441,7 +1441,8 @@ DefineDPB16:
 
 	push di
 	push es
-	currSegment es
+	 push cs
+	 pop es
 	mov di, _bitShiftTable
 	mov cx, sizeShiftTable
 	repnz scasb
