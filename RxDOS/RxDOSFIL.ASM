@@ -873,7 +873,7 @@ blankinitDirName:
 		; ax	drive
 		; bx	attributes
 		; cx:dx	cluster
-		; es:si-> located directory entry
+		; es:si-> located directory entry (in a CCB)
 		;
 		; if item NOT found:
 		; CY if item not found
