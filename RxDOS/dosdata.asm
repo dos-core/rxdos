@@ -48,7 +48,7 @@ Performs the actual disk (Int13) access.
 %include "RXDSTRUC.NEW"
 %include "RXOPTION.MAC"
 
-RxDOS_start:		jmp near RxDOS_initialize
+			jmp strict near $
 			db 0
 
 		; DOS Data Segment
@@ -371,4 +371,11 @@ _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
 bootname:
 .drive:		db " :\"			; "C:\"
 .filename:	times (8 + 1 + 3 + 1) db 0	; "FILENAME.EXT",0
+
+		; Stacks
+	align 16, db 0
+
+dosdata_stack:
+	times 3 * RXDOS_PERCALL_STACKRESERVE db 0
+	align 16, db 0
 
