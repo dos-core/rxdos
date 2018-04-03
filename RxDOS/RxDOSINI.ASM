@@ -554,7 +554,7 @@ processDeviceHigh:
 	Int21 GetAllocationStrategy			; get current allocation strategy
 	storarg _memorystrategy, ax
 
-	mov bx, _MEM_FIRSTFIT_HIGH
+	mov bx, _MEM_FIRSTFIT_HIGHTHENLOW
 	Int21 SetAllocationStrategy			; include UMBs in memory allocation strategy
 
 
@@ -772,6 +772,10 @@ processAnyDevice_60:
 	Int21 FreeAllocatedMemory			; if error while loading
 
 processAnyDevice_64:
+	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
+		| DOSFLAGS_RELOCATE_DOSCODE_HMA
+	call far [cs:init_relocate_device_function]
+
 	pop es
 	pop ds
 
@@ -2222,7 +2226,8 @@ Init_AttachedFileSystem_16:
 F5_SkipConfigProcessing dw 0000				; non-zero if skipping
 F8_PromptRequired	dw 0000				; non-zero if prompt required
 init_verbose:		dw 1
-init_relocate_function:	dd 0
+init_relocate_end_function:	dd 0
+init_relocate_device_function:	dd 0
 
 
 		; CONFIG.SYS keywords
@@ -2367,8 +2372,10 @@ RxDOS_initialize:
 	cli						; disable interrupts
 	cld						; set direction
 
-	mov word [cs:init_relocate_function], ax
-	mov word [cs:init_relocate_function + 2], dx
+	mov word [cs:init_relocate_end_function], ax
+	mov word [cs:init_relocate_end_function + 2], dx
+	mov word [cs:init_relocate_device_function], di
+	mov word [cs:init_relocate_device_function + 2], si
 
 	mov ax, cs
 	mov ds, ax
@@ -2444,7 +2451,12 @@ RxDOS_initialize:
 	setDS cs
 	setES ss
 
-	call far [init_relocate_function]
+	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
+		| DOSFLAGS_RELOCATE_DOSCODE_HMA
+	call far [cs:init_relocate_device_function]
+	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
+		| DOSFLAGS_RELOCATE_DOSCODE_HMA
+	call far [cs:init_relocate_end_function]
 
 	push cs
 	pop ds
