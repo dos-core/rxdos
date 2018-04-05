@@ -2461,7 +2461,6 @@ RxDOS_initialize:
 
 	mov word [ _RxDOS_UserCodePage ], DEFAULT_CODEPAGE
 	mov word [ _RxDOS_SystemCodePage ], DEFAULT_CODEPAGE
-	mov word [ _RxDOS_CurrCountryInfo + intlCaseMap + _segment ], cs
 
 		; parse RXCONFIG.SYS file
 	mov cl, S_INITCONFIG

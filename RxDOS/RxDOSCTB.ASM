@@ -32,6 +32,7 @@ the file LICENSE.TXT.
 		; 
 		; Usage:
 		; al	Contains character. Converted to Upper Case
+relocated casemap:
 RxDOS_USA_DefaultUpperCaseFunction:
 
 	cmp al, 128
@@ -155,7 +156,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency bit field
 	db 2						; currency places
 	db TIME_12HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data separator
 
 		; Canadian-French
@@ -171,7 +172,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency bit field
 	db 2						; currency places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data separator
 
 		; Latin America
@@ -187,7 +188,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency bit field
 	db 2						; currency places
 	db TIME_12HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data separator
 
 		; Russia (CP866)
@@ -203,7 +204,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Russia (CP437)
@@ -219,7 +220,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Russia (CP850)
@@ -235,7 +236,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Russia (CP855)
@@ -251,7 +252,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Russia (CP852)
@@ -267,7 +268,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Netherlands
@@ -283,7 +284,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Belgium
@@ -299,7 +300,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; France
@@ -315,7 +316,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_AFTER + CURRENCY_SPACEBETWEEN	; currency bit field
 	db 2						; currency places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data separator
 
 		; Spain (currency single-character)
@@ -331,7 +332,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 0						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Spain (currency string)
@@ -347,7 +348,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 0						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Hungary
@@ -363,7 +364,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Serbia/Yugoslavia
@@ -379,7 +380,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Italy
@@ -395,7 +396,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 0						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Switzerland
@@ -411,7 +412,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Czech Republic
@@ -427,7 +428,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; United Kingdom (Great Britain)
@@ -443,7 +444,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency bit field
 	db 2						; currency places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data separator
 
 		; Denmark
@@ -459,7 +460,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Sweden
@@ -475,7 +476,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Norway
@@ -491,7 +492,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Poland
@@ -507,7 +508,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Germany
@@ -523,7 +524,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Brazil
@@ -539,7 +540,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; International English
@@ -555,7 +556,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency format
 	db 2						; decimal places
 	db TIME_12HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Japan
@@ -571,7 +572,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency format
 	db 0						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Korea
@@ -587,7 +588,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency format
 	db 0						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; China
@@ -603,7 +604,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Taiwan
@@ -619,7 +620,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_BEFORE				; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Turkey (CP850)
@@ -635,7 +636,7 @@ RxDOS_COUNTRYInfo:
 	db 04						; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Turkey (CP859)
@@ -651,7 +652,7 @@ RxDOS_COUNTRYInfo:
 	db 04						; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 		; Portugal
@@ -667,7 +668,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Iceland
@@ -683,7 +684,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 
@@ -700,7 +701,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Middle East/Saudi Arabia (currency 1)
@@ -716,7 +717,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 3						; decimal places
 	db TIME_12HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Middle East/Saudi Arabia (currency 2)
@@ -732,7 +733,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN + CURRENCY_AFTER	; currency format
 	db 3						; decimal places
 	db TIME_12HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ';'						; data sep
 
 		; Israel
@@ -748,7 +749,7 @@ RxDOS_COUNTRYInfo:
 	db CURRENCY_SPACEBETWEEN			; currency format
 	db 2						; decimal places
 	db TIME_24HOUR					; time format
-	dd RxDOS_USA_DefaultUpperCaseFunction
+	dw casemap, 70h
 	dw ','						; data sep
 
 _RxDOS_COUNTRY_EndInfo:

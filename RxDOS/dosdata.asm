@@ -139,7 +139,7 @@ _RxDOS_CurrCountryInfo	dw DATE_USA
 			db 0			; currency format (before or after)
 			db 2			; places after decimal point
 			db TIME_12HOUR		; 12-hour or 24-hour format
-			dd RxDOS_USA_DefaultUpperCaseFunction
+			dw casemap, 70h
 			dw ','			; data-list ...
 			times 10 db 0		; reserved
 
