@@ -934,17 +934,31 @@ _Interrupt_26:
 	pop di
 	pop es					; buffer to es:di
 
+	push di					; +6
+	push es					; +4
+	push ds					; +2
+	push ax					; +0
+
 		; switch to stack in DOS data segment
 		;  -- some of the code we call expects this!
 	mov di, ss
 	mov bx, sp
 
-	push cs
-	pop ss
+	mov ax, 70h
+	mov ds, ax
+	mov ss, word [dosdata_segment]
 	mov sp, word [ ss:_RxDOS_CurrentStackTop ]	; point to current stack.
 
 	push di					; ss
 	push bx					; sp
+
+	mov es, di
+	mov ax, word [es:bx]			; restore ax
+	mov ds, word [es:bx + 2]		; restore ds
+	mov di, word [es:bx + 6]		; restore di
+	mov es, word [es:bx + 4]		; restore es
+	mov bx, di
+
 	entry
 	def	FctAddress			; (unused)
 
@@ -975,6 +989,7 @@ _Interrupt_26:
 
 	pop ss						; restore caller's ss
 	mov sp, bx					; restore caller's sp
+	add sp, 4 * 2					; discard
 	sti
 
 	restoreSegments bx, cx, dx, bp, si, di
@@ -4748,7 +4763,6 @@ _ModifyAllocatedMemory:
 		; ds:dx	program name
 		; es:bx	program arguments
 _ExecuteProgram:
-
 	entry
 	ddef	filename, es, dx			; arg passed internally as es:dx
 	defbytes	dirAccess, sizeDIRACCESS
