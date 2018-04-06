@@ -403,3 +403,8 @@ dosdata_stack:
 	times 3 * RXDOS_PERCALL_STACKRESERVE db 0
 	align 16, db 0
 
+		; Allocatable Heap
+RxDOS_Heap		equ $
+	times 6 * sizeLFNTEMPSTORE db 0
+	align 16, db 0
+

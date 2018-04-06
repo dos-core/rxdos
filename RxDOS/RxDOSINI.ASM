@@ -98,11 +98,6 @@ the file LICENSE.TXT.
 	extern RxDOS_USA_DefaultUpperCaseFunction
 %endif
 
-		; Allocatable Heap
-		;
-		; Reuses RxDOS INIT code
-RxDOS_Heap		equ $
-
 
 		; CONFIG statement types
 		;
