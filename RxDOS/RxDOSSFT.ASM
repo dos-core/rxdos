@@ -118,9 +118,10 @@ MapSFTToAppHandle:
 	cmp word [ ss:_RxDOS_CurrentPSP ], byte 0	; PSP valid ?
 	jnz MapSFTToAppHandle_08			; yes -->
 
-	setES cs
+	push ss
+	pop es
 	mov cx, sizepspSysHandleTable
-	mov si, pspSysHandleTable			; default to cs:pspSysHandleTable
+	mov si, pspSysHandleTable			; default to DOSDATA:pspSysHandleTable
 
 MapSFTToAppHandle_08:
 %else
@@ -180,7 +181,7 @@ MapAppToSFTHandle:
 	jnc MapAppToSFTHandle_16			; beyond highest handle -->
 %endif
 	xor ah, ah
-	mov al, byte [ cs:si + pspSysHandleTable ]
+	mov al, byte [ ss:si + pspSysHandleTable ]
 	jmp short MapAppToSFTHandle_16
 
 		; if valid PSP, use pointer from PSP

@@ -5671,7 +5671,7 @@ _GetDBCSString:
 
 	RetCallersStackFrame ds, bx
 	mov word [ bx + _SI ], _RxDOS_DBCS_Table
-	mov word [ bx + _DS ], cs
+	mov word [ bx + _DS ], ss
 
 	clc
 	retn

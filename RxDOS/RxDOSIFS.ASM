@@ -130,6 +130,7 @@ the file LICENSE.TXT.
 	extern condStringLength
 %endif
 
+	align 2
 		; Installable File System (Int2F.11) Dispatch Table
 IFSServicesTable:
 	dw _IFSInstallCheck			; 00h Install Check
@@ -185,6 +186,7 @@ IFSServicesTable:
 Max_IFSServices	 equ ( $ - IFSServicesTable ) / 2
 
 
+	align 2
 		; Extended Interface Functions (Int2F.12) Dispatch Table
 EIFServicesTable:
 

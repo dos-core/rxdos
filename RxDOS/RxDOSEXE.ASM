@@ -846,8 +846,8 @@ createPSP_12:
 	mov word [ es:pspDosCall +2 ], 0CBh		; "retf"
 
 	mov byte [ es:pspDispatcher ], 9Ah		; "call far" instruction
-	mov word [ es:pspDispatcher +1 +_segment ], cs
-	mov word [ es:pspDispatcher +1 +_pointer ], _CallDOS	; "CALL 5" entry
+	mov word [ es:pspDispatcher +1 +_segment ], 70h
+	mov word [ es:pspDispatcher +1 +_pointer ], call5	; "CALL 5" entry
 	mov word [ es:pspShareChain +_pointer ], -1	; share vector 
 	mov word [ es:pspShareChain +_segment ], -1
 

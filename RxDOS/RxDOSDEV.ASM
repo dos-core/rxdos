@@ -1772,8 +1772,8 @@ _callCriticalError:
 	def	errorCode, ax
 	def	allowed, 0000
 
-	push word [ cs:SDAInt24_SPSave + _segment ]
-	push word [ cs:SDAInt24_SPSave + _pointer ]
+	push word [ ss:SDAInt24_SPSave + _segment ]
+	push word [ ss:SDAInt24_SPSave + _pointer ]
 
 	push es
 	push ds
@@ -1818,8 +1818,8 @@ _callCriticalError_10:
 	les bx, [ ss:bx + _pointer ]
 
 	cli
-	mov word [ cs:SDAInt24_SPSave + _segment ], ss
-	mov word [ cs:SDAInt24_SPSave + _pointer ], sp
+	mov word [ ss:SDAInt24_SPSave + _segment ], ss
+	mov word [ ss:SDAInt24_SPSave + _pointer ], sp
 		; RxDOS 7.20N:	This seems very ugly. Other DOS don't
 		;		 use this fields for these values.
 		;		Actually, the field is used like this,
@@ -1839,8 +1839,15 @@ _callCriticalError_10:
 
 	cli
 	mov dl, al					; save value returned
-	mov ss, word [ cs:SDAInt24_SPSave + _segment ]
-	mov sp, word [ cs:SDAInt24_SPSave + _pointer ]
+	mov bp, 70h
+	push ds
+	push bp						; swap bp
+	pop ds
+	pop bp						;  and ds
+	mov ds, word [dosdata_segment]
+	mov ss, word [ SDAInt24_SPSave + _segment ]
+	mov sp, word [ SDAInt24_SPSave + _pointer ]
+	mov ds, bp					; restore ds
 	sti
 
 		; fix-up returned codes if conflict between allowed and returned
@@ -1873,8 +1880,8 @@ _callCriticalError_32:
 	pop ds
 	pop es
 
-	pop word [ cs:SDAInt24_SPSave + _pointer ]
-	pop word [ cs:SDAInt24_SPSave + _segment ]
+	pop word [ ss:SDAInt24_SPSave + _pointer ]
+	pop word [ ss:SDAInt24_SPSave + _segment ]
 
 	mov al, dl
 	Return
