@@ -1,28 +1,21 @@
 \C{} Changes of RxDOS version 7.20N since 7.1.5
 
-\n Only Netwide Assembler (NASM) 2.04+ used for assembling.
+\H{} Initial changes, individual programs' fates
+
+\n Only Netwide Assembler (NASM) 2.13.02 used for assembling.
 
 \n Changed names of these programs:
 
 \lcont{
-\c RxDOSBIO   to RxBIO
 \c RxDOSCMD   to RxCMD
-\c RxD_BOOT   to RxD_BOOT and RxBOOT (see also below)
-\c RxDOSMBR   to RxMBR
 }
 
-\n RxD_BOOT slightly modified:
+\n Dropped some programs:
 
 \lcont{
-\n Splitted into RxBOOT (the actual boot sector) and RxD_BOOT (the boot
-     sector write program).
-
-\n RxD_BOOT is now assembled into a .COM program file. Removed unused padding
-     which made the file's size about 32 KiB.
-
-\n RxD_BOOT can use Int25/26 instead of direct DOS device driver calls which
-     makes it work in NTVDM and possible other environments that don't support
-     direct DOS device driver calls.
+\c RxDOSBIO    (renamed RxBIO, later integrated into RxDOS.COM)
+\c RxD_BOOT    (dropped, use ldosboot instead)
+\c RxDOSMBR    (dropped, use ldosmbr instead)
 }
 
 \n Format of the source files modified:
@@ -31,8 +24,7 @@
 \n The source files now use tab characters to make editing them easier. The
      tab characters should be expanded to up to 8 spaces for displaying.
 
-\n Removed the funny boxes drawn with ; ' - . characters. Use the MASM source
-     if you really need them.
+\n Removed the funny boxes drawn with ; ' - . characters.
 }
 
 \n Replaced COPYING and gpl.txt by LICENSE.TXT which is an up-to-date
@@ -65,5 +57,103 @@
 }
 
 \n Some new or corrected code for RxDOS 7.30 added to source files. This
-   code is deactivated using NASM conditional assembly and it'll get actived in
-   the first release after RxDOS 7.20N (planned as RxDOS 7.30).
+   code is deactivated using NASM conditional assembly and it is getting
+   step by step through the next releases after RxDOS 7.20N.
+
+\H{} Changes to DOS
+
+\S{} New interfaces
+
+\n Int21.335E    Get extended DOS version
+
+\lcont{
+\c OUT: ax != 33FFh and ax != 3300h and ax != 0001h
+\c      ax = 7852h "Rx" for RxDOS
+\c      cx = build year
+\c      dh = build month
+\c      dl = build day
+\c      bx = DOS kernel version
+\c      di = BIO kernel version
+\c            (since RxDOS 7.23 always same as bx)
+\c	si = reserved, currently unset
+}
+
+\n Int21.335F    Get boot drive and filename
+
+\lcont{
+\c INP:	dx = 0
+\c OUT: dx != 0 if supported
+\c      dx:ax -> ASCIZ filename with drive
+\c                (file in root directory), in DOSDATA
+\c	cx, bx, di, si = reserved, currently unset
+}
+
+\n Int21.3360    Get DOS capabilities
+
+\lcont{
+\c INP:	CY
+\c OUT: NC, ax != 33FFh and ax != 3300h and ax != 0001h
+\c      ax = DOS capability flags
+\c      cx = reserved, set to zero
+\c      dh = size of a DPB
+\c      dl = reserved, set to zero
+\c      bh = size of an SFT
+\c      bl = size of a CDS entry
+\c      di, si = reserved, currently unset
+}
+
+\n Int21.33FF    Get DOS version string (FreeDOS-compatible)
+
+\lcont{
+\c INP: dx = 0
+\c OUT: dx != 0 if supported
+\c      (may or may NOT clear the Carry Flag)
+\c      dx:ax -> ASCIZ version string, in DOSCODE
+\c Example strings:
+\c "RxDOS version 7.24 [hg 2d2992dcc533+] [2018-04-06]"
+\c "FreeDOS kernel - SVN (build 2042 OEM:0xfd) [compiled Sep 22 2017]"
+}
+
+\S{} New kernel layout and building with linker obsolete
+
+\n Since version 7.21 (2017-09-01), both the RxBIO and RxDOS kernel parts
+   can be built as flat binaries linked internally by NASM's "bin" output
+   format. This means that no external linker is required any longer.
+
+\n Since version 7.22 (2018-03-09), the RxCMD shell can be built as flat
+   binary linked internally by NASM's "bin" output format.
+
+\n As early as 1b22935d1222 2018-03-10, RxDOS.SYS is included by RxBIO.SYS's
+   build process. Thus, a single-file kernel (similar to FreeDOS's) is
+   first achieved this way.
+
+\n Since version 7.23 (2018-04-03) (as early as 7484396956e4 2018-03-30),
+   the combined-kernel RxBIO.ASM is included into lDOS init. As early as
+   bce5d6c1fbcd 2018-03-31, RxDOS.ASM is separately included into lDOS init,
+   and RxDOS.SYS is no longer included by RxBIO.ASM.
+
+\n As early as 2a093d179ffd 2018-04-06, RxDOS.ASM is split into doscode.asm
+   and dosdata.asm, and both are used respectively as DOSCODE and DOSDATA.
+
+\S{} Misc
+
+\n RxDOS and RxCMD now allow embedding the Source Control Revision ID to
+   identify the source used to build them. mak.sh needs to be called with
+   use_build_revision_id=1 to enable this. It currently hardcodes the
+   command to get the ID as "hg id -i". (b429250a515e 2018-03-15)
+
+\n RxCMD's VER command now includes support for the /R option, which
+   in addition to the RxCMD version, Source Control Revision ID,
+   build date, and copyright lines, also displays the
+   reported DOS version and OEM code (Int21.3000), reported true DOS version
+   (Int21.3306), and version string (Int21.33FF). (1be3f3e781ca 2018-03-14)
+
+\n RxDOSINI's AllocateSystemSpace is now implemented atop Int21.48,
+   and creates S MCBs (owner = 8, name = "S", type stored later in name field).
+   This enables MCB walkers to locate all allocations.
+   (ac38e4a7eba1 2018-03-17)
+
+\n ldosboot and lmacros (b06c90a1009c 2018-03-28) are included as subrepos.
+   ldos is included as subrepo. (8fa5fccbcf40 2018-03-30)
+
+

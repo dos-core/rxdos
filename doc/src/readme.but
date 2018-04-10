@@ -12,9 +12,11 @@
 
 \title RxDOS version 7.20N notes
 
-\copyright This document (2008-2011 by C. Masloch) is in the Public Domain.
+\copyright This document (2008-2018 by C. Masloch) is in the Public Domain.
 
-This document has been sloppily compiled on \date{%Y-%m-%d}, release\_2011\-01\-14.
+This document has been sloppily compiled on \date{%Y-%m-%d},
+release\_2018\-04\-10. WARNING: Most sections of this document are outdated,
+dating back to the release\_2011\-01\-14.
 
 \C{} RxDOS license
 

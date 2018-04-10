@@ -1,2 +1,2 @@
 #! /bin/bash
-halibut --text --html src/readme.but src/intro.but src/changes.but src/build.but
+halibut --pdf=readme.pdf --text=readme.txt --html=readme.htm src/readme.but src/intro.but src/changes.but src/build.but
