@@ -2034,6 +2034,7 @@ _RebuildBPB_12:
 
 	mov cx, 1					; cx = 1
 
+	push si
 	test byte [ di + _dskExtReadWrite ], 1
 	jz .chs_read
 .lba_read:
@@ -2043,6 +2044,7 @@ _RebuildBPB_12:
 .chs_read:
 	call _nonLBARead
 .common:
+	pop si
 	jc _RebuildBPB_38
 	mov ds, si
 
@@ -2119,6 +2121,7 @@ _RebuildBPB_24:
 
 	mov cx, 1					; cx = 1
 
+	push si
 	test byte [ di + _dskExtReadWrite ], 1
 	jz .chs_read
 .lba_read:
@@ -2128,6 +2131,7 @@ _RebuildBPB_24:
 .chs_read:
 	call _nonLBARead
 .common:
+	pop si
 	jc _RebuildBPB_38
 	mov ds, si
 
