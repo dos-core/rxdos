@@ -946,7 +946,7 @@ ConWrite_08:
 
 	inc byte [ es:Con_TabPosition ]		; tab position
 	test byte [ es:Con_TabPosition ], 7	; tab position
-	jnz .cr_or_lf
+	jnz .tab
 
 .next:
 	loop ConWrite_08			; go get additional characters -->
