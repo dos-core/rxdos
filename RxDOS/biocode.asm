@@ -1288,6 +1288,8 @@ relocated i19:
 	xor ax, ax
 	mov es, ax
 
+	mov ax, 70h
+	mov ds, ax
 	mov si, InterruptRestorationTable
 
 .08:
