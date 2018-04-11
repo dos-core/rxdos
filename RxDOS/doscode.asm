@@ -51,8 +51,6 @@ Performs the actual disk (Int13) access.
 %assign _BUILD_OBJ	0
 
 
-RxDOS_start:		jmp near RxDOS_initialize
-
 	; ** ROMABLE BEYOND THIS ADDRESS **
 
 _RxDOS_DOSVersionString:
