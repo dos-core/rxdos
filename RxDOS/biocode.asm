@@ -854,6 +854,7 @@ ConNonDestrRead_NoData:
 
 
 ConStatus:
+	push es
 	mov ax, 70h
 	mov es, ax
 
@@ -865,11 +866,13 @@ ConStatus:
 	jz ConStatus_NoData				; none waiting -->
 
 ConStatus_16:
+	pop es
 	retn
 
 		; If no data
 ConStatus_NoData:
 	mov word [ rhStatus + bx ], (OP_NODATA)
+	pop es
 	retn
 
 
@@ -882,6 +885,7 @@ ConStatus_NoData:
 
 
 ConInputFlush:
+	push es
 	mov ax, 70h
 	mov es, ax
 
@@ -897,6 +901,7 @@ ConInputFlush_08:
 	jmp short ConInputFlush_08			; test for more -->
 
 ConInputFlush_NoData:
+	pop es
 	retn
 
 
@@ -963,6 +968,7 @@ ConWrite_38:
 
 
 getConData:
+	push es
 	mov ax, 70h
 	mov es, ax
 
@@ -978,6 +984,7 @@ getConData:
 
 getConData_08:
 	mov byte [ es:Con_ScanCode ], ah		; save scan code
+	pop es
 	ret
 
 
@@ -1130,11 +1137,13 @@ AuxNonDestrRead:
 	call getComData
 	jnz AuxRead_Error				; if no data or timeout -->
 
+	push es
 	mov si, 70h
 	mov es, si
 	mov si, dx
 	add si, Comm_LookAhead			; 
 	mov byte [ es:si ], al			; save waiting data.
+	pop es
 
 	mov byte [ ndrCharRead + bx ], al		; return lookahead character.
 	ret
@@ -1158,11 +1167,13 @@ AuxNonDestrRead_NoData:
 
 
 AuxInputFlush:
+	push es
 	mov si, 70h
 	mov es, si
 	mov si, dx
 	add si, Comm_LookAhead			; 
 	mov byte [ es:si ], 00			; flush input character
+	pop es
 	ret
 
 
@@ -1234,7 +1245,7 @@ AuxOutputStatus_12:
 
 
 getComData:
-
+	push es
 	mov si, 70h
 	mov es, si
 	mov si, dx
@@ -1244,12 +1255,14 @@ getComData:
 
 	xor ax, ax
 	xchg al, byte [ es:si ]			; get char waiting
+	pop es
 	ret
 
 getComData_08:
 	mov ah, BIOS_ComRead
 	Int 14h
 	test ax, (CommLS_FE + CommLS_PE + CommLS_OE)	; errors ??
+	pop es
 	ret
 
 
@@ -1258,6 +1271,7 @@ getComData_08:
 		; ds:bx	points to request header
 		; dx	logical device
 getComStatus:
+	push es
 	mov si, 70h
 	mov es, si
 	mov si, dx
@@ -1267,11 +1281,13 @@ getComStatus:
 
 	mov ax, CommLS_DataAvail
 	mov al, byte [ es:si ]				; get char waiting
+	pop es
 	retn
 
 getComStatus_08:
 	mov ah, BIOS_ComStatus
 	Int 14h
+	pop es
 	retn
 
 
