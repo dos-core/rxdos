@@ -2020,13 +2020,13 @@ RebuildBPB:
 	ddef	dskParameterTable, es, di
 
 	push ds
-	setds cs				; (used to access DiskBuffer)
+	mov si, 70h
+	mov ds, si					; (used to access DiskBuffer)
 
 		; Rebuild BIOS Parameter Block
 _RebuildBPB_12:
 	getdarg ds, di, _dskParameterTable		; ds:di -> UPB
-	push cs
-	pop es
+	mov es, si
 	mov bx, RxBIO_DiskBuffer			; es:bx -> DiskBuffer
 
 	xor ax, ax
@@ -2044,15 +2044,16 @@ _RebuildBPB_12:
 	call _nonLBARead
 .common:
 	jc _RebuildBPB_38
-	push cs
-	pop ds
+	mov ds, si
 
 		; Copy standard boot sector info
 	getdarg es, di, _dskParameterTable
+	push si
 	lea si, [ RxBIO_DiskBuffer + _bsBytesPerSector ]
 	lea di, [ di + _dskBPB ]
 	mov cx, sizeBPB
 	repe movsb
+	pop si
 
 	mov di, word [ bp + _dskParameterTable + _pointer ]
 	mov byte [ es:di + _dskDeviceType ], DSKFILESYSTYPE_IsValid
@@ -2102,14 +2103,15 @@ _RebuildBPB_24:
 
 	mov word [ es:di + _dskBPB + _bpbSectorsPerFat ], 0000
 
+	push si
 	lea si, [ RxBIO_DiskBuffer + _bsxBigSectorsPerFat ]
 	lea di, [ di + _dskBPB + _bpbxBigSectorsPerFat ]
 	mov cx, ( _bpbxReserved - _bpbxBigSectorsPerFat )
 	rep movsb
+	pop si
 
 	getdarg ds, di, _dskParameterTable		; ds:di -> UPB
-	push cs
-	pop es
+	mov es, si
 	mov bx, RxBIO_DiskBuffer			; es:bx -> DiskBuffer
 
 	mov ax, word [ es:di + _dskBPB + _bpbxFSINFOSector ]
@@ -2127,9 +2129,9 @@ _RebuildBPB_24:
 	call _nonLBARead
 .common:
 	jc _RebuildBPB_38
-	push cs
-	pop ds
+	mov ds, si
 
+	push si
 	mov si, RxBIO_DiskBuffer + sizeSector - (BIGFATBOOTFSINFO_size) - 4
 	les di, [ bp + _dskParameterTable ]
 	mov cx, word [ si + _bfFSInfoFreeClusterCnt + _high ]
@@ -2141,6 +2143,7 @@ _RebuildBPB_24:
 	mov dx, word [ si + _bfFSInfoNextFreeCluster + _low ]
 	mov word [ es:di + _dskBPB + _bpbxNextFreeCluster + _low ], dx
 	mov word [ es:di + _dskBPB + _bpbxNextFreeCluster + _high ], cx
+	pop si
 
 		; Return with media descriptor
 _RebuildBPB_34:
