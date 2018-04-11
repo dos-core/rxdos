@@ -27,7 +27,6 @@ doscode_segment:		dw 0
 		align 4
 ptrStartBlockedDeviceTable:	dd -1		; -> first UPB
 
-RxDOS_CLOCKDATA:		times CLOCKDATA_size db 0
 
 		; Form Codes
 DSKFORMTYPES_40_9		equ 00h		 ; 40 cyls, <= 9 sect/track
@@ -52,44 +51,40 @@ RW_Disabled			equ 0200h		; read/ write disabled
 
 RxBIOS_FIXEDDRIVEMASK		equ 80h			; fixed drive mask
 
-
 	align 4
-		; Strategy Argument
-Strategy:		dd 0
-
 		; CON definition
 	devheader con, clock, 70h, (DEV_CHAR+ DEV_STDINPUT+ DEV_STDOUTPUT+ DEV_FASTCHARIO), \
-		_DevStrategy, con_interrupt, 'CON'
+		con_strategy, DEVInterrupt, 'CON'
 
 		; CLOCK$ definition
 	devheader clock, prn, 70h, (DEV_CHAR+ DEV_CLOCK), \
-		_DevStrategy, clock_interrupt, 'CLOCK$'
+		clock_strategy, DEVInterrupt, 'CLOCK$'
 
 		; PRN, LPT1, LPT2, LPT3 definitions
 	devheader prn, lpt1, 70h, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
-		_DevStrategy, prn_interrupt, 'PRN'
+		prn_strategy, DEVInterrupt, 'PRN'
 	devheader lpt1, lpt2, 70h, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
-		_DevStrategy, lpt1_interrupt, 'LPT1'
+		lpt1_strategy, DEVInterrupt, 'LPT1'
 	devheader lpt2, lpt3, 70h, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
-		_DevStrategy, lpt2_interrupt, 'LPT2'
+		lpt2_strategy, DEVInterrupt, 'LPT2'
 	devheader lpt3, aux, 70h, (DEV_CHAR+ DEV_OUTPUTTILLBUSY), \
-		_DevStrategy, lpt3_interrupt, 'LPT3'
+		lpt3_strategy, DEVInterrupt, 'LPT3'
 
 		; AUX, COM1, COM2, COM3, COM4 definitions
 	devheader aux, com1, 70h, (DEV_CHAR), \
-		_DevStrategy, aux_interrupt, 'AUX'
+		aux_strategy, DEVInterrupt, 'AUX'
 	devheader com1, com2, 70h, (DEV_CHAR), \
-		_DevStrategy, com1_interrupt, 'COM1'
+		com1_strategy, DEVInterrupt, 'COM1'
 	devheader com2, com3, 70h, (DEV_CHAR), \
-		_DevStrategy, com2_interrupt, 'COM2'
+		com2_strategy, DEVInterrupt, 'COM2'
 	devheader com3, com4, 70h, (DEV_CHAR), \
-		_DevStrategy, com3_interrupt, 'COM3'
+		com3_strategy, DEVInterrupt, 'COM3'
 	devheader com4, block, 70h, (DEV_CHAR), \
-		_DevStrategy, com4_interrupt, 'COM4'
+		com4_strategy, DEVInterrupt, 'COM4'
 
 		; Block Device, pre-initialised to three units
 	devheader block, -1, -1, (DEV_REMOVABLEMEDIA+ DEV_LOGICALMAPPING+ DEV_IOCTL), \
-		_DevStrategy, block_interrupt, 3, "RXBLOCK"
+		block_strategy, DEVInterrupt, 3, "RXBLOCK"
 
 	align 2
 		; Comm LookAhead Buffer
@@ -103,58 +98,23 @@ Con_ScanCode		db 0
 
 	align 2
 		; Strategies
-clock_interrupt:
-			call _DevInterrupt
-			db 0
-			dw clock_servicetable
+clock_strategy:	relocate DEVStrategy, clock_servicetable
 
-prn_interrupt:
-			call _DevInterrupt
-			db 0
-			dw prn_servicetable
-lpt1_interrupt:
-			call _DevInterrupt
-			db 0
-			dw prn_servicetable
-lpt2_interrupt:
-			call _DevInterrupt
-			db 1
-			dw prn_servicetable
-lpt3_interrupt:
-			call _DevInterrupt
-			db 2
-			dw prn_servicetable
+prn_strategy:	relocate DEVStrategy, prn_servicetable, 0
+lpt1_strategy:	relocate DEVStrategy, prn_servicetable, 0
+lpt2_strategy:	relocate DEVStrategy, prn_servicetable, 1
+lpt3_strategy:	relocate DEVStrategy, prn_servicetable, 2
 
-aux_interrupt:
-			call _DevInterrupt
-			db 0
-			dw aux_servicetable
-com1_interrupt:
-			call _DevInterrupt
-			db 0
-			dw aux_servicetable
-com2_interrupt:
-			call _DevInterrupt
-			db 1
-			dw aux_servicetable
-com3_interrupt:
-			call _DevInterrupt
-			db 2
-			dw aux_servicetable
-com4_interrupt:
-			call _DevInterrupt
-			db 3
-			dw aux_servicetable
+aux_strategy:	relocate DEVStrategy, aux_servicetable, 0
+com1_strategy:	relocate DEVStrategy, aux_servicetable, 0
+com2_strategy:	relocate DEVStrategy, aux_servicetable, 1
+com3_strategy:	relocate DEVStrategy, aux_servicetable, 2
+com4_strategy:	relocate DEVStrategy, aux_servicetable, 3
 
-con_interrupt:
-			call _DevInterrupt
-			db 0
-			dw con_servicetable
+con_strategy:	relocate DEVStrategy, con_servicetable
+block_strategy:	relocate DEVStrategy, block_servicetable
 
-block_interrupt:
-			call _DevInterrupt
-			db 0
-			dw block_servicetable
+DEVInterrupt:	retf
 
 
 		; Reallocated Space

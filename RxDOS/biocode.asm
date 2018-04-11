@@ -162,44 +162,27 @@ block_servicetable:	dw (.max - $ - 2) / 2
 
 		; Device Strategy
 		; 
-		; Input:
-		; es:bx -> request header
-_DevStrategy:
-	; cli
-	mov word [ cs:Strategy + _segment ], es
-	mov word [ cs:Strategy + _pointer ], bx
-	retf
-
-		; Device Interrupt
-		; 
-		; Input:
-		; INP:	DWO [cs:Strategy] -> request header
-		;	BY [cs:WO [ss:sp]] = logical unit number
-		;	WO [cs:WO [ss:sp] + 1] -> strategy table
-		; 
-		; This appears to be a function, but is some common code that
-		; *most* but not necessarily all functions jump to. On exit,
-		; it must pop the near call's pointer and then return far.
-_DevInterrupt:
-	entry
-	rarg	InfoPointer, 2
-	def	LogicalUnit
-	def	StrategyTable
-	ddef	RequestBlock
-	def	ServiceAddr
+		; INP:	es:bx -> request header
+		;	word [ss:sp + 2] = dispatch table
+		;	word [ss:sp] = logical unit number, if any
+DEVStrategy:
+	lframe 0
+	lpar word, table
+	lpar word, unit
+	lvar word, function
+	lenter
+	lvar dword, requestheader
+	push es
+	push bx
 
 	cld
 	SaveAllRegisters
 
-	xor ax, ax
-	mov si, [ bp + _InfoPointer ]
-	cs lodsb
-	mov word [ bp + _LogicalUnit ], ax
-	cs lodsw
-	mov word [ bp + _StrategyTable ], ax
+	push es
+	pop ds
 
-	lds bx, [ cs:Strategy ]				; compliant strategy call
-	stordarg _RequestBlock, ds, bx			; see text for compliance issues
+;	lds bx, [ cs:Strategy ]				; compliant strategy call
+;	stordarg _RequestBlock, ds, bx			; see text for compliance issues
 %if 0
 RxDOS 7.20N: This comment appears to refer to the book, Dissecting DOS,
 		page 264, in chapter 5 File Management. Quoting:
@@ -243,7 +226,7 @@ for which error handling is required.
 
 	xor ax, ax
 	mov al, byte [ bx + rhFunction ]		; ax = function number
-	mov si, word [ bp + _StrategyTable ]		; -> table
+	mov si, word [ bp + ?table ]			; -> table
 	cmp ax, word [ cs:si ]				; table entries count
 	mov cx, _IllegalFunction			; default handler
 	jae .got_service_address
@@ -252,29 +235,27 @@ for which error handling is required.
 	add si, ax					; -> table entry
 	mov cx, word [ cs:si ]
 .got_service_address:
-	mov word [ bp + _ServiceAddr ], cx
+	mov word [ bp + ?function ], cx
 
 	push bp						; device or BIOS might change bp
 	mov ah, byte [ bx + mrMediaID ]
 	mov al, byte [ bx + rhUnit ]
 	mov cx, word [ bx + rwrBytesReq ]
-	mov dx, word [ bp + _LogicalUnit ]		; passed to function
+	mov dx, word [ bp + ?unit ]			; passed to function
 	mov word [ bx + rhStatus ], 0000
 
 		; es:di-> buffer, if any
 		; ds:bx-> packet
 	les di, [ bx + rwrBuffer ]
-	call word [ bp + _ServiceAddr ]
+	call word [ bp + ?function ]
 	pop bp						; device or BIOS may have changed bp
 
-	lds bx, [ bp + _RequestBlock ]
+	lds bx, [ bp + ?requestheader ]
 	or word [ bx + rhStatus ], (OP_DONE)
 
 	RestoreAllRegisters				; restore all other registers
-	mov sp, bp
-
-	pop bp
-	add sp, byte 2					; get rid of info pointer
+	lleave
+	add sp, byte 4			; (discard ?table and ?unit)
 	retf
 
 
@@ -873,8 +854,10 @@ ConNonDestrRead_NoData:
 
 
 ConStatus:
+	mov ax, 70h
+	mov es, ax
 
-	cmp word [ cs:Con_LookAhead ], byte 0000	; character in pending area ?
+	cmp word [ es:Con_LookAhead ], byte 0000	; character in pending area ?
 	jnz ConStatus_16				; yes -->
 
 	mov ah, BIOS_ConStatus
@@ -899,8 +882,10 @@ ConStatus_NoData:
 
 
 ConInputFlush:
+	mov ax, 70h
+	mov es, ax
 
-	mov word [ cs:Con_LookAhead ], 0000		; flush input character
+	mov word [ es:Con_LookAhead ], 0000		; flush input character
 
 ConInputFlush_08:
 	mov ah, BIOS_ConStatus
@@ -925,42 +910,49 @@ ConInputFlush_NoData:
 
 
 ConWrite:
+	push es
 
 	or cx, cx
 	jz ConWrite_38
 
 ConWrite_08:
+	pop es
 	mov al, byte [ es:di ]			; get character
 	inc di
+	push es
 
-	cmp al, ControlJ				; line feed ?
-	jz ConWrite_14					; yes -->
-	cmp al, ControlM				; carriage return ?
-	jz ConWrite_14					; yes -->
-	cmp al, ControlI				; tab character ?
-	jz ConWrite_22					; yes -->
+	mov bx, 70h
+	mov es, bx
 
-	inc byte [ cs:Con_TabPosition ]		; tab position
-	Int 29h					 ; internal Video Driver
-	jmp short ConWrite_32
+	cmp al, ControlJ			; line feed ?
+	jz .cr_or_lf				; yes -->
+	cmp al, ControlM			; carriage return ?
+	jz .cr_or_lf				; yes -->
+	cmp al, ControlI			; tab character ?
+	jz .tab					; yes -->
 
-ConWrite_14:
-	mov word [ cs:Con_TabPosition ], 0000	; set tab position
-	Int 29h					 ; internal Video Driver
-	jmp short ConWrite_32
+	inc byte [ es:Con_TabPosition ]		; tab position
+	Int 29h					; internal Video Driver
+	jmp short .next
 
-ConWrite_22:
-	mov al, ' '					; display a space
-	Int 29h					 ; internal Video Driver
+.cr_or_lf:
+	mov word [ es:Con_TabPosition ], 0000	; set tab position
+	Int 29h					; internal Video Driver
+	jmp short .next
 
-	inc byte [ cs:Con_TabPosition ]		; tab position
-	test byte [ cs:Con_TabPosition ], 7	 ; tab position
-	jnz ConWrite_14
+.tab:
+	mov al, ' '				; display a space
+	Int 29h					; internal Video Driver
 
-ConWrite_32:
-	loop ConWrite_08				; go get additional characters -->
+	inc byte [ es:Con_TabPosition ]		; tab position
+	test byte [ es:Con_TabPosition ], 7	; tab position
+	jnz .cr_or_lf
+
+.next:
+	loop ConWrite_08			; go get additional characters -->
 
 ConWrite_38:
+	pop es
 	ret
 
 
@@ -971,9 +963,11 @@ ConWrite_38:
 
 
 getConData:
+	mov ax, 70h
+	mov es, ax
 
 	xor ax, ax
-	xchg ax, word [ cs:Con_LookAhead ]		; get char waiting
+	xchg ax, word [ es:Con_LookAhead ]		; get char waiting
 	or ax, ax					; any character waiting ?
 	jnz getConData_08				; no -->
 
@@ -983,7 +977,7 @@ getConData:
 	jz getConData					; continue looping -->
 
 getConData_08:
-	mov byte [ cs:Con_ScanCode ], ah		; save scan code
+	mov byte [ es:Con_ScanCode ], ah		; save scan code
 	ret
 
 
@@ -1136,9 +1130,11 @@ AuxNonDestrRead:
 	call getComData
 	jnz AuxRead_Error				; if no data or timeout -->
 
+	mov si, 70h
+	mov es, si
 	mov si, dx
 	add si, Comm_LookAhead			; 
-	mov byte [ cs:si ], al			; save waiting data.
+	mov byte [ es:si ], al			; save waiting data.
 
 	mov byte [ ndrCharRead + bx ], al		; return lookahead character.
 	ret
@@ -1162,10 +1158,11 @@ AuxNonDestrRead_NoData:
 
 
 AuxInputFlush:
-
+	mov si, 70h
+	mov es, si
 	mov si, dx
 	add si, Comm_LookAhead			; 
-	mov byte [ cs:si ], 00			; flush input character
+	mov byte [ es:si ], 00			; flush input character
 	ret
 
 
@@ -1238,13 +1235,15 @@ AuxOutputStatus_12:
 
 getComData:
 
+	mov si, 70h
+	mov es, si
 	mov si, dx
 	add si, Comm_LookAhead			; 
-	cmp byte [ cs:si ], 00			; data waiting ?
+	cmp byte [ es:si ], 00			; data waiting ?
 	jz getComData_08				; no -->
 
 	xor ax, ax
-	xchg al, byte [ cs:si ]			; get char waiting
+	xchg al, byte [ es:si ]			; get char waiting
 	ret
 
 getComData_08:
@@ -1259,14 +1258,15 @@ getComData_08:
 		; ds:bx	points to request header
 		; dx	logical device
 getComStatus:
-
+	mov si, 70h
+	mov es, si
 	mov si, dx
 	add si, Comm_LookAhead
-	cmp byte [ cs:si ], 00				; data waiting ?
+	cmp byte [ es:si ], 00				; data waiting ?
 	jz getComStatus_08				; no -->
 
 	mov ax, CommLS_DataAvail
-	mov al, byte [ cs:si ]				; get char waiting
+	mov al, byte [ es:si ]				; get char waiting
 	retn
 
 getComStatus_08:
@@ -1281,7 +1281,7 @@ IntReturn:
 
 
 		; Interrupt 19 - Ctrl Alt Delete
-Interrupt_19:
+relocated i19:
 	cli
 	cld
 
@@ -1319,7 +1319,7 @@ Interrupt_19:
 		; al	character to display
 		;
 		;  This default handler just gives the call to Int10.0E, Video BIOS display character
-Interrupt_29:
+relocated i29:
 
 	sti
 	saveAllRegisters
@@ -2222,10 +2222,12 @@ InitResetDrive_08:
 		; cy	if error.
 BuildDiskParameterBlock:
 
-	cmp word [ cs:ptrStartBlockedDeviceTable + _segment ], byte 0000
+	mov di, 70h
+	mov es, di
+	cmp word [ es:ptrStartBlockedDeviceTable ], byte -1
 	jz _buildBPB_Error				; if not initialized -->
 
-	les di, [ cs:ptrStartBlockedDeviceTable ]
+	les di, [ es:ptrStartBlockedDeviceTable ]
 
 _buildBPB_08:
 	cmp al, byte [ es:di + _dskDOSLogicalDiskUnit ]
@@ -2269,10 +2271,12 @@ _buildBPB_Error:
 		; cy	if error
 FindDiskParameterBlock:
 
-	cmp word [ cs:ptrStartBlockedDeviceTable + _segment ], byte 0000
+	mov di, 70h
+	mov es, di
+	cmp word [ es:ptrStartBlockedDeviceTable ], byte -1
 	jz _findBPB_Error				; if not initialized -->
 
-	les di, [ cs:ptrStartBlockedDeviceTable ]
+	les di, [ es:ptrStartBlockedDeviceTable ]
 
 _findBPB_08:
 	cmp al, byte [ es:di + _dskDOSLogicalDiskUnit ]
@@ -2564,8 +2568,8 @@ convertErrorCodefromBIOSStatus:
 	jz convErr_08
 
 	xor ax, ax
-	cmp bx, strict word Max_BIOSErrorCodeTable
-	jnc convErr_08
+	cmp bx, Max_BIOSErrorCodeTable
+	jae convErr_08
 	mov al, byte [ cs:bx + BIOSErrorCodeTable ]
 
 convErr_08:
@@ -2574,7 +2578,6 @@ convErr_08:
 
 
 BIOSErrorCodeTable:
-
 	db 0						;  0 - dskErrNoError
 	db devErrBadDriveReq				;  1 - dskErrInvalidParameter
 	db devErrBadDriveReq				;  2 - dskErrAddrMarkNotFound
