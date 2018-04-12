@@ -2045,6 +2045,7 @@ RebuildBPB:
 
 	push ds
 	mov si, 70h				; => DOSENTRY
+	mov ds, si
 	mov ds, word [dosentry_to_dosdata_segment]	; => DOSDATA
 	mov si, word [dosdata_to_diskbuffer_segment]	; => DiskBuffer
 	mov ds, si				; (used to access DiskBuffer)
