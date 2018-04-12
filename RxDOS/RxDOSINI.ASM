@@ -2386,8 +2386,8 @@ Config_CommonSelector:	db 'COMMON', 0
 
 		; Initialize
 		;
-		; INP:	cs = word [70h:doscode_segment] = DOSCODE segment
-		;	word [70h:dosentry_to_dosdata_segment] = DOSDATA segment
+		; INP:	cs = word [DOSDATA:dosdata_to_doscode_segment] = DOSCODE segment
+		;	word [DOSENTRY:dosentry_to_dosdata_segment] = DOSDATA segment
 		;	ip = 0
 		;	cx = number of default block device's units (<= 32)
 		;	dx:ax -> far function to relocate DOSDATA and DOSCODE

@@ -373,6 +373,8 @@ bootname:
 .drive:		db " :\"			; "C:\"
 .filename:	times (8 + 1 + 3 + 1) db 0	; "FILENAME.EXT",0
 
+	align 2
+dosdata_to_doscode_segment:	dw 0
 
 		; NULL Device Driver
 

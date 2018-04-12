@@ -22,7 +22,6 @@ the file LICENSE.TXT.
 
 		align 2
 dosentry_to_dosdata_segment:		dw 0
-doscode_segment:		dw 0
 
 		align 4
 ptrStartBlockedDeviceTable:	dd -1		; -> first UPB
