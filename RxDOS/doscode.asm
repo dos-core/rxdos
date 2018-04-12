@@ -373,7 +373,7 @@ _Interrupt_21:
 	push ax
 	mov ax, 70h
 	mov ds, ax
-	mov ds, word [ dosdata_segment ]		; current segment.
+	mov ds, word [ dosentry_to_dosdata_segment ]	; current segment.
 	pop ax
 	call _RxDOS_StackFrameRestore
 
@@ -944,7 +944,7 @@ _Interrupt_26:
 
 	mov ax, 70h
 	mov ds, ax
-	mov ss, word [dosdata_segment]
+	mov ss, word [dosentry_to_dosdata_segment]
 	mov sp, word [ ss:_RxDOS_CurrentStackTop ]	; point to current stack.
 
 	push di					; ss

@@ -2387,7 +2387,7 @@ Config_CommonSelector:	db 'COMMON', 0
 		; Initialize
 		;
 		; INP:	cs = word [70h:doscode_segment] = DOSCODE segment
-		;	word [70h:dosdata_segment] = DOSDATA segment
+		;	word [70h:dosentry_to_dosdata_segment] = DOSDATA segment
 		;	ip = 0
 		;	cx = number of default block device's units (<= 32)
 		;	dx:ax -> far function to relocate DOSDATA and DOSCODE
@@ -2406,7 +2406,7 @@ RxDOS_initialize:
 
 	mov ax, 70h
 	mov ds, ax
-	mov ax, word [dosdata_segment]
+	mov ax, word [dosentry_to_dosdata_segment]
 	mov ds, ax
 	mov ss, ax
 	mov sp, dosdata_stack + RXDOS_PERCALL_STACKRESERVE

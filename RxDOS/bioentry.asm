@@ -21,7 +21,7 @@ the file LICENSE.TXT.
 
 
 		align 2
-dosdata_segment:		dw 0
+dosentry_to_dosdata_segment:		dw 0
 doscode_segment:		dw 0
 
 		align 4

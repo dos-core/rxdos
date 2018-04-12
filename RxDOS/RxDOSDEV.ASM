@@ -1844,7 +1844,7 @@ _callCriticalError_10:
 	push bp						; swap bp
 	pop ds
 	pop bp						;  and ds
-	mov ds, word [dosdata_segment]
+	mov ds, word [dosentry_to_dosdata_segment]
 	mov ss, word [ SDAInt24_SPSave + _segment ]
 	mov sp, word [ SDAInt24_SPSave + _pointer ]
 	mov ds, bp					; restore ds
