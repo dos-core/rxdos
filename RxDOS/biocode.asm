@@ -857,6 +857,7 @@ ConStatus:
 	push es
 	mov ax, 70h
 	mov es, ax
+	mov es, word [es:dosentry_to_dosdata_segment]
 
 	cmp word [ es:Con_LookAhead ], byte 0000	; character in pending area ?
 	jnz ConStatus_16				; yes -->
@@ -888,6 +889,7 @@ ConInputFlush:
 	push es
 	mov ax, 70h
 	mov es, ax
+	mov es, word [es:dosentry_to_dosdata_segment]
 
 	mov word [ es:Con_LookAhead ], 0000		; flush input character
 
@@ -928,6 +930,7 @@ ConWrite_08:
 
 	mov bx, 70h
 	mov es, bx
+	mov es, word [es:dosentry_to_dosdata_segment]
 
 	cmp al, ControlJ			; line feed ?
 	jz .cr_or_lf				; yes -->
@@ -971,6 +974,7 @@ getConData:
 	push es
 	mov ax, 70h
 	mov es, ax
+	mov es, word [es:dosentry_to_dosdata_segment]
 
 	xor ax, ax
 	xchg ax, word [ es:Con_LookAhead ]		; get char waiting
@@ -1140,6 +1144,7 @@ AuxNonDestrRead:
 	push es
 	mov si, 70h
 	mov es, si
+	mov es, word [es:dosentry_to_dosdata_segment]
 	mov si, dx
 	add si, Comm_LookAhead			; 
 	mov byte [ es:si ], al			; save waiting data.
@@ -1170,6 +1175,7 @@ AuxInputFlush:
 	push es
 	mov si, 70h
 	mov es, si
+	mov es, word [es:dosentry_to_dosdata_segment]
 	mov si, dx
 	add si, Comm_LookAhead			; 
 	mov byte [ es:si ], 00			; flush input character
@@ -1248,6 +1254,7 @@ getComData:
 	push es
 	mov si, 70h
 	mov es, si
+	mov es, word [es:dosentry_to_dosdata_segment]
 	mov si, dx
 	add si, Comm_LookAhead			; 
 	cmp byte [ es:si ], 00			; data waiting ?
@@ -1274,6 +1281,7 @@ getComStatus:
 	push es
 	mov si, 70h
 	mov es, si
+	mov es, word [es:dosentry_to_dosdata_segment]
 	mov si, dx
 	add si, Comm_LookAhead
 	cmp byte [ es:si ], 00				; data waiting ?

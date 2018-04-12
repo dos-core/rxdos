@@ -377,6 +377,15 @@ bootname:
 	align 4
 ptrStartBlockedDeviceTable:	dd -1		; -> first UPB
 
+	align 4
+		; Comm LookAhead Buffer
+Comm_LookAhead:		times 4 db 0			; COM1, COM2, COM3, COM4
+
+		; CON variables
+Con_LookAhead		dw 0
+Con_TabPosition		dw 0
+Con_ScanCode		db 0
+
 	align 2
 dosdata_to_doscode_segment:	dw 0
 
