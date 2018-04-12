@@ -62,21 +62,21 @@ dosentry_to_dosdata_segment:		dw 0
 
 	align 2
 		; Strategies
-clock_strategy:	relocate DEVStrategy, clock_servicetable
+clock_strategy:	devicerelocate DEVStrategy, clock_servicetable
 
-prn_strategy:	relocate DEVStrategy, prn_servicetable, 0
-lpt1_strategy:	relocate DEVStrategy, prn_servicetable, 0
-lpt2_strategy:	relocate DEVStrategy, prn_servicetable, 1
-lpt3_strategy:	relocate DEVStrategy, prn_servicetable, 2
+prn_strategy:	devicerelocate DEVStrategy, prn_servicetable, 0
+lpt1_strategy:	devicerelocate DEVStrategy, prn_servicetable, 0
+lpt2_strategy:	devicerelocate DEVStrategy, prn_servicetable, 1
+lpt3_strategy:	devicerelocate DEVStrategy, prn_servicetable, 2
 
-aux_strategy:	relocate DEVStrategy, aux_servicetable, 0
-com1_strategy:	relocate DEVStrategy, aux_servicetable, 0
-com2_strategy:	relocate DEVStrategy, aux_servicetable, 1
-com3_strategy:	relocate DEVStrategy, aux_servicetable, 2
-com4_strategy:	relocate DEVStrategy, aux_servicetable, 3
+aux_strategy:	devicerelocate DEVStrategy, aux_servicetable, 0
+com1_strategy:	devicerelocate DEVStrategy, aux_servicetable, 0
+com2_strategy:	devicerelocate DEVStrategy, aux_servicetable, 1
+com3_strategy:	devicerelocate DEVStrategy, aux_servicetable, 2
+com4_strategy:	devicerelocate DEVStrategy, aux_servicetable, 3
 
-con_strategy:	relocate DEVStrategy, con_servicetable
-block_strategy:	relocate DEVStrategy, block_servicetable
+con_strategy:	devicerelocate DEVStrategy, con_servicetable
+block_strategy:	devicerelocate DEVStrategy, block_servicetable
 
 DEVInterrupt:	retf
 
