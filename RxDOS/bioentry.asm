@@ -20,11 +20,8 @@ the file LICENSE.TXT.
 %include "RXDSTRUC.NEW"
 
 
-		align 2
+	align 2
 dosentry_to_dosdata_segment:		dw 0
-
-		align 4
-ptrStartBlockedDeviceTable:	dd -1		; -> first UPB
 
 
 	align 4

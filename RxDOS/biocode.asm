@@ -2249,6 +2249,7 @@ BuildDiskParameterBlock:
 
 	mov di, 70h
 	mov es, di
+	mov es, word [dosentry_to_dosdata_segment]
 	cmp word [ es:ptrStartBlockedDeviceTable ], byte -1
 	jz _buildBPB_Error				; if not initialized -->
 
@@ -2298,6 +2299,7 @@ FindDiskParameterBlock:
 
 	mov di, 70h
 	mov es, di
+	mov es, word [dosentry_to_dosdata_segment]
 	cmp word [ es:ptrStartBlockedDeviceTable ], byte -1
 	jz _findBPB_Error				; if not initialized -->
 
