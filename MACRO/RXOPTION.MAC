@@ -46,7 +46,7 @@ numdef DOSCODEHMA,	1		; move the DOS code into HMA if available
 numdef DOSCODEROM,	0		; execute the DOS code from ROM if we started from ROM
 numdef RXROMDOS,	0		; ROM version of RxDOS (execute DOS code in ROM)
 incdef _RXROMDOS, DOSCODEROM
-%assign _RELOCATEDOSCODE (_DOSCODEUMA| _DOSCODEHMA| _DOSCODEROM)	; relocation of DOS code required ?
+; %assign _RELOCATEDOSCODE (_DOSCODEUMA| _DOSCODEHMA| _DOSCODEROM)	; relocation of DOS code required ?
 numdef DOSDATAUMA,	1		; move the DOS data into UMA if available
 %assign _RELOCATEDOSDATA _DOSDATAUMA	; relocation of DOS data required ?
 numdef RXROMCMD,	0		; ROM version of RxCMD (execute transient in ROM)

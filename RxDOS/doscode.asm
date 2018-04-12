@@ -298,6 +298,10 @@ _Interrupt_06:
 		;
 		; ah = requested function
 		; all other registers possible parameters for function
+%if !_RELOCATEDOSCODE
+i20:
+	xor ax, ax
+%endif
 relocated i21:
 _Interrupt_21:
 
