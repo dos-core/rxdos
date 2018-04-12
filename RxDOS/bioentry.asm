@@ -80,9 +80,3 @@ block_strategy:	relocate DEVStrategy, block_servicetable
 
 DEVInterrupt:	retf
 
-
-		; Reallocated Space
-	align 16
-RxBIO_DiskBuffer:
-	times 8192 + 16 db 0
-

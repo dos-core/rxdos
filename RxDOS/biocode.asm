@@ -2044,14 +2044,16 @@ RebuildBPB:
 	ddef	dskParameterTable, es, di
 
 	push ds
-	mov si, 70h
-	mov ds, si					; (used to access DiskBuffer)
+	mov si, 70h				; => DOSENTRY
+	mov ds, word [dosentry_to_dosdata_segment]	; => DOSDATA
+	mov si, word [dosdata_to_diskbuffer_segment]	; => DiskBuffer
+	mov ds, si				; (used to access DiskBuffer)
 
 		; Rebuild BIOS Parameter Block
 _RebuildBPB_12:
 	getdarg ds, di, _dskParameterTable		; ds:di -> UPB
 	mov es, si
-	mov bx, RxBIO_DiskBuffer			; es:bx -> DiskBuffer
+	xor bx, bx					; es:bx -> DiskBuffer
 
 	xor ax, ax
 	xor dx, dx					; dx:ax = sector number
@@ -2075,7 +2077,7 @@ _RebuildBPB_12:
 		; Copy standard boot sector info
 	getdarg es, di, _dskParameterTable
 	push si
-	lea si, [ RxBIO_DiskBuffer + _bsBytesPerSector ]
+	lea si, [ _bsBytesPerSector ]
 	lea di, [ di + _dskBPB ]
 	mov cx, sizeBPB
 	repe movsb
@@ -2084,8 +2086,8 @@ _RebuildBPB_12:
 	mov di, word [ bp + _dskParameterTable + _pointer ]
 	mov byte [ es:di + _dskDeviceType ], DSKFILESYSTYPE_IsValid
 
-	mov ax, word [ RxBIO_DiskBuffer + _bsVolumeId + _low ]
-	mov dx, word [ RxBIO_DiskBuffer + _bsVolumeId + _high ]
+	mov ax, word [ _bsVolumeId + _low ]
+	mov dx, word [ _bsVolumeId + _high ]
 	mov word [ es:di + _dskSerialNumber + _low ], ax
 	mov word [ es:di + _dskSerialNumber + _high ], dx
 
@@ -2122,15 +2124,15 @@ _RebuildBPB_24:
 	call isFAT32Device				; is device FAT32 ?
 	jnz _RebuildBPB_34				; no -->
 
-	mov ax, word [ RxBIO_DiskBuffer + _bsxVolumeId + _low ]
-	mov dx, word [ RxBIO_DiskBuffer + _bsxVolumeId + _high ]
+	mov ax, word [ _bsxVolumeId + _low ]
+	mov dx, word [ _bsxVolumeId + _high ]
 	mov word [ es:di + _dskSerialNumber + _low ], ax
 	mov word [ es:di + _dskSerialNumber + _high ], dx
 
 	mov word [ es:di + _dskBPB + _bpbSectorsPerFat ], 0000
 
 	push si
-	lea si, [ RxBIO_DiskBuffer + _bsxBigSectorsPerFat ]
+	lea si, [ _bsxBigSectorsPerFat ]
 	lea di, [ di + _dskBPB + _bpbxBigSectorsPerFat ]
 	mov cx, ( _bpbxReserved - _bpbxBigSectorsPerFat )
 	rep movsb
@@ -2138,7 +2140,7 @@ _RebuildBPB_24:
 
 	getdarg ds, di, _dskParameterTable		; ds:di -> UPB
 	mov es, si
-	mov bx, RxBIO_DiskBuffer			; es:bx -> DiskBuffer
+	xor bx, bx					; es:bx -> DiskBuffer
 
 	mov ax, word [ es:di + _dskBPB + _bpbxFSINFOSector ]
 	xor dx, dx					; dx:ax = sector number
@@ -2160,7 +2162,7 @@ _RebuildBPB_24:
 	mov ds, si
 
 	push si
-	mov si, RxBIO_DiskBuffer + sizeSector - (BIGFATBOOTFSINFO_size) - 4
+	mov si, sizeSector - (BIGFATBOOTFSINFO_size) - 4
 	les di, [ bp + _dskParameterTable ]
 	mov cx, word [ si + _bfFSInfoFreeClusterCnt + _high ]
 	mov dx, word [ si + _bfFSInfoFreeClusterCnt + _low ]

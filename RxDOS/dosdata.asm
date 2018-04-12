@@ -387,6 +387,7 @@ Con_TabPosition		dw 0
 Con_ScanCode		db 0
 
 	align 2
+dosdata_to_diskbuffer_segment:	dw 0
 dosdata_to_doscode_segment:	dw 0
 
 
