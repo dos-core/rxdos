@@ -2473,6 +2473,29 @@ RXDOS_PERCALL_STACKRESERVE	equ ( 4 * 1024)
 RXDOS_STACKSIZE			equ ( 3 * RXDOS_PERCALL_STACKRESERVE)
 
 
+		; Form Codes
+DSKFORMTYPES_40_9		equ 00h		 ; 40 cyls, <= 9 sect/track
+DSKFORMTYPES_80_15		equ 01h		 ; 80 cyls, 15 sect/track
+DSKFORMTYPES_80_9		equ 02h		 ; 80 cyls, 9 sect/track
+DSKFORMTYPES_HARDDISK		equ 03h		 ; hard disk
+DSKFORMTYPES_FLOPPY_OTHER	equ 07h		 ; other floppy disk types
+DSKFORMTYPES_80_36		equ 07h		 ; 80 cyls, 36 sect/track 1.44M
+
+
+		; Status Codes
+IsNonRemovable			equ 0001h		; non-removable media
+ChgLineSupportedbyBIOS		equ 0002h		; change line supported
+BPBLocked			equ 0004h		; BPB Locked status
+GoodTrackLayout			equ 0008h		; if continuous sectors on track
+SharesPhysDevice		equ 0010h		; if physical unit partitioned
+ActiveUnit			equ 0020h		; if active unit
+DiskChangeDetected		equ 0040h		; disk change detected
+DASD_SetRequired		equ 0080h		; DASD_SetRequired
+VerifyWrite			equ 0100h		; Verify Write
+RW_Disabled			equ 0200h		; read/ write disabled
+
+RxBIOS_FIXEDDRIVEMASK		equ 80h			; fixed drive mask
+
 %endif ; __RXDSTRUC_NEW__
 
 [list +]
