@@ -265,61 +265,43 @@ FindAvailableSFTHandle:
 
 	Entry
 	ddef	currentFT
-	def	entries
 	def	handle, 0
 
 	les bx, [ ss:_RxDOS_pFT ]			; points to first FT
 
 		; look for available handle
 findSFTHandle_08:
+	cmp bx, -1
+	jz findSFTHandle_22				; no next FT, set error -->
+
 	stordarg _currentFT, es, bx
 
 	mov cx, word [ es:bx + numberSFTEntries ]	; get number of SFT entries in this FT
-	mov word [ _entries + bp ], cx
 
-%if 1
-	lea bx, [ word bx + sizeFT ]			; skip FT header
-%else
-	lea bx, [ byte bx + sizeFT ]			; skip FT header
-%endif
-	or cx, cx					; no more SFT entries in this FT?
-%if 1
-	jle findSFTHandle_22
-%else
-		; RxDOS 7.20N:	Usual unsigned BUG. But we need only "jz" anyway.
-	jz findSFTHandle_22
-%endif
+	lea bx, [ bx + sizeFT ]				; skip FT header
+	jcxz findSFTHandle_14.next			; no more SFT entries in this FT?
 
 		; is handle available ?
 findSFTHandle_12:
-%if 0
 	pushf
-%endif
 	cli
 	cmp word [ es:bx + sftRefCount ], byte 0	; entry available ?
 	jnz findSFTHandle_14				; no -->
 	inc word [ es:bx + sftRefCount ]		; RESERVE ENTRY
-%if 0
 	popf
-%endif
+
 	mov ax, word [ _handle + bp ]			; counted SFT handle number
 	jmp short findSFTHandle_30			; exit -->
 
 findSFTHandle_14:
-%if 1
-	sti
-%else
-		; RxDOS 7.20N:	Restore flags instead always EI
-	pushf
-%endif
+	popf
+
 	inc word [ _handle + bp ]			; starts with 0. Counts SFT entries
 	add bx, byte sizeSFT				; next SFT entry
 	loop findSFTHandle_12				; if more in this FT -->
 
+.next:
 	les bx, [ _currentFT + bp ]
-	cmp word [ es:bx + nextFTPointer + _pointer ], byte -1
-	jz findSFTHandle_22				; no next FT, set error -->
-
 	les bx, [ es:bx + nextFTPointer ]
 	jmp short findSFTHandle_08			; go to next FT -->
 
@@ -330,9 +312,6 @@ findSFTHandle_22:
 
 		; return
 findSFTHandle_30:
-%if 1
-	sti
-%endif
 	Return
 
 
