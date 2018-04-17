@@ -323,6 +323,7 @@ findSFTHandle_30:
 		;	CY if SFT handle invalid,
 		;	 ax = extended error pointer
 		;	 di modified
+	doscode_insure_low_byte_not_0CCh
 FindSFTbyHandle:
 
 	push ax

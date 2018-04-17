@@ -119,6 +119,7 @@ sizeCODEPAGERECORD	equ CODEPAGERECORD_size
 		; cs:si-> country info table
 		; dx = code page
 		; CY if error (ax will be -1)
+	doscode_insure_low_byte_not_0CCh
 FindCountryInfo:
 
 	mov si, RxDOS_COUNTRYInfo

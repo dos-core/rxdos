@@ -101,6 +101,7 @@ the file LICENSE.TXT.
 		; 
 		; Output:
 		; all registers preserved
+	doscode_insure_low_byte_not_0CCh
 initdiskAccess:
 
 	push es
@@ -944,6 +945,7 @@ blankinitDirName:
 		;
 		; if item NOT found:
 		; CY if item not found
+	doscode_insure_low_byte_not_0CCh
 scanDirectory:
 
 	Entry
@@ -1430,6 +1432,7 @@ readLogicalBuffer_24:
 		; ax:dx	position in file after last byte read
 		; cx	bytes returned, excluding trailing cr/lf
 		; zr	means end of file or wrong address
+	doscode_insure_low_byte_not_0CCh
 readLine:
 
 	Entry

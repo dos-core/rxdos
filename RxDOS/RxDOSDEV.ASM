@@ -146,6 +146,7 @@ writeConsoleOut_08:
 		;
 		; Output:
 		; es:bx	pointer to driver header block
+	doscode_insure_low_byte_not_0CCh
 checkforDeviceType:
 
 	push es
@@ -183,6 +184,7 @@ chkDevType_16:
 		; Output:
 		; es:bx	pointer to driver header block
 		; cy	driver was not located
+	doscode_insure_low_byte_not_0CCh
 checkforDeviceName:
 
 	Entry
@@ -315,6 +317,7 @@ findBlockedDev_16:
 		;
 		; Output:
 		; cx	number of blocked devices
+	doscode_insure_low_byte_not_0CCh
 maxBlockDevices:
 
 	push es
