@@ -419,6 +419,7 @@ LocateFile:
 	def	terminatingChar
 	def	begfilenamePointer
 	ddef	endfilenamePointer
+	ddef	deviceheader
 	ddef	cluster, 0, 0
 	ddef	dirCluster, 0, 0
 
@@ -451,11 +452,75 @@ LocateFile:
 	call convFCBNametoASCIZ				; build ASCIZ name
 
 locateFile_12:
+
+	push si
+.loop:
+	cmp byte [es:si], 0
+	je .check_for_device
+	cmp byte [es:si], '/'
+	je .not_early_device
+	cmp byte [es:si], '\'
+	je .not_early_device
+	inc si
+	jmp .loop
+.check_for_device:
+	pop si
+	push si
+	push es
+	call getDevice
+	jc .not_early_device_es
+	mov word [bp + _deviceheader], bx
+	mov word [bp + _deviceheader + 2], es
+
+	pop es
+	pop si
+	push si
+	push es
+
+		; The following sequence is copied out of
+		;  the other handling to set up the same
+		;  environment as if all of that was executed.
+
+	saveRegisters es, si, ss, di			; arguments
+	call ExpandFileName				; expanded filename
+	stordarg _cluster, cx, dx			; where to start search
+	; jc
+
+	les si, [ _dirLocate + bp ]			; point to expanded filename
+	lea si, [ word fileAcExpandedName + si ]	; expanded name store
+	call getDrive					; extract drive name (es:si)
+	storarg _drive, ax				; drive
+	stordarg _endfilenamePointer, es, si		; save ptr to working dir
+	; jc
+
+		; Do not get DPB. DPBs might be uninitialised.
+
+	setES ss
+	lea di, [ word _tempFileName + bp ]		; pointer to temp name
+	lds si, [ _endfilenamePointer + bp ]
+	call skipToNextName				; skip to starting name
+	storarg _begfilenamePointer, si			; save starting pointer
+	call convFilenametoFCBString			; convert to a match template
+	; jnz locateFile_24				; if name is not blank -->
+
+	stordarg _endfilenamePointer, ds, si
+	mov word [ _terminatingChar + bp ], ax
+
+	les bx, [bp + _deviceheader]
+	jmp locateFile_26.found_device
+
+
+.not_early_device_es:
+	pop es
+.not_early_device:
+	pop si
+
 	saveRegisters es, si, ss, di			; arguments
 	call ExpandFileName				; expanded filename
 	stordarg _cluster, cx, dx			; where to start search
 	ifc locateFile_PathNotFound			; if path invalid -->
-	
+
+
 		; get disk parameters
 locateFile_16:
 	les si, [ _dirLocate + bp ]			; point to expanded filename
@@ -522,6 +587,8 @@ locateFile_26:
 	ifz locateFile_PathNotFound			; inside path def, error -->
 	cmp byte [ _terminatingChar + bp ], '/'		; was name part of path ?
 	ifz locateFile_PathNotFound			; inside path def, error -->
+
+.found_device:
 	test word [ _options + bp ], FILE_NODEVICENAME	; else if in filename, it is allowed ?
 	ifnz locateFile_FileNotFound			; error if no device names allowed -->
 
@@ -1132,6 +1199,8 @@ GetActualDrive_Error:
 		; Output:
 		; es:bx-> device header
 		; cy	device not found
+		;
+		; CHG:	es, bx, ax, cx
 getDevice:
 
 	Entry
