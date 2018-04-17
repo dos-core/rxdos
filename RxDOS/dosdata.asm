@@ -61,14 +61,14 @@ _RxDOS_pdiskbuffer	dd 0			; pointer to disk buffer
 _RxDOS_UnreadCON	dw 0			; ptr to unread CON input
 _RxDOS_pStartMemBlock	dw 0			; seg ptr to start of memory allocation
 
-_RxDOS_pDPB		dd 0			; ptr to Drive Parameter Block (DPB)
-_RxDOS_pFT		dd 0			; ptr to File Tables (FT)
-_RxDOS_pCLOCKdriver	dd 0			; ptr to CLOCK$ device driver
-_RxDOS_pCONdriver	dd 0			; ptr to CON device driver
+_RxDOS_pDPB		dd -1			; ptr to Drive Parameter Block (DPB)
+_RxDOS_pFT		dd -1			; ptr to File Tables (FT)
+_RxDOS_pCLOCKdriver	dd -1			; ptr to CLOCK$ device driver
+_RxDOS_pCONdriver	dd -1			; ptr to CON device driver
 _RxDOS_wMaxBlock	dw sizeSector		; maximum bytes per block for any/all devices
-_RxDOS_BufferList	dd 0			; pointer set for buffer list
-_RxDOS_pCDS		dd 0			; ptr to array of current directory structures
-_RxDOS_pFCBs		dd 0			; ptr to System FCB table
+_RxDOS_BufferList	dd -1			; pointer set for buffer list
+_RxDOS_pCDS		dd -1			; ptr to array of current directory structures
+_RxDOS_pFCBs		dd -1			; ptr to System FCB table
 _RxDOS_nProtFCBs	dw 0			; number of protected FCBs (no longer supported)
 _RxDOS_bNumBlockDev	db 0			; number of block devices
 _RxDOS_bLastDrive	db 0			; lastdrive from RXCONFIG.SYS, CDS size
@@ -99,7 +99,7 @@ _RxDOS_ExtendedMem	dw 0			; extended memory size in KiBs
 		; the remainder of these arguments are not compatible with MS-DOS
 _RxDOS_MaxMemory	dw 0			; max memory
 _RxDOS_NumFileHandles	dw sizePSPHandleTable	; default
-_RxDOS_pLFNCDS		dd 0			; expanded LFN buffer
+_RxDOS_pLFNCDS		dd -1			; expanded LFN buffer
 
 _RxDOS_pExtErrorCode	dw 0			; Error code.
 _RxDOS_ExtErrorFlag	dw 0			; flag if infor set
