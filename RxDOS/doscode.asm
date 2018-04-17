@@ -1476,9 +1476,17 @@ CtrlC_CheckAlways:
 	lea di, [ word bp + _reqBlock ]
 	call initReqBlock
 
+	mov dx, word [ _RxDOS_pCONdriver + _pointer ]
+	inc dx						; if -1, now 0
+	jz @F
+	mov dx, word [ _RxDOS_pCONdriver + _segment ]
+	test dx, dx
+	jz @F						; if no CON driver -->
+
 	push word [ _RxDOS_pCONdriver + _segment ]
 	push word [ _RxDOS_pCONdriver + _pointer ]
 	call CharDevRequest				; flush all characters
+@@:
 	jmp short CtrlC_CheckCallBack			; call back current app -->
 
 CtrlC_Check12:
@@ -1488,8 +1496,11 @@ CtrlC_Check12:
 	lea di, [ word bp + _reqBlock ]
 	call initReqBlock
 
+	mov dx, word [ _RxDOS_pCONdriver + _pointer ]
+	inc dx						; if -1, now 0
+	jz CtrlC_Check18
 	mov dx, word [ _RxDOS_pCONdriver + _segment ]
-	or dx, word [ _RxDOS_pCONdriver + _pointer ]
+	test dx, dx
 	jz CtrlC_Check18				; if no CON driver -->
 
 	push word [ _RxDOS_pCONdriver + _segment ]
