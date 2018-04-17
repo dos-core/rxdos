@@ -543,11 +543,10 @@ findmatchingFCBSFT_26:
 		; INP:	ax = drive
 		;	cx:dx = serial number of former media
 		; OUT:	NC, ZR if no used SFT entry belongs to this drive
+		;	 es, bx unmodified
 		;	CY, NZ if at least one SFT entry for the drive left
 		;	 es:bx-> found SFT entry that belongs to this drive
-		; CHG: es, bx, dx
-		;
-		; Only releases <= RxDOS 7.20N change es and bx if state is NC, ZR
+		; CHG:	dx
 		;
 		; NO LONGER USED
 invalidateOpenSFTs:
@@ -563,17 +562,15 @@ invalidateOpenSFTs:
 
 		; look for available handle
 invOpenSFT_08:
+	cmp bx, -1
+	je invOpenSFT_26				; no more FTs -->
+							; (flags are ZR, NC)
+
 	stordarg _currentFT, es, bx
 
 	mov cx, word [ es:bx + numberSFTEntries ]	; get number of SFT entries in this FT
 	lea bx, [ word sizeFT + bx ]			; skip FT header
-	or cx, cx					; none ?
-%if 1
-	jle invOpenSFT_16				; go to next -->
-%else
-		; RxDOS 7.20N:	Usual unsigned BUG. But we need only "jz" anyway.
-	jz invOpenSFT_16				; go to next -->
-%endif
+	jcxz invOpenSFT_16				; none ? go to next -->
 
 		; is SFT available ?
 invOpenSFT_12:
@@ -598,24 +595,16 @@ invOpenSFT_14:
 
 invOpenSFT_16:
 	les bx, [ _currentFT + bp ]
-	cmp word [ es:bx + nextFTPointer + _pointer ], byte -1
-	jz invOpenSFT_26				; no more FTs -->
-							; (flags are ZR, NC)
-
 	les bx, [ es:bx + nextFTPointer ]
 	jmp short invOpenSFT_08				; go to next FT -->
 
 		; return
 invOpenSFT_26:
-%if 0
-		; RxDOS 7.20N:	BUG. At the entry of this function es and bx
-		;		were pushed. (However the return macro manages
-		;		to set sp back to bp so the system won't crash.)
 	pop bx
 	pop es
-%endif
 invOpenSFT_30:
-
+		; Note that the return macro sets sp back to bp, so we
+		; don't have to explicitly discard bx and es on stack.
 	Return
 
 
