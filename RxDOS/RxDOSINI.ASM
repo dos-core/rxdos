@@ -1675,19 +1675,59 @@ RxDOSini_MemorySubSystem:
 	jmp RxDOS_init_68
 
 
-		; Sub allocate system space
-		;
-		; INP:	ax = space in bytes to allocate
-		; OUT:	es:di-> allocated space
-		;	ax = cx = space in bytes allocated
-AllocateSystemSpace:
-	mov cl, S_OTHER
+		; INP:	ax = space in bytes to allocate at top of LMA
+		;	cl = allocation type
+		; OUT:	es:di-> allocated space, initialised to all zeros
+		;	ax = cx = space in bytes allocated,
+		;	 ! 0 if size is 65536
+		;	does not return after allocation failure
+		; CHG:	-
+init2_alloc_s_mcb_top:
+	push si
+	push bx
+	xchg si, ax
+
+	mov ax, 5802h
+	int 21h
+	mov ah, 0
+	push ax
+	mov ax, 5800h
+	int 21h
+	push ax
+
+	mov ax, 5803h
+	xor bx, bx
+	int 21h			; link out UMB chain
+	mov ax, 5801h
+	mov bx, 2
+	int 21h			; alloc strategy: last fit, LMA only
+
+	xchg ax, si		; reset ax to allocation size, cl = type
+	call init2_alloc_s_mcb	; allocate
+
+	pop bx
+	mov ax, 5801h
+	int 21h			; alloc strategy: restore
+	pop bx
+	mov ax, 5803h
+	int 21h			; restore UMB chain linkage
+
+	mov ax, cx		; ax = allocated size (! 0 if size is 65536)
+	pop bx
+	pop si
+	retn
+
 
 		; INP:	ax = space in bytes to allocate
 		;	cl = allocation type
-		; OUT:	es:di-> allocated space
-		;	ax = cx = space in bytes allocated
+		; OUT:	es:di-> allocated space, initialised to all zeros
+		;	ax = cx = space in bytes allocated,
+		;	 ! 0 if size is 65536
+		;	does not return after allocation failure
+		; CHG:	-
 AllocateSystemSpace_with_type:
+init2_alloc_s_mcb:
+	push bx
 	add ax, 15
 	jnc @F
 	mov ax, 1_0000h >> 1
@@ -1729,6 +1769,7 @@ AllocateSystemSpace_with_type:
 	pop di
 	shl cx, 1
 	mov ax, cx
+	pop bx
 	retn
 
 
