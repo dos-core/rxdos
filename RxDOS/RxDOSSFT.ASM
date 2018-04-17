@@ -343,29 +343,16 @@ FindSFTbyHandle_08:
 
 		; if error
 FindSFTbyHandle_12:
-%if 1
-	mov ax, pexterrInvalidHandle			; set illegal handle error
-	pop es						; restore es
-	pop ax						; restore ax
-%else
-		; RxDOS 7.20N:	It doesn't make much sense to set ax to an error pointer
-		;		and then overwrite this with the saved stack value.
 	pop es						; restore es
 	pop ax						; throw away ax
 	mov ax, pexterrInvalidHandle			; set illegal handle error
-%endif
 	stc
 	retn
 
 		; if located handle space
 FindSFTbyHandle_16:
 	push cx
-%if 1
-	mov cx, sizeSFT
-%else
-		; RxDOS 7.20N:	Need only cl.
 	mov cl, sizeSFT
-%endif
 	mul cl						; get offset
 	add di, byte sizeFT				; point past FT header
 	add di, ax					; plus offset
