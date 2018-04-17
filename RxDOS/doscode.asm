@@ -6183,6 +6183,4 @@ align 16, db 0
  %include "RxDOSCTB.ASM"
 align 16, db 0
  %include "RxDOSERR.ASM"
-align 16, db 0
- %include "RxDOSINI.ASM"
 %endif
