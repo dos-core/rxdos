@@ -160,67 +160,6 @@ configStatement		resb 1			; statement starts here
 	endstruc
 
 
-		; INP:	word [cs:ip] = near function to call in DOSCODE
-		;	cs:(ip + 2) -> where to return to
-		;	word [DOSDATA:dosdata_to_doscode_segment] = DOSCODE
-		;	word [70h:dosentry_to_dosdata_segment] = DOSDATA
-		;	DOSCODE:doscode_retf -> retf opcode
-init2_to_doscode:
-	push ax			; word space for ?returnaddress_ip
-	push ax			; word space for ?returnaddress_doscode_ip
-	push ax
-	push ax			; dword space for ?jumpaddress
-	lframe 0
-	lpar word, returnaddress_cs_and_orig_ip
-	lpar word, returnaddress_ip
-	lpar word, returnaddress_doscode_ip
-	lpar dword, jumpaddress
-	lenter
-
-	push ds
-	push si
-	push ax
-	pushf
-	cld
-
-	mov si, cs
-	xchg si, word [bp + ?returnaddress_cs_and_orig_ip]	; fill cs
-	cs lodsw
-	cmp al, 0CCh		; debugger breakpoint ?
-	jne @F			; no -->
-	int3			; break to make it remove the breakpoint
-	dec si
-	dec si
-	cs lodsw		; reload the word
-	cmp al, 0CCh
-	jne @F
-
-.l:
-	int3
-	jmp .l
-
-@@:
-	mov word [bp + ?jumpaddress + 0], ax		; fill function offset
-	mov word [bp + ?returnaddress_ip], si		; fill ip
-
-	mov ax, 70h
-	mov ds, ax		; => DOSENTRY
-	mov ds, word [dosentry_to_dosdata_segment]	; => DOSDATA
-	mov ds, word [dosdata_to_doscode_segment]	; => DOSCODE
-	mov word [bp + ?jumpaddress + 2], ds		; fill function segment
-
-	mov word [bp + ?returnaddress_doscode_ip], \
-		doscode_retf	; fill near ip in DOSCODE
-
-	popf
-	pop ax
-	pop si
-	pop ds
-
-	lleave
-	retf			; jump to dword [bp + ?jumpaddress]
-
-
 		; RXCONFIG.SYS file processing
 		;
 		; This module reads the entire RXCONFIG.SYS file from a
@@ -1736,127 +1675,7 @@ RxDOSini_MemorySubSystem:
 	jmp RxDOS_init_68
 
 
-		; INP:	ax = space in bytes to allocate at top of LMA
-		;	cl = allocation type
-		; OUT:	es:di-> allocated space, initialised to all zeros
-		;	ax = cx = space in bytes allocated,
-		;	 ! 0 if size is 65536
-		;	does not return after allocation failure
-		; CHG:	-
-init2_alloc_s_mcb_top:
-	push si
-	push bx
-	xchg si, ax
-
-	mov ax, 5802h
-	int 21h
-	mov ah, 0
-	push ax
-	mov ax, 5800h
-	int 21h
-	push ax
-
-	mov ax, 5803h
-	xor bx, bx
-	int 21h			; link out UMB chain
-	mov ax, 5801h
-	mov bx, 2
-	int 21h			; alloc strategy: last fit, LMA only
-
-	xchg ax, si		; reset ax to allocation size, cl = type
-	call init2_alloc_s_mcb	; allocate
-
-	pop bx
-	mov ax, 5801h
-	int 21h			; alloc strategy: restore
-	pop bx
-	mov ax, 5803h
-	int 21h			; restore UMB chain linkage
-
-	mov ax, cx		; ax = allocated size (! 0 if size is 65536)
-	pop bx
-	pop si
-	retn
-
-
-		; INP:	ax = space in bytes to allocate
-		;	cl = allocation type
-		; OUT:	es:di-> allocated space, initialised to all zeros
-		;	ax = cx = space in bytes allocated,
-		;	 ! 0 if size is 65536
-		;	does not return after allocation failure
-		; CHG:	-
-AllocateSystemSpace_with_type:
-init2_alloc_s_mcb:
-	push bx
-	add ax, 15
-	jnc @F
-	mov ax, 1_0000h >> 1
-	db __TEST_IMM16
-@@:
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1			; = paragraphs
-
-	mov bx, ax
-	mov ah, 48h
-	stc
-	int 21h
-	jc .alloc_fail
-
-	dec ax
-	mov es, ax
-	mov word [es:_smcbOwner], 8	; system-owned MCB
-	mov word [es:_smcbName], "S"	; S MCB
-	mov ch, 0
-	mov word [es:_smcbType], cx	; type = cl, reserved = 0
-	mov cl, 0
-	mov word [es:_smcbLink], cx	; link = 0
-	mov word [es:_smcbLink + 2], cx	; reserved = 0
-
-	inc ax
-	mov es, ax
-	xor di, di			; -> allocated space
-	mov cx, bx
-	shl cx, 1
-	shl cx, 1
-	shl cx, 1			; = number of words
-	xor ax, ax
-	push di
-	push cx
-	rep stosw			; initialise allocated memory to zeros
-	pop cx
-	pop di
-	shl cx, 1
-	mov ax, cx
-	pop bx
-	retn
-
-
-.alloc_fail:
-	push cs
-	pop ds
-	mov si, init_msg.alloc_error
-	call RxDOSIni_TypeMessage
-	call init_disp_ax_hex
-	mov si, init_msg.alloc_error_q
-	call RxDOSIni_TypeMessage
-
-	cmp ax, init_msg_errors.count
-	jb .valid
-	mov si, init_msg_errors.unknown_error
-	jmp short .disp_error
-.valid:
-	mov bx, ax
-	add bx, bx
-	mov si, [ init_msg_errors + bx ]
-.disp_error:
-	call RxDOSIni_TypeMessage
-	mov si, init_msg.linebreak
-	call RxDOSIni_TypeMessage
-
-	jmp RxDOS_init_68
+AllocateSystemSpace_with_type: equ init2_alloc_s_mcb
 
 
 		; RxDOS Disk Parameter Blocks subsystem initialize
@@ -2914,8 +2733,6 @@ init_msg:
 .loading_shell_after:	db '"', 13, 10, 0
 .loaded_shell_error:	db "init: Error ",0
 .loaded_shell_error_q:	db "h: ",0
-.alloc_error:		db "init: Error ",0
-.alloc_error_q:		db "h while allocating memory: ",0
 .linebreak:		db 13,10,0
 .mcb_chain_corrupted_error:	asciz "init: Error, MCB chain corrupted.",13,10
 .dpb_error_dev:		db "init: Error while walking DPB chain linking devices, last=",0
