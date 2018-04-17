@@ -1519,27 +1519,27 @@ ccb_isREMOTE		equ 80h
 
 		; Program Segment Prefix (PSP)
 		; Note that data at offset 0050h+ is re-used by various TSRs.
-	struc PSP
+	struc PSP2
 pspCALL0:		resw 1	; 0000h "int 20h" instruction (to terminate on "call 0")
 pspNextParagraph:	resw 1	; 0002h address of next memory block
 pspReserved1:		resb 1	; 0004h unused
 pspCALL5:		resb 1	; 0005h calls a special Int21 dispatcher (on "call 5")
-pspSegmentSize:		resw 1	; 0006h size of process segment (in the far call opcode)
+pspSegmentSize2:	resw 1	; 0006h size of process segment (in the far call opcode)
 			resw 1	; 0008h (remainder of far call opcode)
-pspInt22:		resd 1	; 000Ah Address to return to after terminate
-pspInt23:		resd 1	; 000Eh Control-C vector to restore when terminating
-pspInt24:		resd 1	; 0012h Critical error vector to restore when terminating
-pspParent:		resw 1	; 0016h PSP of parent
-pspPHT:			resb 20	; 0018h default Application Handle Table
- endarea pspPHT
-pspEnvironment:		resw 1	; 002Ch address of environment block
+pspInt222:		resd 1	; 000Ah Address to return to after terminate
+pspInt232:		resd 1	; 000Eh Control-C vector to restore when terminating
+pspInt242:		resd 1	; 0012h Critical error vector to restore when terminating
+pspParent2:		resw 1	; 0016h PSP of parent
+pspPHT2:			resb 20	; 0018h default Application Handle Table
+ endarea pspPHT2
+pspEnvironment2:	resw 1	; 002Ch address of environment block
 pspUserStack:		resd 1	; 002Eh address of user stack frame on Int21 entry
 pspPHTsize:		resw 1	; 0032h number of Application Handles (default: 20)
 pspPHTaddress:		resd 1	; 0034h address of PHT (default: PSP:pspPHT)
 pspShareChain:		resd 1	; 0038h Share chain pointer (next PSP)
 pspSaveDTA:			; 003Ch DOS-C <= 2027: saved DTA to avoid DTABUG
 pspReserved2:		resb 4	; 003Ch unused (DBCS flag, APPEND)
-pspVersion:		resw 1	; 0040h Major, minor version (returned from Int21.30)
+pspVersion2:		resw 1	; 0040h Major, minor version (returned from Int21.30)
 pspReserved3:		resb 14	; 0042h unused (MSWindows 3.x)
 pspDosCall:		resb 3	; 0050h "int 21h"\"retf" instructions (Int21 on "call PSP:50")
 pspReserved4:		resb 9	; 0053h unused
