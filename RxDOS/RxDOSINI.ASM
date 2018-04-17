@@ -2306,10 +2306,13 @@ Config_CommonSelector:	db 'COMMON', 0
 
 		; Initialize
 		;
-		; INP:	cs = word [DOSDATA:dosdata_to_doscode_segment] = DOSCODE segment
+		; INP:	cs = INIT2
+		;	word [DOSDATA:dosdata_to_doscode_segment] = DOSCODE segment
 		;	word [DOSENTRY:dosentry_to_dosdata_segment] = DOSDATA segment
+		;	70h = DOSENTRY segment
 		;	ip = 0
 		;	cx = number of default block device's units (<= 32)
+		;	word [INIT2:init2_to_init1_segment] = INIT1
 RxDOS_initialize:
 	cli						; disable interrupts
 	cld						; set direction
