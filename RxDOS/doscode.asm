@@ -67,17 +67,10 @@ dos_msg:
 .int0:		db "Interrupt 00h: Divide by zero.", 13, 10, 0
 .int6:		db "Interrupt 06h: Invalid opcode.", 13, 10, 0
 
-		; Device Assign Table
-			align 4
-stdDeviceAssignTable:
-	STDREDIREC 'CON', stdRedirec_Con, (sftIsDevice + sftIsstdout + sftIsstdin)
-	STDREDIREC 'AUX', stdRedirec_Aux, (sftIsDevice)
-	STDREDIREC 'PRN', stdRedirec_Prn, (sftIsDevice)
-	STDREDIREC -1
-
 
 		; Code Segment Data
 
+			align 4
 		; Days In Month Table
 DaysInMonthTable:	db 31			; Jan
 			db 28			; Feb

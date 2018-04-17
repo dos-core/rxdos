@@ -2192,11 +2192,13 @@ RxDOS_DRIVERinit_10:
 
 		; allocate StdIn, StdOut, StdErr, StdAux, StdPrn
 RxDOS_DRIVERinit_12:
-	setDS cs
+	push ss
+	pop ds
 	mov di, stdDeviceAssignTable
 
 RxDOS_DRIVERinit_14:
-	setES cs
+	push ss
+	pop es
 	call checkforDeviceName				; locate device
 	jc RxDOS_DRIVERinit_22				; if can't be located -->
 
@@ -2204,13 +2206,13 @@ RxDOS_DRIVERinit_14:
 	push es						; save pointer to driver
 
 	push di
-	mov ax, word [ cs:di + stdIOHandle ]		; get assigned handle
+	mov ax, word [ ss:di + stdIOHandle ]		; get assigned handle
 	call FindSFTbyHandle				; find SFT address (es:di)
 	mov bx, di					; SFT address to bx
 	pop di						; restore
 	jc RxDOS_DRIVERinit_22				; if can't be located -->
 
-	mov ax, word [ cs:di + stdDevInfo ]
+	mov ax, word [ ss:di + stdDevInfo ]
 	or ax, sftProtected				; can't close those
 	mov word [ es:bx + sftDevInfo ], ax
 
@@ -2219,7 +2221,7 @@ RxDOS_DRIVERinit_14:
 	mov cx, sizeFnName
 
 RxDOS_DRIVERinit_16:
-	mov al, byte [ cs:di + stdDriverName ]		; copy name
+	mov al, byte [ ss:di + stdDriverName ]		; copy name
 	mov byte [ es:bx + sftFileName ], al
 	inc bx
 	inc di
@@ -2233,7 +2235,7 @@ RxDOS_DRIVERinit_16:
 
 RxDOS_DRIVERinit_22:
 	add di, byte sizeStdRedirec
-	cmp word [ cs:di ], byte -1
+	cmp word [ ss:di ], byte -1
 	jnz RxDOS_DRIVERinit_14
 
 	pop ds
