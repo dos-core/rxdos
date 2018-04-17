@@ -780,7 +780,7 @@ processAnyDevice_60:
 processAnyDevice_64:
 	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
 		| DOSFLAGS_RELOCATE_DOSCODE_HMA
-	call far [cs:init_relocate_device_function]
+	call init2_relocate_device
 
 	pop es
 	pop ds
@@ -2173,9 +2173,6 @@ Init_AttachedFileSystem_16:
 F5_SkipConfigProcessing dw 0000				; non-zero if skipping
 F8_PromptRequired	dw 0000				; non-zero if prompt required
 init_verbose:		dw 1
-		align 4
-init_relocate_end_function:	dd 0
-init_relocate_device_function:	dd 0
 
 
 		; CONFIG.SYS keywords
@@ -2313,19 +2310,9 @@ Config_CommonSelector:	db 'COMMON', 0
 		;	word [DOSENTRY:dosentry_to_dosdata_segment] = DOSDATA segment
 		;	ip = 0
 		;	cx = number of default block device's units (<= 32)
-		;	dx:ax -> far function to relocate DOSDATA and DOSCODE
-		;	 this is to be called after all DEVICE= processing
-		;	si:di -> far function to relocate DOSCODE to HMA
-		;	 this is to be called after each DEVICE= processing
-
 RxDOS_initialize:
 	cli						; disable interrupts
 	cld						; set direction
-
-	mov word [cs:init_relocate_end_function], ax
-	mov word [cs:init_relocate_end_function + 2], dx
-	mov word [cs:init_relocate_device_function], di
-	mov word [cs:init_relocate_device_function + 2], si
 
 	mov ax, 70h
 	mov ds, ax
@@ -2398,10 +2385,10 @@ RxDOS_initialize:
 
 	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
 		| DOSFLAGS_RELOCATE_DOSCODE_HMA
-	call far [cs:init_relocate_device_function]
+	call init2_relocate_device
 	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
 		| DOSFLAGS_RELOCATE_DOSCODE_HMA
-	call far [cs:init_relocate_end_function]
+	call init2_relocate_end
 
 	push cs
 	pop ds						; ds = INIT2
