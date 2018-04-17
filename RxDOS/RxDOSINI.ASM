@@ -2493,32 +2493,10 @@ RxDOS_initialize:
 	mov word [ _RxDOS_UserCodePage ], DEFAULT_CODEPAGE
 	mov word [ _RxDOS_SystemCodePage ], DEFAULT_CODEPAGE
 
-	mov ax, 5802h
-	int 21h
-	mov ah, 0
-	push ax
-	mov ax, 5800h
-	int 21h
-	push ax
-
-	mov ax, 5803h
-	xor bx, bx
-	int 21h			; link out UMB chain
-	mov ax, 5801h
-	mov bx, 2
-	int 21h			; alloc strategy: last fit, LMA only
-
 		; parse RXCONFIG.SYS file
 	mov cl, S_INITCONFIG
 	mov ax, 65535
-	call AllocateSystemSpace_with_type
-
-	pop bx
-	mov ax, 5801h
-	int 21h			; alloc strategy: restore
-	pop bx
-	mov ax, 5803h
-	int 21h			; restore UMB chain linkage
+	call init2_alloc_s_mcb_top
 
 	push es
 	call configProcessing				; process RXCONFIG.SYS file
