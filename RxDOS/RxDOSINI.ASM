@@ -2423,9 +2423,6 @@ RxDOS_initialize:
 	Entry
 	defbytes	execBlock, sizeEXEC
 
-	mov word [ _RxDOS_NULLDev + _pointer ], con
-	mov word [ _RxDOS_NULLDev + _segment ], 70h
-
 	mov ax, 0500h					; set page zero
 	int 10h
 
@@ -2440,8 +2437,6 @@ RxDOS_initialize:
 	mov ax, _RxDOS_SharedBuffer
 	mov word [ _RxDOS_pDTA + _pointer ], ax
 	mov word [ _RxDOS_pDTA + _segment ], ds
-
-	mov word [ _RxDOS_CurrentPSP ], 0
 
 		; initialize memory and other buffers
 	call RxDOSini_MemorySubSystem

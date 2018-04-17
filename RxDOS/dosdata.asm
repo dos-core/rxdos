@@ -74,7 +74,7 @@ _RxDOS_bNumBlockDev	db 0			; number of block devices
 _RxDOS_bLastDrive	db 0			; lastdrive from RXCONFIG.SYS, CDS size
 
 		; NULL Device Driver
-		devheader _RxDOS_NULLDev, -1, -1, (DEV_CHAR | DEV_NULL), \
+		devheader _RxDOS_NULLDev, con, 70h, (DEV_CHAR | DEV_NULL), \
 			null_strategy, null_interrupt, 'NUL'
 
 		; Installable File System Parameters
