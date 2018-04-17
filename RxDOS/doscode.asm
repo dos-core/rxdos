@@ -988,6 +988,7 @@ _Interrupt_26:
 	sti
 
 	restoreSegments bx, cx, dx, bp, si, di
+doscode_retf:
 	retf						; Leaves interrupt flags on stack
 
 

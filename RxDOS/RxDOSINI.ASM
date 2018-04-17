@@ -160,6 +160,67 @@ configStatement		resb 1			; statement starts here
 	endstruc
 
 
+		; INP:	word [cs:ip] = near function to call in DOSCODE
+		;	cs:(ip + 2) -> where to return to
+		;	word [DOSDATA:dosdata_to_doscode_segment] = DOSCODE
+		;	word [70h:dosentry_to_dosdata_segment] = DOSDATA
+		;	DOSCODE:doscode_retf -> retf opcode
+init2_to_doscode:
+	push ax			; word space for ?returnaddress_ip
+	push ax			; word space for ?returnaddress_doscode_ip
+	push ax
+	push ax			; dword space for ?jumpaddress
+	lframe 0
+	lpar word, returnaddress_cs_and_orig_ip
+	lpar word, returnaddress_ip
+	lpar word, returnaddress_doscode_ip
+	lpar dword, jumpaddress
+	lenter
+
+	push ds
+	push si
+	push ax
+	pushf
+	cld
+
+	mov si, cs
+	xchg si, word [bp + ?returnaddress_cs_and_orig_ip]	; fill cs
+	cs lodsw
+	cmp al, 0CCh		; debugger breakpoint ?
+	jne @F			; no -->
+	int3			; break to make it remove the breakpoint
+	dec si
+	dec si
+	cs lodsw		; reload the word
+	cmp al, 0CCh
+	jne @F
+
+.l:
+	int3
+	jmp .l
+
+@@:
+	mov word [bp + ?jumpaddress + 0], ax		; fill function offset
+	mov word [bp + ?returnaddress_ip], si		; fill ip
+
+	mov ax, 70h
+	mov ds, ax		; => DOSENTRY
+	mov ds, word [dosentry_to_dosdata_segment]	; => DOSDATA
+	mov ds, word [dosdata_to_doscode_segment]	; => DOSCODE
+	mov word [bp + ?jumpaddress + 2], ds		; fill function segment
+
+	mov word [bp + ?returnaddress_doscode_ip], \
+		doscode_retf	; fill near ip in DOSCODE
+
+	popf
+	pop ax
+	pop si
+	pop ds
+
+	lleave
+	retf			; jump to dword [bp + ?jumpaddress]
+
+
 		; RXCONFIG.SYS file processing
 		;
 		; This module reads the entire RXCONFIG.SYS file from a
@@ -195,7 +256,7 @@ configProcessing:
 	mov al, byte [ ss:_RxDOS_CurrentDrive ]		; startup drive
 
 	mov di, _RxDOS_RXCONFIGSYS			; RXCONFIG.SYS filename
-	call scanDirectory				; search RXCONFIG.SYS
+	call init2_to_doscode, scanDirectory		; search RXCONFIG.SYS
 	jnc configProcessing_08				; RXCONFIG.SYS found -->
 							; open CONFIG.SYS instead if no RXCONFIG.SYS
 	push cs
@@ -203,7 +264,7 @@ configProcessing:
 	mov di, _RxDOS_ConfigFile			; CONFIG.SYS filename
 	xor dx, dx
 	xor cx, cx
-	call scanDirectory				; search CONFIG.SYS
+	call init2_to_doscode, scanDirectory		; search CONFIG.SYS
 	jc configProcessing_Return			; if none found -->
 
 configProcessing_08:
@@ -212,7 +273,7 @@ configProcessing_08:
 
 	setES ss
 	lea bx, [ _diskAccess + bp ]			; build access control block
-	call initdiskAccess				; ax is drive, cx:dx is cluster
+	call init2_to_doscode, initdiskAccess		; ax is drive, cx:dx is cluster
 
 	pop word [ ss:bx + diskAcFileSize + _high ]
 	pop word [ ss:bx + diskAcFileSize + _low ]
@@ -226,7 +287,7 @@ configProcessing_12:
 	mov cx, 254
 	lea di, [ _linebuffer + bp ]
 	lea bx, [ _diskAccess + bp ]			; build access control block
-	call readLine					; read a line
+	call init2_to_doscode, readLine			; read a line
 	ifz configProcessing_36				; at end, reconfigure system -->
 
 	inc word [ _linenumber + bp ]			; lines read
@@ -409,7 +470,7 @@ processCountry_08:
 
 		; find country info
 processCountry_12:
-	call FindCountryInfo
+	call init2_to_doscode, FindCountryInfo
 	jc processCountry_24				; if country not found -->
 
 	push ss
@@ -610,7 +671,7 @@ processAnyDevice_08:
 		; allocate memory, load device and initialize
 	mov ax, DEVICEINIT * 256			; ah = DEVICEINIT, al = 0
 	lea di, [ word _reqBlock + bp ]
-	call initReqBlock				; initialize request block
+	call init2_to_doscode, initReqBlock		; initialize request block
 
 	mov bx, 0FFFFh
 	Int21 AllocateMemory				; get largest available memory block
@@ -1067,7 +1128,7 @@ processShell_08:
 	push ds
 	mov bx, _RxDOSini_CommandShell
 	push bx						; destination args
-	call CopyStringArgs				; copy string
+	call init2_to_doscode, CopyStringArgs		; copy string
 
 processShell_12:
 	pop di
@@ -2174,7 +2235,7 @@ RxDOSini_StdInStdOutDrivers:
 
 		; Update system CON pointer to last driver with StdIn and StdOut bits
 	mov ax, ( DEV_STDINPUT + DEV_STDOUTPUT )
-	call checkforDeviceType
+	call init2_to_doscode, checkforDeviceType
 	jc RxDOS_DRIVERinit_10
 
 	mov word [ _RxDOS_pCONdriver + _pointer ], bx
@@ -2184,7 +2245,7 @@ RxDOS_DRIVERinit_10:
 
 		; Update system CLOCK pointer to last driver with StdIn and StdOut bits
 	mov ax, ( DEV_CLOCK )
-	call checkforDeviceType
+	call init2_to_doscode, checkforDeviceType
 	jc RxDOS_DRIVERinit_12
 
 	mov word [ _RxDOS_pCLOCKdriver + _pointer ], bx
@@ -2199,7 +2260,7 @@ RxDOS_DRIVERinit_12:
 RxDOS_DRIVERinit_14:
 	push ss
 	pop es
-	call checkforDeviceName				; locate device
+	call init2_to_doscode, checkforDeviceName	; locate device
 	jc RxDOS_DRIVERinit_22				; if can't be located -->
 
 	push bx
@@ -2207,7 +2268,7 @@ RxDOS_DRIVERinit_14:
 
 	push di
 	mov ax, word [ ss:di + stdIOHandle ]		; get assigned handle
-	call FindSFTbyHandle				; find SFT address (es:di)
+	call init2_to_doscode, FindSFTbyHandle		; find SFT address (es:di)
 	mov bx, di					; SFT address to bx
 	pop di						; restore
 	jc RxDOS_DRIVERinit_22				; if can't be located -->
@@ -2468,7 +2529,7 @@ RxDOS_initialize:
 
 
 		; compute number of block devices installed
-	call maxBlockDevices
+	call init2_to_doscode, maxBlockDevices
 	 push ss
 	 pop ds
 	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
