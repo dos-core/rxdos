@@ -332,12 +332,13 @@ FindSFTbyHandle:
 	jae FindSFTbyHandle_12
 
 FindSFTbyHandle_08:
+	cmp di, -1					; any next SFTC ?
+	je FindSFTbyHandle_12				; no -->
+
 	cmp ax, word [ es:di + numberSFTEntries ]	; number of SFT entries in this FT
 	jb FindSFTbyHandle_16				; if within this FT -->
 
 	sub ax, word [ es:di + numberSFTEntries ]
-	cmp word [ es:di + nextFTPointer + _pointer ], byte -1
-	jz FindSFTbyHandle_12				; no next FT, out of range -->
 	les di, [ es:di + nextFTPointer ]
 	jmp short FindSFTbyHandle_08
 
