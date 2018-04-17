@@ -2525,9 +2525,9 @@ RxDOS_initialize:
 	call far [cs:init_relocate_end_function]
 
 	push cs
-	pop ds
+	pop ds						; ds = INIT2
 	push ss
-	pop es
+	pop es						; es = DOSDATA / stack
 
 	lea di, [ word _execBlock + bp ]
 	clearMemory sizeEXEC				; clear load exec block
@@ -2538,7 +2538,7 @@ RxDOS_initialize:
 	mov cx, 128
 	mov di, _RxDOSini_CommandShell
 	 push cs
-	 pop es
+	 pop es						; es = INIT2
 	cmp byte [ es:di ], 0				; starts with a null character ?
 	jz RxDOS_init_36				; yes, go do default -->
 
@@ -2591,7 +2591,7 @@ RxDOS_init_24:
 	repe movsb					; copy shell command/command line arguments
 
 	push ss
-	pop es
+	pop es						; es = DOSDATA / stack
 	lea bx, [ word _execBlock + bp ]		; exec block address
 	mov dx, _RxDOS_CommandShell
 	call init_shell_verbose
@@ -2933,7 +2933,8 @@ RxDOSmsg_CouldNotLoadDriver:
 
 		; Shell Name
 	align 16, db 0
-
+_RxDOS_CommandShell:
+	times 128 db 0
 _RxDOSini_CommandShell:
 	times 128 db 0					; command shell
 _RxDOSini_CommandTail:

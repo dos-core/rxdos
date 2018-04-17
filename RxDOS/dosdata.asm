@@ -168,9 +168,7 @@ _RxDOS_StackFrameLock	dw 0
 _RxDOS_StackFramePtr	dw 0
 _RxDOS_INDOSRecover	dw 0
 
-		; Command Shell
 			align 2,db 0
-_RxDOS_CommandShell	times 128 db 0
 _RxDOS_SharedBuffer	times 128 db 0		; shared buffer.
 
 
