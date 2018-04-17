@@ -5437,7 +5437,8 @@ _CreateUniqueFile:
 	defbytes	dirAccess, sizeDIRACCESS
 	defbytes	tempname, 128
 
-		; file handle available ?	call VerifyAvailableHandle			; see if handle available
+		; file handle available ?
+	call VerifyAvailableHandle			; see if handle available
 	ifc _CreateUniqueFile_40			; exit if none -->
 
 		; copy buffer
