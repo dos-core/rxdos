@@ -218,9 +218,10 @@ chkDevName_12:
 	or cx, cx
 	jz chkDevName_14
 
+.loop:
 	mov byte [ ss:di ], ' '				; blank fill
 	inc di
-	loop chkDevName_08
+	loop .loop
 
 
 		; match against all known driver names
