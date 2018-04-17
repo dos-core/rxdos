@@ -109,7 +109,8 @@ _RxDOS_AbortInProgress	dw 0			; if NZ, skip critical error
 		; Current PSP
 			align 2,db 0
 _RxDOS_CurrentInstance	dw 0			; base address of current stack
-_RxDOS_CurrentStackTop	dw 0			; Reserved Stack Top ...
+_RxDOS_CurrentStackTop	dw (dosdata_stack + 3 * RXDOS_PERCALL_STACKRESERVE)
+						; Reserved Stack Top ...
 _RxDOS_StackLongJump	dw 0			; long jump
 
 		; UMB Control Status Word

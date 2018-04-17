@@ -2455,9 +2455,6 @@ RxDOS_initialize:
 	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
 	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
 
-	mov ax, (dosdata_stack + 3 * RXDOS_PERCALL_STACKRESERVE)
-	mov word [ _RxDOS_CurrentStackTop ], ax
-
 	sti
 
 		; initialize data segment
