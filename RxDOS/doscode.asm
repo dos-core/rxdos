@@ -3382,20 +3382,25 @@ _GetDriveParameterBlock:
 	push dx
 	call GetActualDrive				; actual drive (in ax)
 	jc .error					; if invalid drive -->
-	mov cx, sizeDPB
-	mul cx						; create DPB offset
 
 	les bx, [ ss:_RxDOS_pDPB ]
+.loop:
 	cmp bx, -1
-	stc
 	je .error
-	add bx, ax
 
+	cmp byte [es:bx + _dpbDrive], al
+	je .found
+
+	les bx, [es:bx + _dpbNextDPB]
+	jmp .loop
+
+.found:
 	RetCallersStackFrame ds, si
 	mov word [ _DS + si ], es
 	mov word [ _BX + si ], bx
-	clc
+	db __TEST_IMM8			; (NC) skip stc
 .error:
+	stc
 	call setFCBErrorIfCarry		; al = 00h if NC, al = 0FFh if CY
 	clc
 	retn
