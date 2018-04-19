@@ -954,8 +954,10 @@ CharDevRequest:
 	saveSegments bp, bx, ax
 
 	getdarg es, bx, _device				; get device
+	cmp bx, -1
+	je CharDevRequest_12
 	mov ax, es
-	or ax, bx					; if no device address
+	test ax, ax					; if no device address
 	jz CharDevRequest_12				; error exit -->
 
 	mov ax, word [ es:bx + devStrategy ]
