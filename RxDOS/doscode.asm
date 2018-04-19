@@ -1337,10 +1337,14 @@ CheckKeyboardCharsAvailable:
 	lea di, [ word bp + _reqBlock ]
 	call initReqBlock
 
+	mov ax, word [ _RxDOS_pCONdriver + _pointer ]
+	inc ax				; if -1, now 0
+					; (al is zero as well if this branches)
+	jz CtrlC_Check18
 	mov ax, word [ _RxDOS_pCONdriver + _segment ]
-	or ax, word [ _RxDOS_pCONdriver + _pointer ]
-	jz checkKeybd_None		; if no CON driver -->
-					;  (al is zero as well if this branches)
+	test ax, ax
+	jz CtrlC_Check18		; if no CON driver -->
+					; (al is zero as well if this branches)
 
 	push word [ _RxDOS_pCONdriver + _segment ]
 	push word [ _RxDOS_pCONdriver + _pointer ]
