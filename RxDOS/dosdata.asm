@@ -59,7 +59,7 @@ _RxDOS_ShareRetry	dw 0			; sharing retry count
 _RxDOS_ShareDelay	dw 0			; sharing retry delay
 _RxDOS_pdiskbuffer	dd 0			; pointer to disk buffer
 _RxDOS_UnreadCON	dw 0			; ptr to unread CON input
-_RxDOS_pStartMemBlock	dw 0			; seg ptr to start of memory allocation
+_RxDOS_pStartMemBlock	dw 60h			; seg ptr to start of memory allocation
 
 _RxDOS_pDPB		dd -1			; ptr to Drive Parameter Block (DPB)
 _RxDOS_pFT		dd -1			; ptr to File Tables (FT)
