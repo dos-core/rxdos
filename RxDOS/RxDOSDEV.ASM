@@ -1795,7 +1795,7 @@ _callCriticalError:
 
 	mov dl, CRITERROR_FAIL
 	cmp word [ ss:_RxDOS_CurrentPSP ], byte 0
-	ifz _callCriticalError_32			; if no valid PSP -->
+	ifz .32						; if no valid PSP -->
 
 		; set arguments for int 24 call
 	xor ah, ah					; upper bits zero
@@ -1806,20 +1806,20 @@ _callCriticalError:
 	call _GetDriveCodeFromUnitCode			; drive code
 
 	cmp di, byte sizeDevAllowedTable		; is error within device allowed errors ?
-	jb _callCriticalError_06			; if ok -->
+	jb .06						; if ok -->
 	mov ah, CRITERROR_IGNOREALLOWED + CRITERROR_RETRYALLOWED + CRITERROR_FAILALLOWED
 
-_callCriticalError_06:
+.06:
 	or ah, 110b					; data area
 	cmp byte [ es:bx + rwrFunction ], DEVICEWRITE
-	jz _callCriticalError_08
+	jz .08
 	cmp byte [ es:bx + rwrFunction ], DEVICEWRITEVERIFY
-	jnz _callCriticalError_10
+	jnz .10
 
-_callCriticalError_08:
+.08:
 	or ah, 1					; write function
 
-_callCriticalError_10:
+.10:
 	call saveStackFrame
 
 	mov bp, es					; point to driver's header
@@ -1865,26 +1865,26 @@ _callCriticalError_10:
 	pop bp
 	push bp
 	cmp dl, CRITERROR_IGNORE			; ignore returned ?
-	jnz _callCriticalError_22			; no -->
+	jnz .22						; no -->
 	test word [ _allowed + bp ], CRITERROR_IGNOREALLOWED
-	jnz _callCriticalError_32			; yes -->
+	jnz .32						; yes -->
 	mov dl, CRITERROR_FAIL				; otherwise default to fail
 
-_callCriticalError_22:
+.22:
 	cmp dl, CRITERROR_RETRY				; retry returned ?
-	jnz _callCriticalError_24			; no -->
+	jnz .24						; no -->
 	test word [ _allowed + bp ], CRITERROR_RETRYALLOWED
-	jnz _callCriticalError_32			; yes -->
+	jnz .32						; yes -->
 	mov dl, CRITERROR_FAIL				; otherwise default to fail
 
-_callCriticalError_24:
+.24:
 	cmp dl, CRITERROR_FAIL				; fail returned ?
-	jnz _callCriticalError_32			; no -->
+	jnz .32						; no -->
 	test word [ _allowed + bp ], CRITERROR_FAILALLOWED
-	jnz _callCriticalError_32			; yes -->
+	jnz .32						; yes -->
 	mov dl, CRITERROR_TERMINATE			; otherwise default to terminate 
 
-_callCriticalError_32:
+.32:
 	pop bp
 	pop bx
 	pop ds
