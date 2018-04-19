@@ -257,7 +257,7 @@ GetAppHandleTable_08:
 		;	 es:bx-> available SFT entry
 		;	CY if no available SFT entry found,
 		;	 ax = extended error pointer
-		;	 es:bx-> header of last FT
+		; CHG:	es, bx, cx
 		;
 		; The SFT entry is automatically reserved and must be cleared
 		; if it won't be used.
