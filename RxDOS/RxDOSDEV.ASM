@@ -1706,53 +1706,6 @@ initDriveParameters_22:
 	Return
 
 
-		; Find Drive from Unit Code
-		;
-		; Input:
-		; al	BIOS unit code (0, 1, 80, 81, ...)
-		;
-		; Output:
-		; al	Drive code
-_GetDriveCodeFromUnitCode:
-	
-	push es
-	push si
-
-	les si, [ _RxDOS_pCDS ]
-	mov cl, byte [ _RxDOS_bLastDrive ]
-	mov ch, 0					; cx = number of valid CDS entries
-
-_GetDriveCode_08:
-	mov dx, word [ es:si + _cdsPtrToDPB + _pointer ]
-	or dx, word [ es:si + _cdsPtrToDPB + _segment ]
-	jz _GetDriveCode_16				; DPB address is zero, no valid DPB -->
-
-	push es
-	push si
-	les si, [ es:si + _cdsPtrToDPB ]
-	cmp al, byte [ es:si + _dpbUnit ]		; compare given unit to DPB value
-	pop si
-	pop es
-	jnz _GetDriveCode_16
-
-	mov al, byte [ _RxDOS_bLastDrive ]		; Found match! now get maximal value
-	sub al, cl					; and subtract count to get current entry
-	clc						; no error
-	jmp short _GetDriveCode_22
-
-_GetDriveCode_16:
-	add si, byte sizeCDS
-	loop _GetDriveCode_08				; loop until all CDS entries done
-
-	mov al, -1
-	stc
-
-_GetDriveCode_22:
-	pop si
-	pop es
-	retn
-
-
 		; Set Exit Code If Control-C
 		;
 		; Input:
