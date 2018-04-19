@@ -2471,21 +2471,6 @@ _getDriveData_22:
 	retn
 
 
-		; 1Fh Get DOS Default Drive Device Parameter Block
-		;
-		; Input:
-		; no parameters
-		;
-		; Returns:
-		; ds:bx-> DOS device parameter block
-		;
-		; (see related function 32 - Get Dos Device Parameter Block)
-_GetDefaultDriveParameterBlock:
-
-	xor dx, dx					; select default drive
-	jmp _GetDriveParameterBlock
-
-
 		; 21h Read Sequential FCB
 		;
 		; ds:dx pointer to FCB
@@ -3371,6 +3356,19 @@ _TerminateStayResident_20:
 	return
 
 
+
+
+		; 1Fh Get DOS Default Drive Device Parameter Block
+		;
+		; Input:
+		; no parameters
+		;
+		; Returns:
+		; ds:bx-> DOS device parameter block
+_GetDefaultDriveParameterBlock:
+	xor dx, dx					; select default drive
+
+
 		; 32h Get DOS Device Parameter Block
 		;
 		; Input:
@@ -3380,27 +3378,28 @@ _TerminateStayResident_20:
 		; Returns:
 		; al	0ffh if invalid drive
 		; ds:bx	returns pointer to dos device parameter block
-		;
-		; (see related function 1F - Get Default Drive DPB )
 _GetDriveParameterBlock:
-
 	push dx
 	call GetActualDrive				; actual drive (in ax)
-	jnc _GetDriveParameterBlock_08			; if valid drive -->
-	call setFCBErrorIfCarry				; else set error
-	retn
-
-_GetDriveParameterBlock_08:
+	jc .error					; if invalid drive -->
 	mov cx, sizeDPB
 	mul cx						; create DPB offset
 
 	les bx, [ ss:_RxDOS_pDPB ]
+	cmp bx, -1
+	stc
+	je .error
 	add bx, ax
 
 	RetCallersStackFrame ds, si
 	mov word [ _DS + si ], es
 	mov word [ _BX + si ], bx
+	clc
+.error:
+	call setFCBErrorIfCarry		; al = 00h if NC, al = 0FFh if CY
+	clc
 	retn
+
 
 		; 33h Extended Ctrl-C flag, boot drive, DOS version, extensions
 		; al = subfunction,
