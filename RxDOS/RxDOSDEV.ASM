@@ -396,7 +396,7 @@ DevMediaRequest:
 		; Incorrect Disk Media
 		;
 		; Input:
-		; ax	drive
+		; ax	drive (0 = A:)
 		; cx:dx	serial number required
 		;
 		; Output:
@@ -408,10 +408,12 @@ incorrectDiskMedia:
 	defbytes	devVolumeId, sizeVolumeID
 	defbytes	reqBlock, sizeMaxReqHeader
 
+	push ax
 	mov ah, MEDIAREQUEST
 	lea di, [ byte _reqBlock + bp ]
 	call initReqBlock
 
+	pop dx
 	mov ax, devErrInvalidDiskChange
 	lea bx, [ byte _reqBlock + bp ]
 	call _callCriticalError
@@ -995,7 +997,7 @@ CharDevRequest_16:
 		; Call block device
 		;
 		; Input:
-		; al = drive unit
+		; al = drive unit (0 = A:)
 		; es:bx-> request block
 		;
 		; Output:
@@ -1072,6 +1074,7 @@ BlockedDevRequest_08:
 	jnz BlockedDevRequest_28			; ignore error --> (fail)
 
 	mov ax, word [ es:bx + rhStatus ]		; get error report
+	mov dx, word [ bp + _drive ]
 	call _callCriticalError				; switch context stack
 
 	goto CRITERROR_TERMINATE, BlockedDevRequest_24
@@ -1275,7 +1278,7 @@ sizeDevDefaultLength	equ ($ - devDefaultLength)
 		; Get Address of Device Parameter Block
 		;
 		; Input:
-		; ax	drive
+		; ax	drive (0 = A:, 1 = B:, ...)
 		;
 		; Output:
 		; ax	drive
@@ -1775,9 +1778,11 @@ SetExit_IfControlC_08:
 		; Input:
 		; es:bx	pointer to current device header
 		; ax	error code
+		; dl	drive (0 = A:)
 _callCriticalError:
 
 	Entry
+	def	drive, dx
 	ddef	devicereqblock, es, bx
 	def	errorCode, ax
 	def	allowed, 0000
@@ -1803,7 +1808,7 @@ _callCriticalError:
 	mov al, byte [ es:bx + rwrUnit ]		; unit
 	mov ah, byte [ cs:di + DevAllowedTable ]	; get allowed bits
 	mov byte [ _allowed + bp ], ah			; save value
-	call _GetDriveCodeFromUnitCode			; drive code
+	mov al, byte [ bp + _drive ]			; drive code
 
 	cmp di, byte sizeDevAllowedTable		; is error within device allowed errors ?
 	jb .06						; if ok -->
