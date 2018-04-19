@@ -1288,27 +1288,33 @@ getAddrDPB:
 	push cx
 
 	les bx, [ ss:_RxDOS_pCDS ]			; point to CDS
-	and ax, byte sftDrivemask			; optimize for drive A:
-	jz getAddrDPB_12				; if drive A:, skip check -->
+	and ax, sftDrivemask
 
 	cmp al, byte [ ss:_RxDOS_bLastDrive ]		; drive valid if B (= CY)
-	cmc						; change sense of test (NC if valid)
-	jc getAddrDPB_16				; not a valid drive -->
+	jnb .error					; not a valid drive -->
 
 	mov cl, sizeCDS
 	mul cl						; create CDS offset
 	add bx, ax
 
-getAddrDPB_12:
-	mov ax, word [ es:bx + _cdsPtrToDPB + _segment ]
-	or ax, word [ es:bx + _cdsPtrToDPB + _pointer ]
-	stc						; set error if not intialized
-	jz getAddrDPB_16				; not initialized -->
+	test byte [es:bx + _cdsFlags + 1], \
+		(_CDS_REDIRECTOR | _CDS_JOIN | _CDS_SUBST) >> 8
+	jnz .error
+	test byte [es:bx + _cdsFlags + 1], _CDS_PHYSICAL >> 8
+	jz .error
 
-	clc
+	mov ax, word [ es:bx + _cdsPtrToDPB + _pointer ]
+	inc ax
+	jz .error
+	mov ax, word [ es:bx + _cdsPtrToDPB + _segment ]
+	test ax, ax
+	jz .error
+
 	les bx, [ es:bx + _cdsPtrToDPB ]		; else, pointer is valid
 
-getAddrDPB_16:
+	db __TEST_IMM8					; (NC) skip stc
+.error:
+	stc
 	pop cx
 	pop ax
 	retn
