@@ -1758,16 +1758,15 @@ _callCriticalError:
 		; set arguments for int 24 call
 	xor ah, ah					; upper bits zero
 	mov di, ax					; set error code
-	mov al, byte [ es:bx + rwrUnit ]		; unit
 	mov ah, byte [ cs:di + DevAllowedTable ]	; get allowed bits
-	mov byte [ _allowed + bp ], ah			; save value
 	mov al, byte [ bp + _drive ]			; drive code
 
 	cmp di, byte sizeDevAllowedTable		; is error within device allowed errors ?
 	jb .06						; if ok -->
 	mov ah, CRITERROR_IGNOREALLOWED + CRITERROR_RETRYALLOWED + CRITERROR_FAILALLOWED
-
 .06:
+	mov byte [ _allowed + bp ], ah			; save value
+
 	or ah, 110b					; data area
 	cmp byte [ es:bx + rwrFunction ], DEVICEWRITE
 	jz .08
