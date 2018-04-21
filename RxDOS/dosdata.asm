@@ -48,7 +48,7 @@ Performs the actual disk (Int13) access.
 %include "RXDSTRUC.NEW"
 %include "RXOPTION.MAC"
 
-			jmp strict near $
+			jmp strict near dosdata_i31
 			db 0
 
 		; DOS Data Segment
@@ -420,6 +420,19 @@ null_strategy:
 		mov word [ byte es:bx + rhStatus ], OP_DONE
 null_interrupt:
 		retf
+
+
+dosdata_i31:
+	lframe 0
+	lpar word, flags
+	lpar dword, csip
+	lenter
+	mov ax, 1		; error 1, invalid function
+	stc			; CY
+	rcr byte [bp + ?flags], 1	; rotate CF (error state) into bit7 of saved FL
+	rol byte [bp + ?flags], 1	; rotate error state into bit0+CF
+	lleave
+	iret
 
 
 		; Stacks
