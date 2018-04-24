@@ -117,6 +117,7 @@ _RxDOS_StackLongJump	dw 0			; long jump
 _RxDOS_UMBEnabled	dw 0			; set by init
 _RxDOS_UMBAllowed	dw 0			; selectable by user (Int21.5802, .5803)
 first_umcb:		dw 0
+first_hmcb:		dw 0
 
 		; Tab Expansion
 _RxDOS_TabPosition	dw 0			; tab position
