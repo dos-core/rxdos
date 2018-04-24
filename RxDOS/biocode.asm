@@ -1299,11 +1299,6 @@ getComStatus_08:
 	retn
 
 
-		; General Interrupt Trap
-IntReturn:
-	iret
-
-
 		; Interrupt 19 - Ctrl Alt Delete
 relocated i19:
 	cli
