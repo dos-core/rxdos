@@ -423,16 +423,7 @@ null_interrupt:
 
 
 dosdata_i31:
-	lframe 0
-	lpar word, flags
-	lpar dword, csip
-	lenter
-	mov ax, 1		; error 1, invalid function
-	stc			; CY
-	rcr byte [bp + ?flags], 1	; rotate CF (error state) into bit7 of saved FL
-	rol byte [bp + ?flags], 1	; rotate error state into bit0+CF
-	lleave
-	iret
+	jmp 70h:i31
 
 
 		; Stacks

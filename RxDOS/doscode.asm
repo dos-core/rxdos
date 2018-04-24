@@ -287,6 +287,19 @@ _Interrupt_06:
 	int 21h
 
 
+relocated i31:
+	lframe 0
+	lpar word, flags
+	lpar dword, csip
+	lenter
+	mov ax, 1		; error 1, invalid function
+	stc			; CY
+	rcr byte [bp + ?flags], 1	; rotate CF (error state) into bit7 of saved FL
+	rol byte [bp + ?flags], 1	; rotate error state into bit0+CF
+	lleave
+	iret
+
+
 		; Interrupt 21
 		;
 		; ah = requested function
