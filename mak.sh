@@ -50,7 +50,8 @@ cd ../ldos
 echo Building RxDOS.COM
 nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-I ../lmacros/ -I ../../lmacros/ -I ../MACRO/ -I ../RxBIO/ \
-	-I ../RxDOS/ -f bin -o lDOSLOAD.BIN -l lDOSLOAD.LST init.asm \
+	-I ../RxDOS/ -f bin -D_BIN_FILE_DEFAULT=RXDOS.COM \
+	-o lDOSLOAD.BIN -l lDOSLOAD.LST init.asm \
 && nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-I ../lmacros/ -f bin -o ../bin/RxDOS.COM -l ../lst/RxDOS.LST \
 	-D_MAP=../map/RxDOS.MAP ../ldosboot/iniload.asm \
