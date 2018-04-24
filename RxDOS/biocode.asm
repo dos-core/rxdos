@@ -1299,7 +1299,9 @@ getComStatus_08:
 	retn
 
 
+%ifn _INT19_IN_DOSENTRY
 %include "int19.asm"
+%endif
 
 
 		; Interrupt 29
