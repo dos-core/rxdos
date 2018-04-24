@@ -1299,40 +1299,7 @@ getComStatus_08:
 	retn
 
 
-		; Interrupt 19 - Ctrl Alt Delete
-relocated i19:
-	cli
-	cld
-
-	xor ax, ax
-	mov es, ax
-
-	mov ax, 70h
-	mov ds, ax
-	mov si, InterruptRestorationTable
-
-.08:
-	xor bx, bx
-	mov bl, byte [ si ]
-	cmp bl, -1
-	jz .16
-
-	inc si
-
-	add bx, bx
-	add bx, bx					; compute interrupt address
-	mov dx, word [ si + 2 ]				; _segment
-	mov ax, word [ si ]				; _pointer
-							; restore interrupt
-	mov word [ es:bx + 2 ], dx			; _segment
-	mov word [ es:bx ], ax				; _pointer
-
-	add si, byte 4
-	jmp short .08
-
-.16:
-	int 19h					 	; go to original int 19
-	iret
+%include "int19.asm"
 
 
 		; Interrupt 29
