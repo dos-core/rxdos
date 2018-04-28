@@ -1210,6 +1210,7 @@ _findStatementType:
 _findstatement_multiple_types:
 	push ds
 	push es
+	push cx
 
 	push es
 	pop ds				; ds:di -> CONFIGLINE structure
@@ -1220,17 +1221,20 @@ _findstatement_multiple_types:
 
 .loop:
 	cmp word [si + configType], byte CONFIGTYPE_ENDOFARGS
-	jnz .check
-	stc						; not found if at end
-	jmp .return
-
+	stc
+	je .return			; not found if at end -->
 .check:
-	mov ax, word [si + configType]
-	cmp ax, word [es:di + 2]		; is it the searched type ?
-	jnz .next					; if not, goto next -->
+	push di
+	mov ax, word [si + configType]	; ax = configtype of this line
+	mov cx, word [es:di]		; number of entries
+	scasw				; skip number of entries, di -> types
+	repne scasw			; match to searched type
+	pop di
+	jnz .next			; if not, goto next -->
 .found:
-	clc						; found type
+					; found type (NC after scasw matched)
 .return:
+	pop cx
 	pop es
 	pop ds
 	xchg si, di
