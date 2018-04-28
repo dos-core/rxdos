@@ -114,6 +114,8 @@ after_last_exterr:
 		; Get Extended Error Info
 GetExtErrorCodeValue:
 	mov ax, si
+	cmp ax, 0FFFFh
+	je .direct
 	cmp ax, errorBehindLastDirectErrorCode	; direct code or pointer ?
 	jb .direct				; direct -->
 	mov ax, word [cs:si + ExtErrorCodeValue]; get actual error value
