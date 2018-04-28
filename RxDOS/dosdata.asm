@@ -59,7 +59,8 @@ _RxDOS_ShareRetry	dw 0			; sharing retry count
 _RxDOS_ShareDelay	dw 0			; sharing retry delay
 _RxDOS_pdiskbuffer	dd 0			; pointer to disk buffer
 _RxDOS_UnreadCON	dw 0			; ptr to unread CON input
-_RxDOS_pStartMemBlock	dw 60h			; seg ptr to start of memory allocation
+_RxDOS_pStartMemBlock:
+first_mcb:		dw 60h			; seg ptr to start of memory allocation
 
 _RxDOS_pDPB		dd -1			; ptr to Drive Parameter Block (DPB)
 _RxDOS_pFT		dd -1			; ptr to File Tables (FT)
@@ -116,8 +117,11 @@ _RxDOS_StackLongJump	dw 0			; long jump
 		; UMB Control Status Word
 _RxDOS_UMBEnabled	dw 0			; set by init
 _RxDOS_UMBAllowed	dw 0			; selectable by user (Int21.5802, .5803)
-first_umcb:		dw 0
+first_umcb:		dw -1
 first_hmcb:		dw 0
+current_driver:		dw 0
+error_flags:		dw 0
+enable_uma:		dw 0
 
 		; Tab Expansion
 _RxDOS_TabPosition	dw 0			; tab position
