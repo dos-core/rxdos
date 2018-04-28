@@ -1199,24 +1199,46 @@ configRemoveComments_20:
 		; ax = searched CONFIG item type
 		; es:di-> CONFIGLINE structure
 _findStatementType:
-	cmp word [ es:di + configType ], byte CONFIGTYPE_ENDOFARGS
-	jnz _findStatementType_08
+	mov si, init2_configtype_single
+	mov word [cs:init2_configtype_single.configtype \
+		- init2_configtype_single + si], ax
+
+		; Find Statement Type
+		;
+		; cs:si -> word number of entries, words CONFIG item types
+		; es:di-> CONFIGLINE structure
+_findstatement_multiple_types:
+	push ds
+	push es
+
+	push es
+	pop ds				; ds:di -> CONFIGLINE structure
+	push cs
+	pop es				; es:si -> configtype structure
+	xchg si, di			; ds:si -> CONFIGLINE structure
+					; es:di -> configtype structure
+
+.loop:
+	cmp word [si + configType], byte CONFIGTYPE_ENDOFARGS
+	jnz .check
 	stc						; not found if at end
-	retn
+	jmp .return
 
-_findStatementType_08:
-	cmp ax, word [ es:di + configType ]		; is it the searched type ?
-	jnz _findStatementType_12			; if not, goto next -->
-%if 1
-	or di, di
-%else
+.check:
+	mov ax, word [si + configType]
+	cmp ax, word [es:di + 2]		; is it the searched type ?
+	jnz .next					; if not, goto next -->
+.found:
 	clc						; found type
-%endif
+.return:
+	pop es
+	pop ds
+	xchg si, di
 	retn
 
-_findStatementType_12:
-	add di, word [ es:di + configLength ]
-	jmp short _findStatementType
+.next:
+	add si, word [si + configLength]
+	jmp short .loop
 
 
 		; CONFIG statement prompt
@@ -2173,6 +2195,8 @@ Init_AttachedFileSystem_16:
 F5_SkipConfigProcessing dw 0000				; non-zero if skipping
 F8_PromptRequired	dw 0000				; non-zero if prompt required
 init_verbose:		dw 1
+init2_configtype_single:dw 1
+.configtype:		dw 0
 
 
 		; CONFIG.SYS keywords
