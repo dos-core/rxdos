@@ -1196,8 +1196,13 @@ configRemoveComments_20:
 
 		; Find Statement Type
 		;
-		; ax = searched CONFIG item type
-		; es:di-> CONFIGLINE structure
+		; INP:	ax = searched CONFIG item type
+		;	es:di-> CONFIGLINE structure
+		; OUT:	CY if none found,
+		;	 es:di -> CONFIGLINE structure with CONFIGTYPE_ENDOFARGS
+		;	NC if found,
+		;	 es:di -> CONFIGLINE structure with the specified types
+		; CHG:	ax, si
 _findStatementType:
 	mov si, init2_configtype_single
 	mov word [cs:init2_configtype_single.configtype \
@@ -1205,8 +1210,14 @@ _findStatementType:
 
 		; Find Statement Type
 		;
-		; cs:si -> word number of entries, words CONFIG item types
-		; es:di-> CONFIGLINE structure
+		; INP:	cs:si -> word number of entries, words CONFIG item types
+		;	es:di-> CONFIGLINE structure
+		; OUT:	si unchanged
+		;	CY if none found,
+		;	 es:di -> CONFIGLINE structure with CONFIGTYPE_ENDOFARGS
+		;	NC if found,
+		;	 es:di -> CONFIGLINE structure with any of the types
+		; CHG:	ax
 _findstatement_multiple_types:
 	push ds
 	push es
