@@ -111,7 +111,10 @@ pexterrFileExists	EXTERRORCODE errFileExists, ERRLOC_UNK, ERRACT_USER, ERRCLASS_
 pexterrBadReqStruc	EXTERRORCODE errBadReqStruc, ERRLOC_UNK, ERRACT_USER, ERRCLASS_APPERR
 after_last_exterr:
 
-		; Get Extended Error Info
+		; Get error code from direct or exterr code
+		;
+		; INP:	si = exterr code or direct error code or 0FFFFh
+		; OUT:	ax = error code
 GetExtErrorCodeValue:
 	mov ax, si
 	cmp ax, 0FFFFh
@@ -123,7 +126,14 @@ GetExtErrorCodeValue:
 	retn
 
 
-		; Get All Extended Error Info
+		; Get all Extended Error Info from direct or exterr code
+		;
+		; INP:	bx = exterr code or direct error code or 0FFFFh
+		; OUT:	ax = error code
+		;	ch = error locus
+		;	dl = error suggested action
+		;	dh = error class
+		; CHG:	bx
 GetAllExtErrorInfo:
 	mov ax, bx				; ax = error code
 	cmp ax, 0FFFFh				; special value ?
