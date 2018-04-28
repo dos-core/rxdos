@@ -351,14 +351,11 @@ configProcessing_36:
 	call processSwitches
 	call processShell
 
-	getdarg es, di, _configStatements
-	call processDevice
-
 	getarg ax, _dosFlags				; option flags
 	call RxDOSini_LinkUpperMemory			; attempt to link upper memory
 
 	getdarg es, di, _configStatements
-	call processDeviceHigh
+	call processAnyDevice
 
 		; Return
 configProcessing_Return:
@@ -529,63 +526,25 @@ processBuffers_24:
 	Return
 
 
-		; Process DEVICE statements
+		; Process DEVICE and DEVICEHIGH statements
 		;
-		; es:di-> start of statement in saved CONFIG buffer
-processDevice:
-	mov ax, CONFIGTYPE_DEVICE
-	jmp processAnyDevice
-
-
-		; Process DEVICEHIGH statements
-		;
-		; es:di-> start of statement in saved CONFIG buffer
-processDeviceHigh:
-
+		; es:di-> first CONFIGLINE statement in saved CONFIG buffer
+processAnyDevice:
 	Entry
-	ddef	ConfigStatements, es, di
-	def	memorystrategy
-	def	umblink
 
 	Int21 GetUMBLink				; get current UMB link
-	storarg _umblink, ax
-
-	mov bx, _UMBLINK_ENABLED
-	Int21 SetUMBLink				; link in UMBs
+	mov ah, 0
+	def	original_umblink, ax
 
 	Int21 GetAllocationStrategy			; get current allocation strategy
-	storarg _memorystrategy, ax
+	def	original_memorystrategy, ax
 
-	mov bx, _MEM_FIRSTFIT_HIGHTHENLOW
-	Int21 SetAllocationStrategy			; include UMBs in memory allocation strategy
-
-
-	mov ax, CONFIGTYPE_DEVICEHIGH
-	getdarg es, di, _ConfigStatements
-	call processAnyDevice
-
-
-	getarg bx, _memorystrategy
-	Int21 SetAllocationStrategy			; restore allocation strategy
-
-	getarg bx, _umblink
-	Int21 SetUMBLink				; restore UMB link
-
-	Return
-
-
-		; Common Device Load
-		;
-		; es:di-> start of statement in saved CONFIG buffer
-processAnyDevice:
-
-	Entry
-	def	type, ax
+	def	type
+	def	step
 	def	SegAddress
 	def	SegSize, -1
 
 	ddef	ptrInitCommandLine
-	ddef	ConfigStatements
 	ddef	CurrentStatement
 	ddef	ExecBlock
 	ddef	strategy
@@ -596,36 +555,37 @@ processAnyDevice:
 	defbytes	devicename, 128
 	defbytes	arguments, 128
 
+
 processAnyDevice_08:
-	getarg ax, _type
-	call _findStatementType				; find statement type
-	ifc processAnyDevice_24				; if no more -->
+	mov si, init2_configtype_anydevice
+	call _findstatement_multiple_types		; find statement type
+	jnc .got_one					; if any more -->
+
+		; return
+	getarg bx, _original_memorystrategy
+	Int21 SetAllocationStrategy			; restore allocation strategy
+
+	getarg bx, _original_umblink
+	Int21 SetUMBLink				; restore UMB link
+
+	Return
+
+
+.got_one:
+	mov ax, word [es:di + configType]
+	mov word [bp + _type], ax			; store type
 
 	push es
 	push di
 	stordarg _CurrentStatement, es, di		; current statement at '='
 	call ConfigPrompt				; check for ?= or F8 case
-	ifc processAnyDevice_66				; if ignore -->
+	jc processAnyDevice_next_no_segs		; if ignore -->
 
 		; allocate memory, load device and initialize
 	mov ax, DEVICEINIT * 256			; ah = DEVICEINIT, al = 0
 	lea di, [ word _reqBlock + bp ]
 	call init2_to_doscode, initReqBlock		; initialize request block
 
-	mov bx, 0FFFFh
-	Int21 AllocateMemory				; get largest available memory block
-	storarg _SegSize, bx				; store size of segment
-	Int21 AllocateMemory				; else allocate largest available
-	ifc processAnyDevice_66				; if can't, should display an error message -->
-
-	mov word [ _ExecBlock + loverSegLoadAddress + bp ], ax
-	mov word [ _ExecBlock + loverRelocFactor + bp ], ax
-	storarg _SegAddress, ax				; store address of segment
-
-	add ax, word [ _SegSize + bp ]			; add alloc size to segment (max size)
-	dec ax						; protection
-	mov word [ _reqBlock + irEndAddress + _segment + bp ], ax
-	mov word [ _reqBlock + irEndAddress + _pointer + bp ], 0000
 
 		; scan command line parsing out extra characters at the start of name
 	push ds
@@ -681,6 +641,48 @@ processAnyDevice_26:
 processAnyDevice_28:
 	mov word [ ss:bx ], ControlM*256 + ControlM
 
+
+	and word [bp + _step], 0			; indicate only try
+
+	cmp word [bp + _type], CONFIGTYPE_DEVICE	; without high ?
+	je .memstrat_low_only				; yes, use LMA -->
+
+	mov bx, _UMBLINK_ENABLED
+	Int21 SetUMBLink				; link in UMBs
+
+	mov bx, _MEM_FIRSTFIT_HIGHONLY
+	Int21 SetAllocationStrategy			; first fit, high only
+
+	inc word [bp + _step]				; indicate first try
+	jmp .gotmemstrat				; -->
+
+
+.memstrat_low_only:
+	mov bx, _UMBLINK_DISABLED
+	Int21 SetUMBLink				; do not link in UMBs
+
+	mov bx, _MEM_FIRSTFIT_LOW
+	Int21 SetAllocationStrategy			; first fit, low only
+
+.gotmemstrat:
+	mov bx, 0FFFFh
+	Int21 AllocateMemory				; get largest available memory block
+	storarg _SegSize, bx				; store size of segment
+	test bx, bx
+	jz processAnyDevice_66
+	Int21 AllocateMemory				; else allocate largest available
+	jc processAnyDevice_66				; if can't, should display an error message -->
+
+	mov word [ _ExecBlock + loverSegLoadAddress + bp ], ax
+	mov word [ _ExecBlock + loverRelocFactor + bp ], ax
+	storarg _SegAddress, ax				; store address of segment
+
+	add ax, word [ _SegSize + bp ]			; add alloc size to segment (max size)
+	dec ax						; protection
+	mov word [ _reqBlock + irEndAddress + _segment + bp ], ax
+	mov word [ _reqBlock + irEndAddress + _pointer + bp ], 0000
+
+
 		; load program
 	mov ax, ss
 	mov es, ax
@@ -689,7 +691,13 @@ processAnyDevice_28:
 	lea dx, [ word _devicename + bp ]		; address of device name
 	Int21 ExecuteProgram, 03h			; load overlay
 	stordarg _loadSize, bx, cx			; load size
-	jnc processAnyDevice_32				; if succesful -->
+	jnc processAnyDevice_32				; if successful -->
+
+	cmp word [bp + _step], 1			; first try, UMA only ?
+	jne .error_out					; no -->
+	cmp ax, errNotEnoughMemory			; this error ?
+	je processAnyDevice_66_plus_60			; yes, second try -->
+.error_out:
 
 	push cs
 	pop ds
@@ -782,20 +790,40 @@ processAnyDevice_64:
 		| DOSFLAGS_RELOCATE_DOSCODE_HMA
 	call init2_relocate_device
 
+	jmp processAnyDevice_next
+
+processAnyDevice_66_plus_60:				; free allocation
+	getarg es, _SegAddress
+	Int21 FreeAllocatedMemory			; if error while loading
+
+processAnyDevice_66:
+	cmp word [bp + _step], 1			; error while trying to load high?
+	jne processAnyDevice_error_out_of_memory_next	; no, error out -->
+	inc word [bp + _step]				; indicate second try
+	jmp processAnyDevice_28.memstrat_low_only	; second try is in LMA
+
+
+processAnyDevice_error_out_of_memory_next:
+	push cs
+	pop ds
+	mov si, RxDOSmsg_CouldNotLoadDriver
+	call RxDOSIni_TypeMessage			; say couldn't load ...
+
+	push ss
+	pop ds
+	lea si, [ word _devicename + bp ]		; address of device name
+	call RxDOSIni_TypeMessage			; ... say which driver
+
+processAnyDevice_next:
 	pop es
 	pop ds
 
-processAnyDevice_66:
+processAnyDevice_next_no_segs:
 	pop di
 	pop es
 	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
 	add di, word [ es:di + configLength ]
 	jmp processAnyDevice_08
-
-		; return
-processAnyDevice_24:
-	getdarg es, di, _ConfigStatements
-	Return
 
 
 		; Process DOS statement
@@ -2212,6 +2240,12 @@ F8_PromptRequired	dw 0000				; non-zero if prompt required
 init_verbose:		dw 1
 init2_configtype_single:dw 1
 .configtype:		dw 0
+init2_configtype_anydevice:
+			dw (.after - .first) / 2
+.first:
+			dw CONFIGTYPE_DEVICEHIGH
+			dw CONFIGTYPE_DEVICE
+.after:
 
 
 		; CONFIG.SYS keywords
