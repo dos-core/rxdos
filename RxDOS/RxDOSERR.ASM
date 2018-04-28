@@ -17,6 +17,7 @@ the file LICENSE.TXT.
 
 %include "RXDMACRO.NEW"
 %include "RXDSTRUC.NEW"
+%include "lstruct.mac"
 
 	cpu 8086
 
@@ -72,6 +73,11 @@ at ErrorClass		, db %4
 	%endmacro
 
 
+%if ($ - doscode_start + 40h) < errorBehindLastDirectErrorCode
+ %error pexterr table starts below errorBehindLastDirectErrorCode 
+%endif
+
+first_exterr:
 pexterrInvalidFunction	EXTERRORCODE errInvalidFunction, ERRLOC_UNK, ERRACT_USER, ERRCLASS_NOTFND
 
 pexterrFileNotFound	EXTERRORCODE errFileNotFound, ERRLOC_DISK, ERRACT_USER, ERRCLASS_NOTFND
@@ -103,19 +109,45 @@ pexterrNoMoreFiles	EXTERRORCODE errNoMoreFiles, ERRLOC_UNK, ERRACT_USER, ERRCLAS
 pexterrFileExists	EXTERRORCODE errFileExists, ERRLOC_UNK, ERRACT_USER, ERRCLASS_NOTFND
 
 pexterrBadReqStruc	EXTERRORCODE errBadReqStruc, ERRLOC_UNK, ERRACT_USER, ERRCLASS_APPERR
-
+after_last_exterr:
 
 		; Get Extended Error Info
 GetExtErrorCodeValue:
-	mov ax, word [ cs:si + ExtErrorCodeValue ]	; get actual error value
+	mov ax, si
+	cmp ax, errorBehindLastDirectErrorCode	; direct code or pointer ?
+	jb .direct				; direct -->
+	mov ax, word [cs:si + ExtErrorCodeValue]; get actual error value
+.direct:
 	retn
 
 
 		; Get All Extended Error Info
 GetAllExtErrorInfo:
-	mov ax, word [ cs:bx + ExtErrorCodeValue ]	; else get error values
+	mov ax, bx				; ax = error code
+	cmp ax, 0FFFFh				; special value ?
+	je .none				; yes -->
+	cmp ax, errorBehindLastDirectErrorCode	; direct value ?
+	jae .indirect				; no, use exterr table entry -->
+
+	mov bx, first_exterr - _EXTERRORCODE_size; cs:bx + x -> first exterr
+.loop:
+	add bx, _EXTERRORCODE_size		; cs:bx -> next exterr
+	cmp bx, after_last_exterr		; another exterr ?
+	jae .none				; no -->
+
+	cmp word [cs:bx + ExtErrorCodeValue], ax; matches our code ?
+	jne .loop				; no, next -->
+
+.found:
+.indirect:					; get error values from exterr
+	mov ax, word [ cs:bx + ExtErrorCodeValue ]
 	mov ch, byte [ cs:bx + Locus ]
 	mov dl, byte [ cs:bx + SuggestedAction ]
 	mov dh, byte [ cs:bx + ErrorClass ]
+	retn
+
+.none:						; set defaults, use code in ax
+	mov ch, ERRLOC_UNK
+	mov dx, ERRACT_USER | (ERRCLASS_UNK << 8)
 	retn
 
