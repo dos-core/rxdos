@@ -894,6 +894,43 @@ getDaysSince1980:
 	sub ax, 4BD0h
 	sbb dx, byte 25h
 
+%ifdef OLDDATE_LOGIC
+	sub cx, 1980
+	storarg _year, cx
+
+	mov ax, 365
+	mul cx					; rough estimate of days
+
+	shr cx, 1
+	shr cx, 1				; # leap years
+	inc cx					; adj for 1980
+	add ax, cx				; days since
+	storarg _daysSince, ax			; days since as of last year
+
+	xor ax, ax
+	getarg dx, _monthnDays
+	mov bl, dh
+	and bx, 255
+	jz .08
+
+.06:
+	add al, byte [ cs:DaysInMonthTable + bx ]
+	adc ah, 0
+	dec bx
+	jnz .06
+
+.08:
+	mov dh, 0				; days only in dx
+	add ax, dx				; days this year
+	cmp ax, byte 28				; between Jan 1 and Feb 28 ?
+	jle .12		 			; yes -->
+
+	test word [ _year + bp ], 11b		; this year a leap year ?
+	jnz .12					; no -->
+	inc ax					; we get one more day
+	add ax, word [ _daysSince + bp ]
+%endif
+
 .12:
 	pop dx
 	pop cx
