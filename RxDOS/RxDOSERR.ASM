@@ -77,6 +77,7 @@ at ErrorClass		, db %4
  %error pexterr table starts below errorBehindLastDirectErrorCode 
 %endif
 
+	align 2
 first_exterr:
 pexterrInvalidFunction	EXTERRORCODE errInvalidFunction, ERRLOC_UNK, ERRACT_USER, ERRCLASS_NOTFND
 
