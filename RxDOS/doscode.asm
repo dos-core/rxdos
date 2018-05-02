@@ -4720,59 +4720,27 @@ getCurrDir_22:
 		;	paragraphs, if allocation fails.
 
 _AllocateMemory:
+			; bx = size
+	call AllocateMCB
 
-	entry
-	def	allocation, bx
-
-	call _allocateUpperMB				; allocate upper mem blocks
-	jnc _AllocateMemory_12				; if allocation made -->
-
-	getarg bx, _allocation
-	call _allocateConvMB				; allocate lower mem blocks
-
-_AllocateMemory_12:
 	RetCallersStackFrame ds, si
-	mov word [ _AX + si ], ax			; error or segment allocation
-	jnc _AllocateMemory_16				; if not error -->
-
-	mov word [ _BX + si ], dx			; largest block
-
-_AllocateMemory_16:
-	return
+	mov word [ si + _AX ], ax	; (error code or) segment allocation
+	mov word [ si + _BX ], bx	; largest block size (or actual size)
+			; CF preserved here!
+	retn
 
 
 		; 49h Free Allocated Memory
 		;
 		; es	paragraph to free
 _FreeAllocatedMemory:
+	RetCallersStackFrame ds, si
+	mov ax, word [ si + _ES ]
+	jmp ReleaseMCB
 
-	RetCallersStackFrame es, bx
-	mov bx, word [ es:_ExtraSegment + bx ]
-	dec bx						; preceding seg contains block
-	mov es, bx
-
-		; is this a valid memory block ?
-	cmp byte [ es:_memSignature ], _RxDOS_MEMSIGNATURE
-	je _freeallocateMemory_12
-	cmp byte [ es:_memSignature ], _RxDOS_ENDSIGNATURE
-	je _freeallocateMemory_12
-
-		; invalid block
-	RetCallersStackFrame es, bx
-	mov word [ es:_AX + bx ], pexterrInvalidBlock
-	stc
-	ret
-
-		; block is valid, free it
-_freeallocateMemory_12:
-	xor ax, ax
-	mov word [ es:_memParent ], ax		; free memory block
-	; call _collectMemoryBlocks			; save space
-	; or ax, ax					; no carry
 		; DOS should not collect MBs after freeing. This breaks
 		; some software which directly modifies MCBs because the
 		; software may think the MCB still exist there.
-	retn
 
 
 		; 4ah Modify Allocated Memory
@@ -4780,10 +4748,9 @@ _freeallocateMemory_12:
 		; es	paragraph to free
 		; bx	new paragraph size
 _ModifyAllocatedMemory:
-
-	RetCallersStackFrame es, si
-	mov es, word [ es:si + _ExtraSegment ]
-	jmp _modifyMemBlock
+	RetCallersStackFrame ds, si
+	mov ax, word [ si + _ES ]
+	jmp ModifyMCB
 
 
 		; 4Bxxh Load and Execute Program
@@ -5917,12 +5884,7 @@ _SetHandlesCount_08:
 	shr bx, 1
 	shr bx, 1					; compute paragraphs required
 
-	call _allocateUpperMB				; allocate upper memory block
-	jnc _SetHandlesCount_12				; if allocation made -->
-	call _allocateConvMB				; allocate lower memory block
-	jc _SetHandlesCount_30				; if allocation not made -->
-
-_SetHandlesCount_12:
+	call AllocateMCB
 	mov es, ax					; new segment
 	storarg _allocatedseg, ax			; save
 
