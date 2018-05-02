@@ -4750,7 +4750,12 @@ _FreeAllocatedMemory:
 _ModifyAllocatedMemory:
 	RetCallersStackFrame ds, si
 	mov ax, word [ si + _ES ]
-	jmp ModifyMCB
+	call ModifyMCB
+	mov word [ si + _BX ], bx	; new block size
+					; (requested or largest available size)
+			; CF preserved here!
+	retn
+
 
 
 		; 4Bxxh Load and Execute Program
