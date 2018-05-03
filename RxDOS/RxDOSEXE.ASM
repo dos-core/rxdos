@@ -465,6 +465,7 @@ loadExe_Program:
 
 	def	SizePara
 	def	CheckSum, 0
+	def	lastparasize
 	ddef	returnSize
 	defbytes	exeHeader, sizeEXEHEADER
 	defbytes	diskAccess, sizeDISKACCESS
@@ -514,30 +515,48 @@ loadExe_Program:
 @@:
 	mov dx, 512			; full page
 @@:
-	add dx, byte (PARAGRAPH - 1)			; round up paragraphs needed
+	push dx
+	and dx, 15
+	jnz @F
+	mov dl, 16
+	mov word [bp + _lastparasize], dx
+@@:
+	pop dx
+
+		; We have to round up the last paragraph here to
+		;  properly calculate the size needed by the image.
+		;  Handling of the last paragraph differs later when
+		;  loading from the file.
+	add dx, byte (PARAGRAPH - 1)	; round up paragraphs needed
 	shr dx, 1
 	shr dx, 1
 	shr dx, 1
-	shr dx, 1					; paragraphs at end needed
+	shr dx, 1			; paragraphs at end needed
 
 	mov ax, word [ _exeHeader + exePages + bp ]
-	dec ax						; adjust for last block
-	shl ax, 1					; conv pages to paragraphs
-	shl ax, 1					; 4
-	shl ax, 1					; 8
-	shl ax, 1					; 16
-	shl ax, 1					; 32
+	dec ax				; adjust for last block
+	shl ax, 1			; conv pages to paragraphs
+	shl ax, 1			; 4
+	shl ax, 1			; 8
+	shl ax, 1			; 16
+	shl ax, 1			; 32
 	sub ax, word [ _exeHeader + exeHeaderSize + bp ]
-	jc @F
-	add ax, dx					; actual paragr needed
-	jc @F
+	jnc .valid_image_size
+
+	add ax, dx			; add in last page size
+	jnc .format_invalid		; NC ? then error -->
+	jmp .add_minalloc
+.valid_image_size:
+	add ax, dx			; actual paragr needed
+	jc .overflow
+.add_minalloc:
 	cmp byte [ _Mode + bp ], execLoadOverlay
-	je @FF				; skip minalloc if overlay -->
+	je .gotsize			; skip minalloc if overlay -->
 	add ax, word [ _exeHeader + exeMinAlloc + bp ]
-	jnc @FF
-@@:
+	jnc .gotsize
+.overflow:
 	mov ax, -1
-@@:
+.gotsize:
 	storarg _SizePara, ax		; save as paragraphs needed
 
 	getarg bx, _pLoadEnvelope
@@ -553,8 +572,13 @@ loadExe_Program:
 	jae .06				; if it fits -->
 .out_of_mem:
 	mov ax, errorInsufficientMemory	; error code
+.error:
 	stc
 	jmp .50_if_CY			; error out -->
+
+.format_invalid:
+	mov ax, errorFormatInvalid
+	jmp .error
 
 .04:
 	mov dx, word [ _exeHeader + exeMaxAlloc + bp ]
@@ -571,7 +595,6 @@ loadExe_Program:
 	getarg bx, _pLoadEnvelope
 
 		; load module
-loadExe_Program06:
 	mov es, word [ loadEnvStartSegment + bx ]
 	mov ax, word [ _exeHeader + exeHeaderSize + bp ]
 	xor dx, dx
@@ -584,17 +607,20 @@ loadExe_Program06:
 	shl ax, 1					; 16 byte offset
 	rcl dx, 1
 
-loadExe_Program08:
+	sub word [bp + _SizePara], 1			; subtract last para
+	jc .format_invalid				; (was zero)
+	jz .zero
+
+.08:
 	push es
 	push dx
 	push ax						; save position in file
 
 	mov cx, word [ _SizePara + bp ]			; get paras to read
 	test ch, 0F0h					; over 64 KiB ?
-	jz loadExe_Program12				; no, read whole file -->
+	jz @F						; no, read whole file -->
 	mov cx, 0FFFh					; read as much as possible.
-
-loadExe_Program12:
+@@:
 	push cx						; save paras to read
 
 	shl cx, 1
@@ -621,23 +647,19 @@ loadExe_Program12:
 	mov es, cx					; set new read segment
 
 	sub word [ _SizePara + bp ], bx			; subtract paragraphs used.
-	jnz loadExe_Program08
+	jnz .08
 
-	xor di, di					; load at _StartSeg:0000
-	mov cx, word [ _exeHeader + exeExtraBytes + bp ]
-	and cx, byte (PARAGRAPH - 1)			; last 15 bytes
-	jz loadExe_Program20				; if none to read -->
-	
+.zero:
+	xor di, di
+	mov cx, word [bp + _lastparasize]
 	lea bx, [ byte _diskAccess + bp ]		; build access control block
 	call readLogicalBuffer				; ss:bx-> access buffer
 	call computeChecksum
 	add word [ _CheckSum + bp ], ax
 
-
 		; address relocation blocks
-loadExe_Program20:
 	mov ax, word [ _exeHeader + exeRelocItems + bp ]
-	or ax, ax
+	test ax, ax
 	jz loadExe_Program32
 
 loadExe_Program28:
