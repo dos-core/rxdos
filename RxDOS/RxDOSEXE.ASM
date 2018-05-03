@@ -529,25 +529,44 @@ loadExe_Program:
 	jc @F
 	add ax, dx					; actual paragr needed
 	jc @F
+	cmp byte [ _Mode + bp ], execLoadOverlay
+	je @FF				; skip minalloc if overlay -->
 	add ax, word [ _exeHeader + exeMinAlloc + bp ]
 	jnc @FF
 @@:
 	mov ax, -1
 @@:
-	storarg _SizePara, ax				; save as paragraphs needed
+	storarg _SizePara, ax		; save as paragraphs needed
 
 	getarg bx, _pLoadEnvelope
-	cmp byte [ _Mode + bp ], execLoadOverlay	; if load overlay 
-	jz loadExe_Program06				; no need to build return stack -->
+	cmp byte [ _Mode + bp ], execLoadOverlay
+					; load overlay ?
+	jne .04				; no, go allocate memeory -->
 
+	mov dx, word [bx + loadEnvStartSegment]
+					; dx = segment to load to
+	call GetSizeInMCB		; get bx = size of allocation
+	jc .50_if_CY			; 0, not in any MCB, or in free MCB -->
+	cmp bx, word [ bp + _SizePara ]	; compare available size to image size
+	jae .06				; if it fits -->
+.out_of_mem:
+	mov ax, errorInsufficientMemory	; error code
+	stc
+	jmp .50_if_CY			; error out -->
+
+.04:
 	mov dx, word [ _exeHeader + exeMaxAlloc + bp ]
 	call _LoaderAllocMemory				; alloc memory for env block/PSP
+.50_if_CY:
 	ifc loadExe_Program50				; if cannot allocate -->
 
 	getarg bx, _pLoadEnvelope
 	mov word [ loadEnvStartSegment + bx ], es
 	mov word [ loadEnvRelocFactor + bx ], es
 	mov word [ loadEnvProgramPSP + bx ], ax
+
+.06:
+	getarg bx, _pLoadEnvelope
 
 		; load module
 loadExe_Program06:
