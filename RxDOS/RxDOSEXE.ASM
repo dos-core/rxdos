@@ -576,9 +576,13 @@ loadExe_Program:
 
 		; Not overlay. Add minalloc to memory size needed and allocate.
 .04:
+	mov dx, word [ _exeHeader + exeMaxAlloc + bp ]
+	add dx, ax
+	jnc @F
+	or dx, -1
+@@:
 	add ax, word [bp + _exeHeader + exeMinAlloc]
 	jc .out_of_mem
-	mov dx, word [ _exeHeader + exeMaxAlloc + bp ]
 	call _LoaderAllocMemory				; alloc memory for env block/PSP
 .50_if_CY:
 	ifc loadExe_Program50				; if cannot allocate -->
