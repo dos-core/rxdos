@@ -534,7 +534,8 @@ loadExe_Program:
 	shr dx, 1			; paragraphs at end needed
 
 	mov ax, word [ _exeHeader + exePages + bp ]
-	dec ax				; adjust for last block
+	sub ax, 1			; adjust for last block
+	jc .format_invalid		; was zero, error out -->
 	shl ax, 1			; conv pages to paragraphs
 	shl ax, 1			; 4
 	shl ax, 1			; 8
