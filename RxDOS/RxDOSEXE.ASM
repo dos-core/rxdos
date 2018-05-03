@@ -505,6 +505,8 @@ loadExe_Program:
 
 		; compute size in pages of load module
 	mov dx, word [ _exeHeader + exeExtraBytes + bp ]
+	cmp dx, 512			; > 512 ?
+	ja @F				; yes, assume full page -->
 	cmp dx, 4			; 4 ? (see RBIL 61 Table 01594)
 	je @F				; yes, full page -->
 	test dx, dx			; 0 ?
