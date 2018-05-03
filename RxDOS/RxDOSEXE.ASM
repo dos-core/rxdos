@@ -17,6 +17,7 @@ the file LICENSE.TXT.
 
 %include "RXDMACRO.NEW"
 %include "RXDSTRUC.NEW"
+%include "lstruct.mac"
 
 	cpu 8086
 
@@ -204,18 +205,31 @@ _loadProgram_30:
 	rcr ax, 1
 	storarg _SizePara, ax				; save as paragraphs needed
 
-	cmp byte [ _Mode + bp ], execLoadOverlay	; if load overlay 
-	jz _loadProgram_34				; no need to allocate memeory -->
+	cmp byte [ _Mode + bp ], execLoadOverlay	; load overlay ?
+	jnz .32						; no, go allocate memeory -->
 
+	mov dx, word [ _loadEnvelope + loadEnvStartSegment + bp ]
+					; dx = segment to load to
+	call GetSizeInMCB		; get bx = size of allocation
+	jc .80_if_CY			; 0, not in any MCB, or in free MCB -->
+	cmp bx, word [ bp + _SizePara ]	; compare available size to image size
+	jae .34				; if it fits -->
+	mov ax, errorInsufficientMemory	; error code
+	stc
+	jmp .80_if_CY			; error out -->
+
+.32:
 	mov dx, 0FFFFh					; max request (all of memory)
 	lea bx, [ _loadEnvelope + bp ]
 	call _LoaderAllocMemory				; alloc memory for env block/PSP
+.80_if_CY:
 	ifc _loadProgram_80				; if cannot allocate -->
 
 	mov word [ _loadEnvelope + loadEnvProgramPSP + bp ], ax
 	mov word [ _loadEnvelope + loadEnvStartSegment + bp ], es
 	mov word [ bp + _process_block_allocated_paras ], cx
 
+.34:
 		; load module (at es:0000)
 _loadProgram_34:
 	xor di, di					; es:di == es:0000
