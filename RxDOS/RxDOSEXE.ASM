@@ -545,17 +545,10 @@ loadExe_Program:
 
 	add ax, dx			; add in last page size
 	jnc .format_invalid		; NC ? then error -->
-	jmp .add_minalloc
+	jmp .gotsize
 .valid_image_size:
-	add ax, dx			; actual paragr needed
-	jc .overflow
-.add_minalloc:
-	cmp byte [ _Mode + bp ], execLoadOverlay
-	je .gotsize			; skip minalloc if overlay -->
-	add ax, word [ _exeHeader + exeMinAlloc + bp ]
-	jnc .gotsize
-.overflow:
-	mov ax, -1
+	add ax, dx			; actual paragraphs needed
+	jc .out_of_mem
 .gotsize:
 	storarg _SizePara, ax		; save as paragraphs needed
 
@@ -564,6 +557,7 @@ loadExe_Program:
 					; load overlay ?
 	jne .04				; no, go allocate memeory -->
 
+		; Overlay. Check that the image fits in this MCB.
 	mov dx, word [bx + loadEnvStartSegment]
 					; dx = segment to load to
 	call GetSizeInMCB		; get bx = size of allocation
@@ -580,7 +574,10 @@ loadExe_Program:
 	mov ax, errorFormatInvalid
 	jmp .error
 
+		; Not overlay. Add minalloc to memory size needed and allocate.
 .04:
+	add ax, word [bp + _exeHeader + exeMinAlloc]
+	jc .out_of_mem
 	mov dx, word [ _exeHeader + exeMaxAlloc + bp ]
 	call _LoaderAllocMemory				; alloc memory for env block/PSP
 .50_if_CY:
