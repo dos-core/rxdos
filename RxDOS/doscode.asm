@@ -4736,11 +4736,10 @@ _AllocateMemory:
 _FreeAllocatedMemory:
 	RetCallersStackFrame ds, si
 	mov ax, word [ si + _ES ]
-	jmp ReleaseMCB
-
-		; DOS should not collect MBs after freeing. This breaks
-		; some software which directly modifies MCBs because the
-		; software may think the MCB still exist there.
+	call ReleaseMCB
+	mov word [ si + _AX ], ax	; (error code or) MCB position
+			; CF preserved here!
+	retn
 
 
 		; 4ah Modify Allocated Memory
@@ -4751,6 +4750,7 @@ _ModifyAllocatedMemory:
 	RetCallersStackFrame ds, si
 	mov ax, word [ si + _ES ]
 	call ModifyMCB
+	mov word [ si + _AX ], ax	; (error code or) segment allocation
 	mov word [ si + _BX ], bx	; new block size
 					; (requested or largest available size)
 			; CF preserved here!
