@@ -572,11 +572,15 @@ loadExe_Program:
 loadExe_Program06:
 	mov es, word [ loadEnvStartSegment + bx ]
 	mov ax, word [ _exeHeader + exeHeaderSize + bp ]
-	shl ax, 1					; 2
-	shl ax, 1					; 4
-	shl ax, 1					; 8
-	shl ax, 1					; 16 byte offset
 	xor dx, dx
+	shl ax, 1					; 2
+	rcl dx, 1
+	shl ax, 1					; 4
+	rcl dx, 1
+	shl ax, 1					; 8
+	rcl dx, 1
+	shl ax, 1					; 16 byte offset
+	rcl dx, 1
 
 loadExe_Program08:
 	push es
