@@ -18,6 +18,7 @@ the file LICENSE.TXT.
 %include "RXDMACRO.NEW"
 %include "RXDSTRUC.NEW"
 %include "lstruct.mac"
+%include "lmacros2.mac"
 
 	cpu 8086
 
@@ -487,6 +488,7 @@ loadExe_Program:
 	mov word [ _diskAccess + diskAcFileSize + _low + bp ], ax
 	mov word [ _diskAccess + diskAcFileSize + _high + bp ], dx
 
+		; RxDOS 7.2x: bug
 	sub ax,	200h
 	sbb dx, byte 0					; return size
 	mov word [ _returnSize + _low + bp ], ax
@@ -503,6 +505,13 @@ loadExe_Program:
 
 		; compute size in pages of load module
 	mov dx, word [ _exeHeader + exeExtraBytes + bp ]
+	cmp dx, 4			; 4 ? (see RBIL 61 Table 01594)
+	je @F				; yes, full page -->
+	test dx, dx			; 0 ?
+	jnz @FF				; no -->
+@@:
+	mov dx, 512			; full page
+@@:
 	add dx, byte (PARAGRAPH - 1)			; round up paragraphs needed
 	shr dx, 1
 	shr dx, 1
@@ -510,7 +519,7 @@ loadExe_Program:
 	shr dx, 1					; paragraphs at end needed
 
 	mov ax, word [ _exeHeader + exePages + bp ]
-	; dec ax					; adjust for last block
+	dec ax						; adjust for last block
 	shl ax, 1					; conv pages to paragraphs
 	shl ax, 1					; 4
 	shl ax, 1					; 8
