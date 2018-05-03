@@ -185,15 +185,16 @@ _loadProgram_22:
 
 		; load COM or SYS
 _loadProgram_30:
-	getarg bx, _ptrDirAccess			; dir information
+	getarg bx, _ptrDirAccess	; dir information
 	les di, [ fileAcBufferPtr + bx ]
 	add di, word [ fileAcDirOffset + bx ]
 	mov ax, word [ es:di + deFileSize + _low ]
 	mov dx, word [ es:di + deFileSize + _high ]
-	stordarg _filesize, dx, ax			; save file size
+	stordarg _filesize, dx, ax	; save file size
 
 	add ax, byte (PARAGRAPH - 1)
-	adc dx, byte 0					; just in case carry
+	adc dx, byte 0			; just in case carry
+	jc .out_of_mem			; (4 GiB - x) too much -->
 
 	shr dx, 1
 	rcr ax, 1
@@ -203,10 +204,13 @@ _loadProgram_30:
 	rcr ax, 1
 	shr dx, 1
 	rcr ax, 1
-	storarg _SizePara, ax				; save as paragraphs needed
+	test dx, dx			; (1 MiB - x) too much ?
+	jnz .out_of_mem			; yes -->
+	storarg _SizePara, ax		; save as paragraphs needed
 
-	cmp byte [ _Mode + bp ], execLoadOverlay	; load overlay ?
-	jnz .32						; no, go allocate memeory -->
+	cmp byte [ _Mode + bp ], execLoadOverlay
+					; load overlay ?
+	jnz .32				; no, go allocate memeory -->
 
 	mov dx, word [ _loadEnvelope + loadEnvStartSegment + bp ]
 					; dx = segment to load to
@@ -214,6 +218,7 @@ _loadProgram_30:
 	jc .80_if_CY			; 0, not in any MCB, or in free MCB -->
 	cmp bx, word [ bp + _SizePara ]	; compare available size to image size
 	jae .34				; if it fits -->
+.out_of_mem:
 	mov ax, errorInsufficientMemory	; error code
 	stc
 	jmp .80_if_CY			; error out -->
