@@ -115,8 +115,6 @@ _RxDOS_CurrentStackTop	dw (dosdata_stack + 3 * RXDOS_PERCALL_STACKRESERVE)
 _RxDOS_StackLongJump	dw 0			; long jump
 
 		; UMB Control Status Word
-_RxDOS_UMBEnabled	dw 0			; set by init
-_RxDOS_UMBAllowed	dw 0			; selectable by user (Int21.5802, .5803)
 first_umcb:		dw -1
 first_hmcb:		dw 0
 current_driver:		dw 0
@@ -212,7 +210,8 @@ SDAprinterecho:		db 0
 _RxDOS_Verify		db 0			; NonZero if Verify
 			db 0			; changes often in MS-DOS, possible used by Int21.09 or dev write
 _RxDOS_bSwitchChar	db '/'			; Switch Char
-_RxDOS_AllocStrategy	dw 0			; Allocation strategy
+_RxDOS_AllocStrategy	db 0			; Allocation strategy
+			db 0
 SDA5E01inc:		db 1			; incremented by Int21.5E01, initial value 1
 SDAmachinename:		times 16 db 32		; machine name set by Int21.5E01, initial blanks only
 SDApatchoffsets:	times 4 dw SDApatchbyte	; DOS-C 2036 and (according to RBIL) MS-DOS 4.00 = 0D0Ch,

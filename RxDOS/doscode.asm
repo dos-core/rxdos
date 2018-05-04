@@ -47,6 +47,8 @@ Performs the actual disk (Int13) access.
 %include "RXDMACRO.NEW"
 %include "RXDSTRUC.NEW"
 %include "RXOPTION.MAC"
+%include "lmacros2.mac"
+%include "lstruct.mac"
 
 %assign _BUILD_OBJ	0
 
@@ -5277,81 +5279,97 @@ _GetAllocationStrategy:
 	Goto 02, _GetUpperMemLink
 	Goto 03, _SetUpperMemLink
 
-	seterror pexterrInvalidFunction
+.error_invalid_function:
+	mov ax, pexterrInvalidFunction
+	stc
 	retn
 
 
 		; Get allocation strategy
 _GetAllocStrategy:
 	RetCallersStackFrame es, bx
-	mov ax, word [ _RxDOS_AllocStrategy ]
+	xor ax, ax
+	mov al, byte [ _RxDOS_AllocStrategy ]
 	mov word [ es:bx + _AX ], ax
 	retn
 
-		; set allocation strategy
+
+		; Set allocation strategy
+		;
+		; We don't check for validity here, except the high byte.
+		;  No error is returned here, all values are valid.
 _SetAllocStrategy:
-%if 1
-		; RxDOS 7.20N:	MS-DOS allows any combination of the high bits. If
-		;		both are set, this is the same as if only the "
-		;		And that's even shorter.
-	test bx, ~0C3h					; bh != 0 or invalid bits in bl set?
-	jnz _SetAllocStrategy_22			; error -->
+	test bh, bh
+	jz @F
+	or byte [ss:error_flags], EF_InvalidAllocStrategy
+@@:
+	mov word [ _RxDOS_AllocStrategy ], bx
+	retn
+
+
+%ifn _UMA
+_GetUpperMemLink: equ _GetAllocationStrategy.error_invalid_function
+_SetUpperMemLink: equ _GetAllocationStrategy.error_invalid_function
 %else
-	or bh,bh
-	jnz _SetAllocStrategy_22			; Anything with bh != 0 is invalid
-
-	; cmp bl, _MEM_FIRSTFIT_LOWTHENHIGH
-	; jb _SetAllocStrategy_08			; _MEM_FIRSTFIT_LOW is zero anyway
-	cmp bl, _MEM_LASTFIT_LOWTHENHIGH
-	jbe _SetAllocStrategy_08
-
-	cmp bl, _MEM_FIRSTFIT_HIGHONLY
-	jb _SetAllocStrategy_22
-	cmp bl, _MEM_LASTFIT_HIGHONLY
-	jbe _SetAllocStrategy_08
-
-	cmp bl, _MEM_FIRSTFIT_HIGHTHENLOW
-	jb _SetAllocStrategy_22
-	cmp bl, _MEM_LASTFIT_HIGHTHENLOW
-	ja _SetAllocStrategy_22				; Above it is invalid
-%endif
-
-_SetAllocStrategy_08:
-	clc
-	mov word [ _RxDOS_AllocStrategy ], bx		; if valid
-	retn
-
-_SetAllocStrategy_22:
-	mov ax, pexterrInvalidFunction			; if invalid
-	stc
-	retn
-
-		; Get allocation strategy
+		; Get UMB link status
 _GetUpperMemLink:
-	mov ax, word [ _RxDOS_UMBAllowed ]		; set allow/disallow flag
+	mov ax, word [enable_uma]	; get allow/disallow flag
 	RetCallersStackFrame ds, bx
 	mov word [ bx + _AX ], ax
 	retn
 
-		; Get allocation strategy
+		; Set UMB link status
 _SetUpperMemLink:
-	cmp word [ _RxDOS_UMBEnabled ], byte 0		; UMB enabled ?
-	jz _SetUpperMemLink_08				; no -->
+	mov ax, word [first_umcb]	; any UMA ?
+	cmp ax, -1
+	je .none
 
-	cmp bx, byte 1
-	ja _SetUpperMemLink_08
-
-_SetUpperMemLink_04:
-	clc
-	mov word [ _RxDOS_UMBAllowed ], bx		; set allow/disallow flag
+	mov es, ax
+	cmp word [es:mcbOwner], 8
+	jne .got
+	cmp word [es:smcbName], "S"
+	jne .got
+	cmp byte [es:smcbType], S_EXCLDUMA
+	jne .got
+	cmp byte [es:mcbSignature], "Z"
+	jne .got
+.none:
+	test bx, bx			; (NC)
+	jnz _GetAllocationStrategy.error_invalid_function
 	retn
 
-	; always return error until UMB support can be provided
+.got:
+	call SetLinearMCBFlags		; ax = 0 = get first MCB
+.next:
+	mov dx, ax			; remember MCB in case it is the target
+	call SNextMCB			; get next MCB
+	jc .end
+	jnz .error			; end ? UMCB not found -->
+	cmp ax, word [first_umcb]	; this the first UMCB ?
+	jne .next			; no, loop -->
 
-_SetUpperMemLink_08:
-	mov ax, pexterrInvalidFunction
+	test dx, dx			; no previous ?
+	jz .error			; if so, error -->
+	mov es, dx			; => MCB that points to first UMCB
+	test bx, bx			; (NC)
+	jz .set_Z			; 0, set to 'Z' -->
+.set_M:
+	mov byte [es:mcbSignature], "M"	; nonzero, set to 'M'
+	jmp @F
+.set_Z:
+	mov byte [es:mcbSignature], "Z"
+@@:
+	mov word [enable_uma], bx	; store UMB link
+	jmp .end
+
+.error:
+	mov ax, errorMCBDestroyed
 	stc
+.end:
+	pop si
+	pop si
 	retn
+%endif
 
 
 		; 59h Get Extended Error
