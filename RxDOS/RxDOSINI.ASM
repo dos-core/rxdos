@@ -786,8 +786,7 @@ processAnyDevice_60:
 	Int21 FreeAllocatedMemory			; if error while loading
 
 processAnyDevice_64:
-	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
-		| DOSFLAGS_RELOCATE_DOSCODE_HMA
+	mov ax, -1
 	call init2_relocate_device
 
 	jmp processAnyDevice_next
@@ -2459,11 +2458,9 @@ RxDOS_initialize:
 	setDS cs
 	setES ss
 
-	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
-		| DOSFLAGS_RELOCATE_DOSCODE_HMA
+	mov ax, -1
 	call init2_relocate_device
-	mov ax, DOSFLAGS_RELOCATE_DOSCODE_UMA | DOSFLAGS_RELOCATE_DOSDATA_UMA \
-		| DOSFLAGS_RELOCATE_DOSCODE_HMA
+	mov ax, -1
 	call init2_relocate_end
 
 	push cs
