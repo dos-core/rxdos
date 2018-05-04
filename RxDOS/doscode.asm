@@ -4742,7 +4742,7 @@ _FreeAllocatedMemory:
 	retn
 
 
-		; 4ah Modify Allocated Memory
+		; 4Ah Modify Allocated Memory
 		;
 		; es	paragraph to free
 		; bx	new paragraph size
