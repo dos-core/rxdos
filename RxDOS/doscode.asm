@@ -5303,7 +5303,7 @@ _SetAllocStrategy:
 	jz @F
 	or byte [ss:error_flags], EF_InvalidAllocStrategy
 @@:
-	mov word [ _RxDOS_AllocStrategy ], bx
+	mov byte [ _RxDOS_AllocStrategy ], bl
 	retn
 
 
@@ -5333,6 +5333,11 @@ _SetUpperMemLink:
 	jne .got
 	cmp byte [es:mcbSignature], "Z"
 	jne .got
+
+	test bx, bx			; valid ?
+	jnz _GetAllocationStrategy.error_invalid_function	; no -->
+	jmp .got			; set to zero, with UMCB (but no UMB)
+
 .none:
 	test bx, bx			; (NC)
 	jnz _GetAllocationStrategy.error_invalid_function
