@@ -135,6 +135,30 @@
 \n As early as 2a093d179ffd 2018-04-06, RxDOS.ASM is split into doscode.asm
    and dosdata.asm, and both are used respectively as DOSCODE and DOSDATA.
 
+\n As early as 3cb408e4a258 2018-04-12, RxBIO.ASM was split into biocode.asm
+   and bioentry.asm, and the former is put into the DOSCODE section. Also,
+   all variables except dosentry_to_dosdata_segment are moved out of DOSENTRY.
+
+\n As of b5b67355b503 2018-04-24, the interrupt 19h handler is left in
+   DOSENTRY. This supports use cases where the HMA or UMA may not be
+   available to the handler any longer.
+
+\n As of 8b75542e6ba1 2018-04-26, DOSCODE can be relocated to the HMA.
+
+\n As of af2c5e43be7e 2018-04-28, DEVICE and DEVICEHIGH directives in
+   [RX]CONFIG.SYS are parsed in the same pass. Also, DEVICEHIGH correctly
+   tries loading the device driver into the UMA if its executable image
+   fits. This requires a two-step approach, and the allocation check in
+   21.4B03 "load overlay" that was added in 58b36366e8e5 2018-05-03.
+
+\n As of e02d8abd452c 2018-05-03, lDOS memory.asm was implemented to replace
+   RxDOSMEM (now all of the latter calls into lDOS).
+
+\n As of 282e01e8ec3e 2018-05-05, UMB linking during device driver processing
+   (in init2_relocate_device) is implemented, and 21.5802/.5803 (get/set UMB
+   link state) is fully implemented.
+
+
 \S{} Misc
 
 \n RxDOS and RxCMD now allow embedding the Source Control Revision ID to
