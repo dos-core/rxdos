@@ -519,8 +519,8 @@ loadExe_Program:
 	and dx, 15
 	jnz @F
 	mov dl, 16
-	mov word [bp + _lastparasize], dx
 @@:
+	mov word [bp + _lastparasize], dx
 	pop dx
 
 		; We have to round up the last paragraph here to
