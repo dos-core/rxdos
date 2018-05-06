@@ -39,7 +39,7 @@ _allocateMinMaxMemBlock:
 	call GetMCBOwner			; dx = owner
 %ifn _UMA
  %if _386
-	movzx cx, word [ss:_RxDOS_AllocStrategy]; cx = flags
+	movzx cx, byte [ss:_RxDOS_AllocStrategy]; cx = flags
  %else
 	xor cx, cx
 	mov cl, byte [ss:_RxDOS_AllocStrategy]	; cx = flags
