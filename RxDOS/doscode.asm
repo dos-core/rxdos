@@ -5913,6 +5913,7 @@ _SetHandlesCount_08:
 	shr bx, 1					; compute paragraphs required
 
 	call AllocateMCB
+	jc _SetHandlesCount_30
 	mov es, ax					; new segment
 	storarg _allocatedseg, ax			; save
 
