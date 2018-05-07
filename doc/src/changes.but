@@ -158,6 +158,13 @@
    (in init2_relocate_device) is implemented, and 21.5802/.5803 (get/set UMB
    link state) is fully implemented.
 
+\n As of b758fe23b89b 2018-05-07, UMB linking and DOSDATA UMA relocation and
+   DOSCODE UMA or HMA relocation are disabled by default; use UMB=ON and
+   DOSDATA=UMA and DOSCODE=UMA,HMA in [RX]CONFIG.SYS to enable these.
+   (The compatible option, DOS=UMB, means UMB=ON, while DOS=HMA or DOS=HIGH
+   means DOSCODE=HMA. DOSDATA=UMA and DOSCODE=UMA do not have any equivalent
+   compatible options.)
+
 
 \S{} Misc
 
