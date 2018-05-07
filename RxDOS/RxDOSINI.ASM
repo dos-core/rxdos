@@ -17,6 +17,9 @@ the file LICENSE.TXT.
 
 %include "RXDMACRO.NEW"
 %include "RXDSTRUC.NEW"
+%include "lmacros2.mac"
+
+	numdef DOSFLAGS_DEFAULT, 0
 
 	cpu 8086
 
@@ -137,6 +140,10 @@ CONFIGTYPE_SWITCHCHAR	equ 0020h			; SWITCHAR=character
 CONFIGTYPE_COMMENTS	equ 0021h			; ;comment
 CONFIGTYPE_REM		equ 0022h			; REM=remark
 
+CONFIGTYPE_DOSCODE	equ 0030h
+CONFIGTYPE_DOSDATA	equ 0031h
+CONFIGTYPE_UMB		equ 0032h
+
 
 		; CONFIG flags and options
 CONFIGFLAG_ENABLED	equ 0001h
@@ -179,45 +186,51 @@ configProcessing:
 	ddef	configStatements, es, di
 	ddef	configNextLine, es, di
 
-	def	comment	, ';'				; default comment character
+	def	comment	, ';'			; default comment character
 	def	charsread
 	def	linenumber, 0000
-	def	dosFlags, 0000
 
 	defbytes	diskAccess, sizeDISKACCESS
 	defbytes	linebuffer, 255
 
 		; find/open RXCONFIG.SYS
-	setDS cs
-	setES cs
-	xor dx, dx
-	xor cx, cx
-	mov al, byte [ ss:_RxDOS_CurrentDrive ]		; startup drive
-
-	mov di, _RxDOS_RXCONFIGSYS			; RXCONFIG.SYS filename
-	call init2_to_doscode, scanDirectory		; search RXCONFIG.SYS
-	jnc configProcessing_08				; RXCONFIG.SYS found -->
-							; open CONFIG.SYS instead if no RXCONFIG.SYS
+	push cs
+	pop ds
 	push cs
 	pop es
-	mov di, _RxDOS_ConfigFile			; CONFIG.SYS filename
 	xor dx, dx
 	xor cx, cx
-	call init2_to_doscode, scanDirectory		; search CONFIG.SYS
-	jc configProcessing_Return			; if none found -->
+	xor ax, ax
+	mov al, byte [ ss:_RxDOS_CurrentDrive ]	; startup drive
 
-configProcessing_08:
+	mov di, _RxDOS_RXCONFIGSYS		; RXCONFIG.SYS filename
+	call init2_to_doscode, scanDirectory	; search RXCONFIG.SYS
+	jnc .08					; RXCONFIG.SYS found -->
+						; open CONFIG.SYS instead if no RXCONFIG.SYS
+	push cs
+	pop ds
+	push cs
+	pop es
+	mov di, _RxDOS_ConfigFile		; CONFIG.SYS filename
+	xor dx, dx
+	xor cx, cx
+	xor ax, ax
+	mov al, byte [ ss:_RxDOS_CurrentDrive ]	; startup drive
+	call init2_to_doscode, scanDirectory	; search CONFIG.SYS
+	jc .Return				; if none found -->
+
+.08:
 	push word [ es:si + deFileSize + _low ]
 	push word [ es:si + deFileSize + _high ]
 
 	setES ss
-	lea bx, [ _diskAccess + bp ]			; build access control block
-	call init2_to_doscode, initdiskAccess		; ax is drive, cx:dx is cluster
+	lea bx, [ _diskAccess + bp ]		; build access control block
+	call init2_to_doscode, initdiskAccess	; ax is drive, cx:dx is cluster
 
 	pop word [ ss:bx + diskAcFileSize + _high ]
 	pop word [ ss:bx + diskAcFileSize + _low ]
 
-configProcessing_12:
+.12:
 	getdarg es, di, _configNextLine
 	mov word [ es:di + configType ], CONFIGTYPE_ENDOFARGS
 	mov word [ es:di + configLength ], 0000
@@ -225,66 +238,66 @@ configProcessing_12:
 	setES ss
 	mov cx, 254
 	lea di, [ _linebuffer + bp ]
-	lea bx, [ _diskAccess + bp ]			; build access control block
-	call init2_to_doscode, readLine			; read a line
-	ifz configProcessing_36				; at end, reconfigure system -->
+	lea bx, [ _diskAccess + bp ]		; build access control block
+	call init2_to_doscode, readLine		; read a line
+	ifz .36					; at end, reconfigure system -->
 
-	inc word [ _linenumber + bp ]			; lines read
+	inc word [ _linenumber + bp ]		; lines read
 
 		; strip trailing newline
-configProcessing_14:
+.14:
 	lea di, [ _linebuffer + bp ]
 
-	getarg ax, _comment				; parse out comments
-	call configRemoveComments			; remove comments
-	jz configProcessing_12				; if nothing left on line -->
-	mov word [ _charsread + bp ], cx		; characters read
+	getarg ax, _comment			; parse out comments
+	call configRemoveComments		; remove comments
+	jz .12					; if nothing left on line -->
+	mov word [ _charsread + bp ], cx	; characters read
 
 	setES ss
-	cmp byte [ ss:di ], ':'				; comment line ?
-	jz configProcessing_12				; yes, ignore -->
-	cmp byte [ ss:di ], '['				; block item specifier ?
-	jz configProcessing_16				; yes -->
+	cmp byte [ ss:di ], ':'			; comment line ?
+	jz .12					; yes, ignore -->
+	cmp byte [ ss:di ], '['			; block item specifier ?
+	jz .16					; yes -->
 
 	mov si, _RxDOS_ConfigKeywords
 	call _findCommand
-	jnc configProcessing_20
+	jnc .20
 
 	; typeout msgUnknownCommandinConfig
-	jmp short short configProcessing_12
+	jmp short short .12
 
 		; [ blockitem_name ]
-configProcessing_16:
+.16:
 	inc di
-	call _skipSpaces				; skip any leading spaces
+	call _skipSpaces			; skip any leading spaces
 
 	push di
-	call _scanToEndofName				; find terminating space
-	mov byte [ ss:di ], 0				; set a terminator
+	call _scanToEndofName			; find terminating space
+	mov byte [ ss:di ], 0			; set a terminator
 
 	pop di
-	mov dx, CONFIGTYPE_MENUBLOCK			; menu block
+	mov dx, CONFIGTYPE_MENUBLOCK		; menu block
 
 		; go save statement
-configProcessing_20:
-	cmp dx, byte CONFIGTYPE_REM			; remark statement ?
-	jz configProcessing_12				; ignore -->
+.20:
+	cmp dx, byte CONFIGTYPE_REM		; remark statement ?
+	jz .12					; ignore -->
 
-	cmp dx, byte CONFIGTYPE_COMMENTS		; if comment, go process
-	jz configProcessing_26				; process comment -->
+	cmp dx, byte CONFIGTYPE_COMMENTS	; if comment, go process
+	jz .26					; process comment -->
 
 	push es
 	push di
 	lea bx, [ _linebuffer + bp ]
 	getarg cx, _charsread
 	sub cx, di
-	add cx, bx					; length difference to remember
+	add cx, bx				; length difference to remember
 
 	getdarg es, di, _configNextLine
-	mov word [ es:di + configType ], dx		; save type
-	mov word [ es:di + configStmtText ], si		; pointer to command name
+	mov word [ es:di + configType ], dx	; save type
+	mov word [ es:di + configStmtText ], si	; pointer to command name
 
-	mov ax, word [ _linenumber + bp ]		; get line number
+	mov ax, word [ _linenumber + bp ]	; get line number
 	mov word [ es:di + configLineNumber ], ax
 	mov word [ es:di + configFlags ], 0
 
@@ -296,32 +309,32 @@ configProcessing_20:
 		; copy statement
 	pop si
 	pop ds
-	lea di, [ configStatement + di ]		; offset to statement
+	lea di, [ configStatement + di ]	; offset to statement
 	repe movsb
 
 	xor ax, ax
-	stosb						; null terminate
+	stosb					; null terminate
 
 	mov di, word [ _configNextLine + bp ]
-	add di, word [ es:di + configLength ]		; advance beyond type
+	add di, word [ es:di + configLength ]	; advance beyond type
 	mov word [ _configNextLine + bp ], di
-	jmp configProcessing_12
+	jmp .12
 
 		; process menu
-configProcessing_26:
-	call _skipSpaces				; skip any leading spaces
+.26:
+	call _skipSpaces			; skip any leading spaces
 
-	mov ax, word [ es:di ]				; get comment character
-	cmp ah, ' ' + 1					; space or other control ?
-	jnc configProcessing_28				; no -->
+	mov ax, word [ es:di ]			; get comment character
+	cmp ah, ' ' + 1				; space or other control ?
+	jnc .28					; no -->
 	mov ah, 0
 
-configProcessing_28:
-	storarg _comment, ax				; save comment character(s)
-	jmp configProcessing_12				; continue
+.28:
+	storarg _comment, ax			; save comment character(s)
+	jmp .12					; continue
 
 		; process menu
-configProcessing_36:
+.36:
 	getdarg es, di, _configStatements
 	call configMenu
 
@@ -330,41 +343,48 @@ configProcessing_36:
 
 		; reconfigure system
 	getdarg es, di, _configStatements
-
 	call processSwitchChar
+	getdarg es, di, _configStatements
 	call processNumLock
+	getdarg es, di, _configStatements
 	call processDOS
-	storarg _dosFlags, ax				; save flags
-	call RxDOSini_MemorySubSystem			; re-initialize memory subsystem
 
+	call RxDOSini_MemorySubSystem		; re-initialize memory subsystem
+
+	getdarg es, di, _configStatements
 	call processBuffers
+	getdarg es, di, _configStatements
 	call processFCBS
+	getdarg es, di, _configStatements
 	call processFiles
+	getdarg es, di, _configStatements
 	call processStack
 
+	getdarg es, di, _configStatements
 	call processLastDrive
+	getdarg es, di, _configStatements
 	call processDrivParam
+	getdarg es, di, _configStatements
 	call processMultiTrack
 
+	getdarg es, di, _configStatements
 	call processBreak
+	getdarg es, di, _configStatements
 	call processCountry
+	getdarg es, di, _configStatements
 	call processSwitches
+	getdarg es, di, _configStatements
 	call processShell
-
-	getarg ax, _dosFlags				; option flags
-	call RxDOSini_LinkUpperMemory			; attempt to link upper memory
 
 	getdarg es, di, _configStatements
 	call processAnyDevice
 
 		; Return
-configProcessing_Return:
+.Return:
 	Return
 
 
 		; Process Unsupported Commands
-RxDOSini_LinkUpperMemory:
-
 processDrivParam:
 processMultiTrack:
 processSwitches:
@@ -456,7 +476,7 @@ processBreak_08:
 	call ConfigPrompt				; check for ?= or F8 case
 	jc processBreak_12				; ignore statement -->
 
-	mov si, _RxDOS_ConfigOnOff
+	mov si, config_onoff_options
 	call _findCommand				; locate on or off
 	jc processBreak_12				; if none of the above -->
 	storarg _break, dx				; else ok to save
@@ -786,7 +806,7 @@ processAnyDevice_60:
 	Int21 FreeAllocatedMemory			; if error while loading
 
 processAnyDevice_64:
-	mov ax, -1
+	mov ax, word [cs:init2_dosflags]
 	call init2_relocate_device
 
 	jmp processAnyDevice_next
@@ -829,55 +849,85 @@ processAnyDevice_next_no_segs:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processDOS:
+	lframe near
+	lvar	word, type
+	lenter
 
-	Entry
-	ddef	ConfigStatements, es, di
-	def	DOS, 0000				; no UMB, no HMA
-
-processDOS_08:
-	mov ax, CONFIGTYPE_DOS
-	call _findStatementType				; find statement type
-	jc processDOS_24				; if no more -->
+.08:
+	mov si, init2_configtype_dos_dosdata_doscode_umb
+	call _findstatement_multiple_types	; find statement type
+	jc .24					; if no more -->
+	mov ax, word [es:di + configType]
+	mov word [bp + ?type], ax		; store type
 
 	push es
 	push di
-	call ConfigPrompt				; check for ?= or F8 case
-	jc processDOS_12				; ignore statement -->
+	call ConfigPrompt			; check for ?= or F8 case
+	jc .12					; ignore statement -->
 
-processDOS_10:
-	mov si, _RxDOS_ConfigDOSOptions
-	call _findCommand				; locate options like high and umb
-	jc processDOS_12				; if none of the above -->
-%if 0
+.10:
+	mov si, config_dos_options
+	mov ax, word [bp + ?type]
+	cmp ax, CONFIGTYPE_DOS
+	je .options
+	mov si, config_doscode_options
+	cmp ax, CONFIGTYPE_DOSCODE
+	je .options
+	mov si, config_dosdata_options
+	cmp ax, CONFIGTYPE_DOSDATA
+	je .options
+	cmp ax, CONFIGTYPE_UMB
+	je .umb
+
+	mov dx, init2_msg.internal_error_config
+	call init2_disp_msg_asciz_cs_dx
+	jmp .12
+
+.umb:
+	mov si, config_onoff_options
+	call _findCommand
+	jc .12
+	test dx, dx
+	jz @F
+	or word [cs:init2_dosflags], DOSFLAGS_LINK_UMB
+	jmp .12
+
+@@:
+	and word [cs:init2_dosflags], ~ DOSFLAGS_LINK_UMB
+	jmp .12
+
+
+.options:
+	call _findCommand			; locate options like high and umb
+	jnc .gotoption				; if any found -->
+
+	jmp .12
+
+.gotoption:
 	or dx, dx
-	jns processDOS_or
-	neg dx
-	not dx
+	jns .or
+.and:
+	and word [cs:init2_dosflags], dx	; and option if it says off
+	jmp short .11
 
-processDOS_and:
-	and word [ _DOS + bp ], dx			; and option if it says off
-	jmp short processDOS_11
-%endif
+.or:
+	or word [cs:init2_dosflags], dx		; or option if it says on
 
-processDOS_or:
-	or word [ _DOS + bp ], dx			; or option if it says on
+.11:
+	call _nextArgument			; point to next argument
+	jnc .options				; go process -->
 
-processDOS_11:
-	call _nextArgument				; point to next argument
-	jnc processDOS_10				; go porcess -->
-
-processDOS_12:
+.12:
 	pop di
 	pop es
 	or word [ es:di + configFlags ], byte CONFIGFLAG_PROCESSED
 	add di, word [ es:di + configLength ]
-	jmp short processDOS_08
+	jmp .08
 
 		; return
-processDOS_24:
-	getarg ax, _DOS					; get DOS
-	getdarg es, di, _ConfigStatements
-	Return
+.24:
+	lleave
+	lret
 
 
 		; Process FCBS statement
@@ -1034,7 +1084,7 @@ processNumLock_08:
 	call ConfigPrompt				; check for ?= or F8 case
 	jc processNumLock_12				; if ignore -->
 
-	mov si, _RxDOS_ConfigOnOff
+	mov si, config_onoff_options
 	call _findCommand				; locate on or off
 	jc processNumLock_12				; if none of the above -->
 	storarg _numlock, dx				; else ok to save
@@ -1297,69 +1347,69 @@ ConfigPrompt:
 	ddef	configStmt, es, di
 
 	lea di, [ word configStatement + di ]
-	stordarg _configTextPtr, es, di			; save pointer
+	stordarg _configTextPtr, es, di		; save pointer
 
-	cmp word [ es:di ], '?='			; is it ?=
-	jz ConfigPrompt_12				; yes, go prompt -->
-	call checkforF8					; detect F8 during boot time
-	jz ConfigPrompt_24				; no, go skip = if set -->
+	cmp word [ es:di ], '?='		; is it ?=
+	jz .12					; yes, go prompt -->
+	call checkforF8				; detect F8 during boot time
+	jz .24					; no, go skip = if set -->
 
 		; prompt statement
-ConfigPrompt_12:
+.12:
 	push ds
 	setDS cs
 	getdarg es, di, _configStmt
 	mov si, word [ es:di + configStmtText ]
-	call RxDOSIni_TypeMessage			; show statement type
+	call RxDOSIni_TypeMessage		; show statement type
 
 	getdarg ds, si, _configTextPtr
-	call RxDOSIni_TypeMessage			; show user text
+	call RxDOSIni_TypeMessage		; show user text
 
 	setDS cs
 	mov si, msgProcessCommandYesNo
 	call RxDOSIni_TypeMessage
 
-ConfigPrompt_16:
+.16:
 	xor ax, ax
 	int 16h
 
-	_upperCase al					; upper case
-	cmp al, 'Y'					; check for Yes
-	jz ConfigPrompt_20
-	cmp al, 'N'					; check for No
-	jnz ConfigPrompt_16				; Get next character if invalid
+	_upperCase al				; upper case
+	cmp al, 'Y'				; check for Yes
+	jz .20
+	cmp al, 'N'				; check for No
+	jnz .16					; Get next character if invalid
 
-ConfigPrompt_20:
-	int 29h						; echo character
+.20:
+	int 29h					; echo character
 	call RxDOSIni_TypeCR
 
 	pop ds
 	getdarg es, di, _configTextPtr
-	cmp al, 'N'					; if No
-	stc						; set carry if No
-	jz ConfigPrompt_36				; exit -->
+	cmp al, 'N'				; if No
+	stc					; set carry if No
+	jz .36					; exit -->
 
 		; Skip ? and ?= and any spaces which follow
-ConfigPrompt_24:
-	cmp word [ es:di ], '?='			; '?=' in prompt ?
-	jnz ConfigPrompt_26				; no -->
-	inc di						; skip over question mark
+.24:
+	cmp word [ es:di ], '?='		; '?=' in prompt ?
+	jnz .26					; no -->
+	inc di					; skip over question mark
 
-ConfigPrompt_26:
-	cmp byte [ es:di ], '='				; '=' in prompt ?
-	jnz ConfigPrompt_28				; no -->
-	inc di						; skip over equal sign
+.26:
+	cmp byte [ es:di ], '='			; '=' in prompt ?
+	jnz .28					; no -->
+	inc di					; skip over equal sign
 
-ConfigPrompt_28:
-	cmp byte [ es:di ], ' '				; space follows ?
-	jnz ConfigPrompt_32				; no, return -->
-	inc di						; skip over space
-	jmp short ConfigPrompt_28			; loop through all spaces -->
+.28:
+	cmp byte [ es:di ], ' '			; space follows ?
+	jnz .32					; no, return -->
+	inc di					; skip over space
+	jmp short .28				; loop through all spaces -->
 
-ConfigPrompt_32:
-	clc						; clear carry
+.32:
+	clc					; clear carry
 
-ConfigPrompt_36:
+.36:
 	Return
 
 
@@ -1599,54 +1649,71 @@ _getNumber_48:
 		; si	-> cStmtName of table entry that matches
 		; cy	command not found
 _findCommand:
+.:
 	cmp word [ cs:si ], byte -1
-	jnz _findCommand_12				; if not end of table ->
+	jne .12					; if not end of table ->
 	cmp word [ cs:si + 2 ], byte 0
-	jz _findCommand_Error				; if end -->
+	je .Error				; if end -->
 
-_findCommand_12:
-	push word [ cs:si + cStmtType ]			; if item matches
-	lea si, [ word cStmtName + si ]			; skip to name
+.12:
+	push word [ cs:si + cStmtType ]		; if item matches
+	; lea si, [ word cStmtName + si ]	; skip to name
+	lodsw
 
 	xor bx, bx
 
-_findCommand_18:
-	mov al, byte [ es:di + bx ]			; get character
-	_lowerCase al					; lower case character
-	cmp al, byte [ cs:si + bx ]			; this command ?
-	jnz _findCommand_32				; not this command -->
+.18:
+	mov al, byte [ es:di + bx ]		; get character
+	_lowerCase al				; lower case character
+	cmp al, byte [ cs:si + bx ]		; this command ?
+	jnz .32					; not this command -->
 
 	inc bx
-	cmp byte [ cs:si + bx ], 0			; end of string ?
-	jnz _findCommand_18				; not yet -->
+	cmp byte [ cs:si + bx ], 0		; end of string ?
+	jnz .18					; not yet -->
 
+	mov al, byte [es:di + bx]
+	cmp al, ' '
+	jbe @F
+	cmp al, '='
+	je @F
+	cmp al, ','
+	je @F
+	cmp al, '?'
+	je @F
+	cmp al, '!'
+	je @F
+
+	jmp .32
+
+@@:
 		; if command match is made, skip to next argument
-	add di, bx					; offset
+	add di, bx				; offset
 
-_findCommand_22:
+.22:
 	cmp byte [ es:di ], 0
-	jz _findCommand_26
-	cmp byte [ es:di ], ' ' + 1			; skip spaces
-	jnb _findCommand_26
+	jz .26
+	cmp byte [ es:di ], ' ' + 1		; skip spaces
+	jnb .26
 
 	inc di
-	jmp short _findCommand_22
+	jmp short .22
 
-_findCommand_26:
-	pop dx						; statement type
+.26:
+	pop dx					; statement type
 	or dx, dx
 	retn
 
 		; if not a match, try next command in table
-_findCommand_32:
-	inc si						; increment past
-	cmp byte [ cs:si - 1 ], 0			; end of string ?
-	jnz _findCommand_32				; loop -->
+.32:
+	inc si					; increment past
+	cmp byte [ cs:si - 1 ], 0		; end of string ?
+	jnz .32					; loop -->
 
-	pop ax						; ignore saved stmt type
-	jmp short _findCommand				; continue -->
+	pop ax					; ignore saved stmt type
+	jmp .					; continue -->
 
-_findCommand_Error:
+.Error:
 	stc
 	retn
 
@@ -2237,6 +2304,7 @@ Init_AttachedFileSystem_16:
 F5_SkipConfigProcessing dw 0000				; non-zero if skipping
 F8_PromptRequired	dw 0000				; non-zero if prompt required
 init_verbose:		dw 1
+init2_dosflags:		dw _DOSFLAGS_DEFAULT
 init2_configtype_single:dw 1
 .configtype:		dw 0
 init2_configtype_anydevice:
@@ -2244,6 +2312,14 @@ init2_configtype_anydevice:
 .first:
 			dw CONFIGTYPE_DEVICEHIGH
 			dw CONFIGTYPE_DEVICE
+.after:
+init2_configtype_dos_dosdata_doscode_umb:
+			dw (.after - .first) / 2
+.first:
+			dw CONFIGTYPE_DOS
+			dw CONFIGTYPE_DOSCODE
+			dw CONFIGTYPE_DOSDATA
+			dw CONFIGTYPE_UMB
 .after:
 
 
@@ -2263,7 +2339,7 @@ _RxDOS_ConfigKeywords:	dw CONFIGTYPE_BREAK
 			dw CONFIGTYPE_COMMENTS
 			db 'comments', 0
 
-			dw CONFIGTYPE_DEVICE
+			dw CONFIGTYPE_DEVICEHIGH
 			db 'devicehigh', 0
 
 			dw CONFIGTYPE_DEVICE
@@ -2271,6 +2347,15 @@ _RxDOS_ConfigKeywords:	dw CONFIGTYPE_BREAK
 
 			dw CONFIGTYPE_DOS
 			db 'dos', 0
+
+			dw CONFIGTYPE_DOSCODE
+			db 'doscode', 0
+
+			dw CONFIGTYPE_DOSDATA
+			db 'dosdata', 0
+
+			dw CONFIGTYPE_UMB
+			db 'umb', 0
 
 			dw CONFIGTYPE_DRIVPARAM
 			db 'drivparm', 0
@@ -2332,38 +2417,101 @@ _RxDOS_ConfigKeywords:	dw CONFIGTYPE_BREAK
 			dw -1, 0
 
 
-		; True/False table
-_RxDOS_ConfigTrueFalse: dw TRUE
-			db 'true', 0
+		; DOS options
+config_dos_options:
+			dw DOSFLAGS_LINK_UMB
+			db 'umb', 0
 
-			dw FALSE
-			db 'false', 0
+			dw DOSFLAGS_LINK_UMB
+			db 'uma', 0
+
+			dw ~ DOSFLAGS_LINK_UMB
+			db 'noumb', 0
+
+			dw ~ DOSFLAGS_LINK_UMB
+			db 'nouma', 0
+
+
+			dw DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'high', 0
+
+			dw DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'hma', 0
+
+			dw ~ DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'low', 0
+
+			dw ~ DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'nohigh', 0
+
+			dw ~ DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'nohma', 0
 
 			dw -1, 0
 
 
-		; DOS options
-_RxDOS_ConfigDOSOptions:dw 1
-			db 'umb', 0
+		; DOSCODE options
+config_doscode_options:
+			dw DOSFLAGS_RELOCATE_DOSCODE_UMA
+			db 'uma', 0
 
-			dw -1
-			db 'noumb', 0
+			dw ~ DOSFLAGS_RELOCATE_DOSCODE_UMA
+			db 'nouma', 0
 
-			dw 2
-			db 'high', 0
+			dw DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'hma', 0
 
-			dw -2
-			db 'low', 0
+			dw ~ DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'nohma', 0
+
+			dw -1, 0
+
+
+		; DOSDATA options
+config_dosdata_options:
+			dw DOSFLAGS_RELOCATE_DOSDATA_UMA
+			db 'uma', 0
+
+			dw ~ DOSFLAGS_RELOCATE_DOSDATA_UMA
+			db 'nouma', 0
 
 			dw -1, 0
 
 
 		; On/Off table
-_RxDOS_ConfigOnOff:	dw _ON
+config_onoff_options:
+			dw 1
 			db 'on', 0
 
-			dw _OFF
+			dw 0
 			db 'off', 0
+
+
+			dw 1
+			db 'enable', 0
+
+			dw 0
+			db 'disable', 0
+
+
+			dw 1
+			db '0', 0
+
+			dw 0
+			db '1', 0
+
+
+			dw 1
+			db 'yes', 0
+
+			dw 0
+			db 'no', 0
+
+			dw 1
+			db 'true', 0
+
+			dw 0
+			db 'false', 0
 
 			dw -1, 0
 
@@ -2458,9 +2606,9 @@ RxDOS_initialize:
 	setDS cs
 	setES ss
 
-	mov ax, -1
+	mov ax, word [cs:init2_dosflags]
 	call init2_relocate_device
-	mov ax, -1
+	mov ax, word [cs:init2_dosflags]
 	call init2_relocate_end
 
 	push cs
