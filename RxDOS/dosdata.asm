@@ -224,6 +224,8 @@ _RxDOS_SharedBuffer	times 128 db 0		; shared buffer.
 %if ($ - $$) > 2FEh
  %warning "Can't pad start of SDA to address 2FEh"
 %else
+%assign num 2FEh - ($ - $$)
+%warning num bytes in front of pre-SDA
 	times (2FEh - ($ - $$)) db 0
 %endif
 
