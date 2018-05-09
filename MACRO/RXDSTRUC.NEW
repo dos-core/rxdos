@@ -694,13 +694,6 @@ numberSFTEntries	resw 1
 	endstruc
 
 
-		; SFT container
-	struc SFTC
-sftcNext:		resd 1				; -> next SFT container unless pointer is -1
-sftcEntries:		resw 1				; number of SFTs in this SFT container
-	endstruc
-
-
 		; System File Tables
 	struc SFT
 sftRefCount:		resw 1				; 00
