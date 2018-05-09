@@ -2862,8 +2862,8 @@ init_disp_al_lownibble_hex:
 		; OUT:	-
 		; CHG:	-
 init_disp_al:
-	push bx
 %if 0
+	push bx
 	push ax
 	push ax
 	mov ah, 0Fh
@@ -2875,10 +2875,10 @@ init_disp_al:
 	int 10h
 	pop bp
 	pop ax
+	pop bx
 %else
 	int 29h
 %endif
-	pop bx
 	retn
 
 
