@@ -2193,7 +2193,7 @@ RxDOSini_StdInStdOutDrivers:
 
 RxDOS_DRIVERinit_10:
 
-		; Update system CLOCK pointer to last driver with StdIn and StdOut bits
+		; Update system CLOCK pointer to last driver with Clock bit
 	mov ax, ( DEV_CLOCK )
 	call init2_to_doscode, checkforDeviceType
 	jc RxDOS_DRIVERinit_12
