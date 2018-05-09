@@ -5301,7 +5301,7 @@ _GetAllocStrategy:
 _SetAllocStrategy:
 	test bh, bh
 	jz @F
-	or byte [ss:error_flags], EF_InvalidAllocStrategy
+	or byte [error_flags], EF_InvalidAllocStrategy
 @@:
 	mov byte [ _RxDOS_AllocStrategy ], bl
 	retn
@@ -5313,7 +5313,8 @@ _SetUpperMemLink: equ _GetAllocationStrategy.error_invalid_function
 %else
 		; Get UMB link status
 _GetUpperMemLink:
-	mov ax, word [enable_uma]	; get allow/disallow flag
+	xor ax, ax
+	mov al, byte [enable_uma]	; get allow/disallow flag
 	RetCallersStackFrame ds, bx
 	mov word [ bx + _AX ], ax
 	retn
@@ -5334,12 +5335,12 @@ _SetUpperMemLink:
 	cmp byte [es:mcbSignature], "Z"
 	jne .got
 
-	test bx, bx			; valid ?
+	test bl, 1			; valid ?
 	jnz _GetAllocationStrategy.error_invalid_function	; no -->
 	jmp .got			; set to zero, with UMCB (but no UMB)
 
 .none:
-	test bx, bx			; (NC)
+	test bl, 1			; (NC)
 	jnz _GetAllocationStrategy.error_invalid_function
 	retn
 
@@ -5356,7 +5357,7 @@ _SetUpperMemLink:
 	test dx, dx			; no previous ?
 	jz .error			; if so, error -->
 	mov es, dx			; => MCB that points to first UMCB
-	test bx, bx			; (NC)
+	test bl, 1			; (NC)
 	jz .set_Z			; 0, set to 'Z' -->
 .set_M:
 	mov byte [es:mcbSignature], "M"	; nonzero, set to 'M'
@@ -5364,7 +5365,11 @@ _SetUpperMemLink:
 .set_Z:
 	mov byte [es:mcbSignature], "Z"
 @@:
-	mov word [enable_uma], bx	; store UMB link
+	test bh, bh
+	jz @F
+	or byte [error_flags], EF_InvalidUMBLink	; invalid UMB link bits set
+@@:
+	mov byte [enable_uma], bl	; store UMB link
 	jmp .end
 
 .error:
