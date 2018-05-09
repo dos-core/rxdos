@@ -62,19 +62,24 @@ _RxDOS_UnreadCON	dw 0			; ptr to unread CON input
 _RxDOS_pStartMemBlock:
 first_mcb:		dw 60h			; seg ptr to start of memory allocation
 
-_RxDOS_pDPB		dd -1			; ptr to Drive Parameter Block (DPB)
-_RxDOS_pFT		dd -1			; ptr to File Tables (FT)
+_RxDOS_pDPB:
+first_dpb:		dd -1			; ptr to Drive Parameter Block (DPB)
+_RxDOS_pFT:
+first_sftc:		dd -1			; ptr to File Tables (FT)
 _RxDOS_pCLOCKdriver	dd -1			; ptr to CLOCK$ device driver
 _RxDOS_pCONdriver	dd -1			; ptr to CON device driver
 _RxDOS_wMaxBlock	dw sizeSector		; maximum bytes per block for any/all devices
-_RxDOS_BufferList	dd -1			; pointer set for buffer list
-_RxDOS_pCDS		dd -1			; ptr to array of current directory structures
+p_buffer_info_record:	dw buffer_info_record, 0; pointer set for buffer list
+_RxDOS_pCDS:
+first_cds:		dd -1			; ptr to array of current directory structures
 _RxDOS_pFCBs		dd -1			; ptr to System FCB table
 _RxDOS_nProtFCBs	dw 0			; number of protected FCBs (no longer supported)
-_RxDOS_bNumBlockDev	db 0			; number of block devices
-_RxDOS_bLastDrive	db 0			; lastdrive from RXCONFIG.SYS, CDS size
+_RxDOS_bNumBlockDev:
+number_block_devices:	db 0			; number of block devices
+_RxDOS_bLastDrive:	
+number_cds_entries:	db 0			; lastdrive from RXCONFIG.SYS, CDS size
 
-		; NULL Device Driver
+		; NUL Device Driver
 		devheader _RxDOS_NULLDev, con, 70h, (DEV_CHAR | DEV_NULL), \
 			null_strategy, null_interrupt, 'NUL'
 
@@ -97,6 +102,26 @@ _RxDOS_MachineType	db 0			; 1 if 80386+, else 0
 %endif
 _RxDOS_ExtendedMem	dw 0			; extended memory size in KiBs
 
+buffer_info_record:
+_RxDOS_BufferList:
+first_ccb:		dd -1
+			dw 0	; number of dirty disk buffers
+			dd 0	; -> lookahead buffer
+			dw 0	; number of lookahead sectors
+			db 0	; buffer location, 1 = HMA
+			dd 0	; -> LMA workspace buffer
+			times 5 db 0
+			db 0	; int 24h fail while making an I/O status call
+			db 0	; temp storage for alloc start during EXEC
+			db 0	; counter: number of int 21h calls for which A20 is off
+			db 0	; bit flags, 1 = unknown, 2 = SWITCHES /W, 4 = in EXEC state (21.4B05)
+			dw 0	; offset of unpack code start (21.4B05)
+enable_uma:		db 0
+			dw 0	; minimum paras needed by program being EXECed
+first_umcb:		dw -1
+			dw 0	; para from which to start scanning during allocation
+
+			align 4, db 0
 		; the remainder of these arguments are not compatible with MS-DOS
 _RxDOS_MaxMemory	dw 0			; max memory
 _RxDOS_NumFileHandles	dw sizePSPHandleTable	; default
@@ -107,19 +132,15 @@ _RxDOS_ExtErrorFlag	dw 0			; flag if infor set
 _RxDOS_ExtErrorInfo	times DOSERROR_size db 0; extended error info
 _RxDOS_AbortInProgress	dw 0			; if NZ, skip critical error
 
-		; Current PSP
-			align 2,db 0
+			align 2, db 0
 _RxDOS_CurrentInstance	dw 0			; base address of current stack
 _RxDOS_CurrentStackTop	dw (dosdata_stack + 3 * RXDOS_PERCALL_STACKRESERVE)
 						; Reserved Stack Top ...
 _RxDOS_StackLongJump	dw 0			; long jump
 
-		; UMB Control Status Word
-first_umcb:		dw -1
 first_hmcb:		dw 0
 current_driver:		dw 0
 error_flags:		dw 0
-enable_uma:		dw 0
 
 		; Tab Expansion
 _RxDOS_TabPosition	dw 0			; tab position
