@@ -1825,8 +1825,6 @@ RxDOS_DPBinit_12:
 	jmp .first_unit
 
 .next_unit:
-	cmp word [ si + _dpbNextDPB ], -1
-	je .dpb_fail
 	lds si, [ si + _dpbNextDPB ]
 .first_unit:
 	cmp di, 32
@@ -1839,6 +1837,8 @@ RxDOS_DPBinit_12:
 	pop ds
 	jmp @FF
 @@:
+	cmp si, -1
+	je .dpb_fail
 	inc byte [ss:number_block_devices]
 	inc di				; increment total drives counter
 	mov byte [ si + _dpbUnit ], dl	; set unit
