@@ -1839,7 +1839,6 @@ RxDOS_DPBinit_12:
 @@:
 	cmp si, -1
 	je .dpb_fail
-	inc byte [ss:number_block_devices]
 	inc di				; increment total drives counter
 	mov byte [ si + _dpbUnit ], dl	; set unit
 	inc dx				; increment unit-within-block-device
@@ -1910,7 +1909,10 @@ RxDOS_DPBinit_12:
 
 	jmp .68
 
-.all_devices_done:		
+.all_devices_done:
+	mov ax, di
+	mov byte [ss:number_block_devices], al
+
 	pop es
 	pop ds
 	retn
