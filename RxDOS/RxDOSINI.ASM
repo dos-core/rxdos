@@ -565,6 +565,7 @@ processAnyDevice:
 	ddef	ExecBlock
 	ddef	strategy
 	ddef	interrupt
+	ddef	deviceheader
 	ddef	loadSize
 
 	defbytes	reqBlock, sizeINITReqHeader
@@ -730,6 +731,8 @@ processAnyDevice_28:
 processAnyDevice_32:
 	xor bx, bx
 	getarg es, _SegAddress
+	stordarg _deviceheader, es, bx
+
 	mov ax, word [ es:bx + devStrategy ]
 	stordarg _strategy, es, ax
 
