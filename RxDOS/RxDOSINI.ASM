@@ -143,6 +143,8 @@ CONFIGTYPE_REM		equ 0022h			; REM=remark
 CONFIGTYPE_DOSCODE	equ 0030h
 CONFIGTYPE_DOSDATA	equ 0031h
 CONFIGTYPE_UMB		equ 0032h
+CONFIGTYPE_UMA		equ 0033h
+CONFIGTYPE_HMA		equ 0034h
 
 
 		; CONFIG flags and options
@@ -854,7 +856,7 @@ processDOS:
 	lenter
 
 .08:
-	mov si, init2_configtype_dos_dosdata_doscode_umb
+	mov si, init2_configtype_dos_dosdata_doscode_umb_uma_hma
 	call _findstatement_multiple_types	; find statement type
 	jc .24					; if no more -->
 	mov ax, word [es:di + configType]
@@ -875,6 +877,12 @@ processDOS:
 	je .options
 	mov si, config_dosdata_options
 	cmp ax, CONFIGTYPE_DOSDATA
+	je .options
+	mov si, config_uma_options
+	cmp ax, CONFIGTYPE_UMA
+	je .options
+	mov si, config_hma_options
+	cmp ax, CONFIGTYPE_HMA
 	je .options
 	cmp ax, CONFIGTYPE_UMB
 	je .umb
@@ -2313,13 +2321,15 @@ init2_configtype_anydevice:
 			dw CONFIGTYPE_DEVICEHIGH
 			dw CONFIGTYPE_DEVICE
 .after:
-init2_configtype_dos_dosdata_doscode_umb:
+init2_configtype_dos_dosdata_doscode_umb_uma_hma:
 			dw (.after - .first) / 2
 .first:
 			dw CONFIGTYPE_DOS
 			dw CONFIGTYPE_DOSCODE
 			dw CONFIGTYPE_DOSDATA
 			dw CONFIGTYPE_UMB
+			dw CONFIGTYPE_UMA
+			dw CONFIGTYPE_HMA
 .after:
 
 
@@ -2356,6 +2366,12 @@ _RxDOS_ConfigKeywords:	dw CONFIGTYPE_BREAK
 
 			dw CONFIGTYPE_UMB
 			db 'umb', 0
+
+			dw CONFIGTYPE_UMA
+			db 'uma', 0
+
+			dw CONFIGTYPE_HMA
+			db 'hma', 0
 
 			dw CONFIGTYPE_DRIVPARAM
 			db 'drivparm', 0
@@ -2474,6 +2490,46 @@ config_dosdata_options:
 
 			dw ~ DOSFLAGS_RELOCATE_DOSDATA_UMA
 			db 'nouma', 0
+
+			dw -1, 0
+
+
+		; UMA options
+config_uma_options:
+			dw DOSFLAGS_RELOCATE_DOSDATA_UMA
+			db 'dosdata', 0
+
+			dw ~ DOSFLAGS_RELOCATE_DOSDATA_UMA
+			db 'nodosdata', 0
+
+			dw DOSFLAGS_RELOCATE_DOSCODE_UMA
+			db 'doscode', 0
+
+			dw ~ DOSFLAGS_RELOCATE_DOSCODE_UMA
+			db 'nodoscode', 0
+
+			dw DOSFLAGS_RELOCATE_ALL_UMA
+			db 'all', 0
+
+			dw ~ DOSFLAGS_RELOCATE_ALL_UMA
+			db 'none', 0
+
+			dw -1, 0
+
+
+		; HMA options
+config_hma_options:
+			dw DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'doscode', 0
+
+			dw ~ DOSFLAGS_RELOCATE_DOSCODE_HMA
+			db 'nodoscode', 0
+
+			dw DOSFLAGS_RELOCATE_ALL_HMA
+			db 'all', 0
+
+			dw ~ DOSFLAGS_RELOCATE_ALL_HMA
+			db 'none', 0
 
 			dw -1, 0
 
