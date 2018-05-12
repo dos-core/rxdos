@@ -1839,6 +1839,7 @@ RxDOS_DPBinit_12:
 	pop ds
 	jmp @FF
 @@:
+	inc byte [ss:number_block_devices]
 	inc di				; increment total drives counter
 	mov byte [ si + _dpbUnit ], dl	; set unit
 	inc dx				; increment unit-within-block-device
@@ -2528,7 +2529,6 @@ RxDOS_initialize:
 	mov ss, ax
 	mov sp, dosdata_stack + RXDOS_PERCALL_STACKRESERVE
 
-	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
 	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
 
 	sti
