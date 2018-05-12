@@ -1737,9 +1737,6 @@ _scanToEndofName_08:
 	retn
 
 
-AllocateSystemSpace_with_type: equ init2_alloc_s_mcb
-
-
 		; RxDOS Disk Parameter Blocks subsystem initialize
 		;
 		; No Parameters Required.
@@ -1755,7 +1752,7 @@ RxDOSini_DPBSubSystem:
 	mov cl, 32
 	mul cl					; max number of logical devices
 	mov cl, S_DPB
-	call AllocateSystemSpace_with_type	; allocate DPBs for all devices
+	call init2_alloc_s_mcb_top		; allocate DPBs for all devices
 
 	mov word [ _RxDOS_pDPB + _pointer ], di
 	mov word [ _RxDOS_pDPB + _segment ], es
@@ -1934,7 +1931,7 @@ RxDOSini_CDSSubSystem:
 	mov bl, [ _RxDOS_bLastDrive ]
 	mul bx					; (dx:)ax = size of CDS
 	mov cl, S_CDS
-	call AllocateSystemSpace_with_type
+	call init2_alloc_s_mcb_top
 	mov word [ _RxDOS_pCDS + _segment ], es
 	mov word [ _RxDOS_pCDS + _pointer ], di
 
@@ -1947,7 +1944,7 @@ RxDOSini_CDSSubSystem:
 	mov cl, byte [ _RxDOS_bLastDrive ]
 	mul cx			 		; (dx:)ax = size of LFN CDS
 	mov cl, S_LFNCDS
-	call AllocateSystemSpace_with_type
+	call init2_alloc_s_mcb_top
 	mov word [ _RxDOS_pLFNCDS + _segment ], es
 	mov word [ _RxDOS_pLFNCDS + _pointer ], di
 
@@ -2041,7 +2038,7 @@ RxDOSini_SFTSubSystem:
 	add ax, byte sizeFT
 
 	mov cl, S_SFT
-	call AllocateSystemSpace_with_type
+	call init2_alloc_s_mcb_top
 
 	push di
 	xor ax, ax
@@ -2077,7 +2074,7 @@ RxDOSini_CCBSubSystem:
 	mul cx						; total bytes for cache blocks
 
 	mov cl, S_CCB
-	call AllocateSystemSpace_with_type
+	call init2_alloc_s_mcb_top
 	mov word [ _RxDOS_BufferList + _segment ], es
 	mov word [ _RxDOS_BufferList + _pointer ], di
 
