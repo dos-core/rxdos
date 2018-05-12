@@ -100,7 +100,7 @@ strdef CLIPARAMAUTO,	" /K "			; followed by either DEFAUTO or ALTAUTO, only if f
 
 					; Default configuration
 numdef DEFAULT_SFTS,		8
-numdef DEFAULT_CDS,		'E' -'A'
+numdef DEFAULT_CDS,		'E' - 'A' + 1
 numdef DEFAULT_FCBS,		0
 ; numdef DEFAULT_DOS,		(DOSLOW| DOSNOUMB)
 numdef DEFAULT_BREAK,		1

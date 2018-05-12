@@ -20,6 +20,9 @@ the file LICENSE.TXT.
 %include "lmacros2.mac"
 
 	numdef DOSFLAGS_DEFAULT, 0
+	numdef DEFAULT_SFTS,		8
+	numdef DEFAULT_CDS,		'E' - 'A' + 1
+	numdef DEFAULT_CCBS,		DEFAULT_BUFFERS
 
 	cpu 8086
 
@@ -351,8 +354,6 @@ configProcessing:
 	getdarg es, di, _configStatements
 	call processDOS
 
-	call RxDOSini_MemorySubSystem		; re-initialize memory subsystem
-
 	getdarg es, di, _configStatements
 	call processBuffers
 	getdarg es, di, _configStatements
@@ -465,7 +466,6 @@ processCountry_24:
 processBreak:
 
 	Entry
-	ddef	ConfigStatements, es, di
 	def	break, _ON				; 0 is off; 1 is on
 
 processBreak_08:
@@ -495,7 +495,6 @@ processBreak_24:
 	getarg ax, _break				; get break
 	mov byte [ _RxDOS_bCtrlBreakCheck ], al
 
-	getdarg es, di, _ConfigStatements
 	Return
 
 
@@ -503,10 +502,8 @@ processBreak_24:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processBuffers:
-
 	Entry
-	ddef	ConfigStatements, es, di
-	ddef	buffers, 0, DEFAULT_BUFFERS
+	ddef	buffers, 0, _DEFAULT_CCBS
 
 processBuffers_08:
 	mov ax, CONFIGTYPE_BUFFERS
@@ -540,11 +537,8 @@ processBuffers_16:
 		; return
 processBuffers_24:
 	getdarg dx, ax, _buffers
-	mov word [ _RxDOS_Buffers + _low ], ax
-	mov word [ _RxDOS_Buffers + _high ], dx
-	call RxDOSini_CCBSubSystem			; reconfigure
+	mov word [cs:init2_ccbs], ax
 
-	getdarg es, di, _ConfigStatements
 	Return
 
 
@@ -942,9 +936,7 @@ processDOS:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processFCBS:
-
 	Entry
-	ddef	ConfigStatements, es, di
 	ddef	FCBS, 0, DEFAULT_FCBS
 
 processFCBS_08:
@@ -979,7 +971,6 @@ processFCBS_16:
 		; return
 processFCBS_24:
 	getdarg dx, ax, _FCBS				; return FCBS
-	getdarg es, di, _ConfigStatements
 	Return
 
 
@@ -987,10 +978,8 @@ processFCBS_24:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processFiles:
-
 	Entry
-	ddef	ConfigStatements, es, di
-	def	files, DEFAULT_FILES
+	def	files, _DEFAULT_SFTS
 	def	fcbs, ax
 
 processFiles_08:
@@ -1020,9 +1009,8 @@ processFiles_12:
 processFiles_24:
 	getarg ax, _files				; return files
 	add ax, word [ _fcbs + bp ]
-	call RxDOSini_SFTSubSystem			; init SFTs
+	mov word [cs:init2_sfts], ax
 
-	getdarg es, di, _ConfigStatements
 	Return
 
 
@@ -1030,10 +1018,8 @@ processFiles_24:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processLastDrive:
-
 	Entry
-	ddef	ConfigStatements, es, di
-	def	LastDrive, DEFAULT_LASTDRIVE
+	def	LastDrive, _DEFAULT_CDS
 
 processLastDrive_08:
 	mov ax, CONFIGTYPE_LASTDRIVE
@@ -1064,12 +1050,8 @@ processLastDrive_12:
 		; return
 processLastDrive_24:
 	getarg ax, _LastDrive				; get last drive info, if any
-	mov byte [ _RxDOS_bLastDrive ], al		; save in DOS
+	mov word [cs:init2_cds], ax
 
-	call RxDOSini_DPBSubSystem			; (order important)
-	call RxDOSini_CDSSubSystem			; init drives/CDS
-
-	getdarg es, di, _ConfigStatements
 	Return
 
 
@@ -1077,9 +1059,7 @@ processLastDrive_24:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processNumLock:
-
 	Entry
-	ddef	ConfigStatements, es, di
 	def	numlock, -1				; 0 = off, 1 = on, -1 = leave unchanged
 
 processNumLock_08:
@@ -1125,7 +1105,7 @@ processNumLock_32:
 
 processNumLock_46:
 	pop es
-	getdarg es, di, _ConfigStatements
+
 	Return
 
 
@@ -1133,9 +1113,7 @@ processNumLock_46:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processShell:
-
 	Entry
-	ddef	ConfigStatements, es, di
 
 processShell_08:
 	mov ax, CONFIGTYPE_SHELL
@@ -1163,7 +1141,7 @@ processShell_12:
 
 		; return
 processShell_24:
-	getdarg es, di, _ConfigStatements
+
 	Return
 
 
@@ -1171,9 +1149,7 @@ processShell_24:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processStack:
-
 	Entry
-	ddef	ConfigStatements, es, di
 	ddef	stacks, 0, DEFAULT_STACKS
 
 processStack_08:
@@ -1208,7 +1184,7 @@ processStack_16:
 		; return
 processStack_24:
 	getdarg dx, ax, _stacks				; return stacks
-	getdarg es, di, _ConfigStatements
+
 	Return
 
 
@@ -1216,9 +1192,7 @@ processStack_24:
 		;
 		; es:di-> start of statement in saved CONFIG buffer
 processSwitchChar:
-
 	Entry
-	ddef	ConfigStatements, es, di
 	def	SwitchChar, '/'
 
 processSwitchChar_08:
@@ -1239,7 +1213,6 @@ processSwitchChar_24:
 	getarg ax, _SwitchChar				; get last switch character or use default
 	mov byte [ _RxDOS_bSwitchChar ], al
 
-	getdarg es, di, _ConfigStatements
 	Return
 
 
@@ -1349,7 +1322,6 @@ _findstatement_multiple_types:
 		; OUT:	NC if statement parsing should proceed
 		;	CY if F8 pressed or 'N' answered to prompt, abort parsing of this line
 ConfigPrompt:
-
 	Entry
 	ddef	configTextPtr
 	ddef	configStmt, es, di
@@ -1426,7 +1398,6 @@ ConfigPrompt:
 		; Usage:
 		; es:di-> line buffer
 _nextArgument:
-
 	cmp byte [ es:di ], ' '			; ignore spaces
 	jz _nextArgument_06
 	cmp byte [ es:di ], '='			; ignore equal signs
@@ -1545,11 +1516,7 @@ _findConfigMenuStatement_12:
 	pop ax
 	pop bx
 	pop di
-%if 1
-	or di, di
-%else
 	clc
-%endif
 	retn
 
 _findConfigMenuStatement_28:
@@ -1768,50 +1735,6 @@ _scanToEndofName:
 _scanToEndofName_08:
 	cmp byte [ ss:di ], 0
 	retn
-
-
-		; Allocated DPBs, CDSs, LFNCDSs, SFTs, and CCBs are freed.
-		;
-		; ds = DOS data segment
-RxDOSini_MemorySubSystem:
-	push ds
-	mov ax, [_RxDOS_pStartMemBlock]
-.loop:
-	mov ds, ax
-	cmp word [mcbOwner], 8
-	jne .next
-	cmp word [smcbName], "S"
-	jne .next
-
-	cmp byte [smcbType], S_DPB
-	je .free
-	cmp byte [smcbType], S_CDS
-	je .free
-	cmp byte [smcbType], S_LFNCDS
-	je .free
-	cmp byte [smcbType], S_SFT
-	je .free
-	cmp byte [smcbType], S_CCB
-	jne .next
-.free:
-	mov word [mcbOwner], 0
-.next:
-	add ax, word [mcbSize]
-	inc ax
-	cmp byte [mcbSignature], "M"
-	je .loop
-	cmp byte [mcbSignature], "Z"
-	jne .fail
-	pop ds
-	retn
-
-
-.fail:
-	push cs
-	pop ds
-	mov si, init_msg.mcb_chain_corrupted_error
-	call RxDOSIni_TypeMessage
-	jmp RxDOS_init_68
 
 
 AllocateSystemSpace_with_type: equ init2_alloc_s_mcb
@@ -2313,6 +2236,11 @@ F5_SkipConfigProcessing dw 0000				; non-zero if skipping
 F8_PromptRequired	dw 0000				; non-zero if prompt required
 init_verbose:		dw 1
 init2_dosflags:		dw _DOSFLAGS_DEFAULT
+init2_sfts:		dw _DEFAULT_SFTS
+init2_cds:		dw _DEFAULT_CDS
+init2_ccbs:		dw _DEFAULT_CCBS
+
+
 init2_configtype_single:dw 1
 .configtype:		dw 0
 init2_configtype_anydevice:
@@ -2625,14 +2553,13 @@ RxDOS_initialize:
 	mov word [ _RxDOS_pDTA + _segment ], ds
 
 		; initialize memory and other buffers
-	call RxDOSini_MemorySubSystem
 	call RxDOSini_DPBSubSystem
 	call RxDOSini_CDSSubSystem
 
-	mov ax, DEFAULT_FILES
+	mov ax, _DEFAULT_SFTS
 	call RxDOSini_SFTSubSystem			; open CON, AUX, PRN
 
-	mov ax, DEFAULT_BUFFERS
+	mov ax, _DEFAULT_CCBS
 	call RxDOSini_CCBSubSystem
 
 	mov word [ _RxDOS_UserCodePage ], DEFAULT_CODEPAGE
