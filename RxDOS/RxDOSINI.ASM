@@ -1835,7 +1835,7 @@ RxDOS_DPBinit_12:
 	mov si, init_msg.too_many_block_units
 	call RxDOSIni_TypeMessage
 	pop ds
-	jmp @FF
+	jmp .after_add_devices
 @@:
 	cmp si, -1
 	je .dpb_fail
