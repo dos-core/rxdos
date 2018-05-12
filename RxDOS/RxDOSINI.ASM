@@ -767,7 +767,10 @@ processAnyDevice_32:
 		; compute actual size (in bx:cx)
 	mov bx, word [ _reqBlock + irEndAddress + _pointer + bp ]
 	add bx, byte (sizePARAGRAPH - 1)		; round up to nearest paragraph boundary
-
+	jnc @F
+	mov bx, 1_0000h >> 1
+	db __TEST_IMM16					; (skip one shr bx, 1)
+@@:
 	shr bx, 1
 	shr bx, 1
 	shr bx, 1
