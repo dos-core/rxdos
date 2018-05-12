@@ -781,26 +781,25 @@ processAnyDevice_32:
 
 	Int21 ModifyAllocatedMemory			; free memory to given size
 
+	les bx, [bp + _deviceheader]
+
 		; is driver a file system or blocked device ?
-	test word [ es:devAttributes ], DEV_CHAR	; is it a character device ?
+	test word [ es:bx + devAttributes ], DEV_CHAR	; is it a character device ?
 	jnz processAnyDevice_56				; yes -->
 
-	mov dx, es					; driver address (segment)
 	mov cl, byte [ _reqBlock + irUnits + bp ]	; get number of device units
 	call InitializeAttachedFileSystem
-
-	mov cl, byte [ _reqBlock + irUnits + bp ]
-	add byte [ _RxDOS_bNumBlockDev ], cl
+		; cl = number devices, es:bx -> device header, ds = DOSDATA
 
 		; Link device into device chain
 processAnyDevice_56:
-	mov bx, word [ _RxDOS_NULLDev + _segment ]
+	mov dx, word [ _RxDOS_NULLDev + _segment ]
 	mov ax, word [ _RxDOS_NULLDev + _pointer ]
-	mov word [ es:devLink + _segment ], bx
-	mov word [ es:devLink + _pointer ], ax		; Move address that former was at NUL device to loaded driver
+	mov word [ es:bx + devLink + _segment ], dx
+	mov word [ es:bx + devLink + _pointer ], ax	; Move address that former was at NUL device to loaded driver
 
 	mov word [ _RxDOS_NULLDev + _segment ], es
-	mov word [ _RxDOS_NULLDev + _pointer ], 0	; Move address of loaded driver into NUL device
+	mov word [ _RxDOS_NULLDev + _pointer ], bx	; Move address of loaded driver into NUL device
 	jmp short processAnyDevice_64
 
 processAnyDevice_60:
@@ -2198,11 +2197,19 @@ RxDOS_DRIVERinit_22:
 		; Initialize attached file system
 		;
 		; cl = number of blocked devices
-		; dx = driver segment
+		; es:bx -> device header
+		; ds = DOSDATA
 InitializeAttachedFileSystem:
+	lframe near
+	lenter
+	lvar	dword, deviceheader
+	 push es
+	 push bx
+	mov ch, 0
+	lvar	word, units
+	 push cx
 
-	xor ch, ch
-	or cx, cx					; any devices declared ?
+	test cx, cx					; any devices declared ?
 	jz Init_AttachedFileSystem_16			; none -->
 
 	saveSegments di, si
@@ -2226,8 +2233,10 @@ Init_AttachedFileSystem_08:
 
 	mov byte [ _dpbUnit + si ], al
 	mov byte [ _dpbAccessFlag + si ], -1		; never used before
-	mov word [ _dpbptrDeviceDriver + _segment + si ], dx	; driver segment
-	mov word [ _dpbptrDeviceDriver + _pointer + si ], 0
+	push word [bp + ?deviceheader + 2]
+	push word [bp + ?deviceheader]
+	pop word [si + _dpbptrDeviceDriver]
+	pop word [si + _dpbptrDeviceDriver + 2]
 
 	inc ax
 	add si, byte sizeDPB
@@ -2236,8 +2245,12 @@ Init_AttachedFileSystem_08:
 
 	restoreSegments si, di
 
+	mov al, byte [bp + ?units]
+	add byte [number_block_devices], al
+
 Init_AttachedFileSystem_16:
-	retn
+	lleave
+	lret
 
 
 		align 4
