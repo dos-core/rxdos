@@ -2531,8 +2531,6 @@ RxDOS_initialize:
 	mov ss, ax
 	mov sp, dosdata_stack + RXDOS_PERCALL_STACKRESERVE
 
-	mov byte [ _RxDOS_bLastDrive ], cl		; number of logical devices
-
 	sti
 
 		; initialize data segment

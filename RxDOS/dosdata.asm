@@ -77,7 +77,7 @@ _RxDOS_nProtFCBs	dw 0			; number of protected FCBs (no longer supported)
 _RxDOS_bNumBlockDev:
 number_block_devices:	db 0			; number of block devices
 _RxDOS_bLastDrive:	
-number_cds_entries:	db 0			; lastdrive from RXCONFIG.SYS, CDS size
+number_cds_entries:	db 32			; lastdrive from RXCONFIG.SYS, CDS size
 
 		; NUL Device Driver
 		devheader _RxDOS_NULLDev, con, 70h, (DEV_CHAR | DEV_NULL), \
