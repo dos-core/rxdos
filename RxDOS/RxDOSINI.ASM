@@ -1746,7 +1746,6 @@ _scanToEndofName_08:
 		;
 		; No Parameters Required.
 RxDOSini_DPBSubSystem:
-
 	push ds
 	push es
 
@@ -1818,7 +1817,10 @@ RxDOS_DPBinit_12:
 
 		; es:bx -> last device header
 .found_end_devicechain:
-	lds si, [ ss:_RxDOS_pDPB ]
+	push ss
+	pop ds
+	mov si, first_dpb - _dpbNextDPB	; [ds:si + _dpbNextDPB] = first DPB
+
 	xor di, di
 .loop_devices:
 	test word [ es:bx + devAttributes ], DEV_CHAR
@@ -1828,11 +1830,8 @@ RxDOS_DPBinit_12:
 	or cl, [ es:bx + devName ]
 	jz .after_add_devices
 	xor dx, dx
-	jmp .first_unit
 
 .next_unit:
-	lds si, [ si + _dpbNextDPB ]
-.first_unit:
 	cmp di, 32
 	jb @F
 	push ds
@@ -1843,14 +1842,15 @@ RxDOS_DPBinit_12:
 	pop ds
 	jmp .after_add_devices
 @@:
-	cmp si, -1
+	cmp word [si + _dpbNextDPB], -1
 	je .dpb_fail
+	lds si, [si + _dpbNextDPB]
+
 	inc di				; increment total drives counter
 	mov byte [ si + _dpbUnit ], dl	; set unit
 	inc dx				; increment unit-within-block-device
 	mov word [ si + _dpbptrDeviceDriver ], bx
 	mov word [ si + _dpbptrDeviceDriver + 2 ], es	; set device
-@@:
 	loop .next_unit
 
 .after_add_devices:
