@@ -743,7 +743,7 @@ processAnyDevice_32:
 	lea bx, [ word _reqBlock + bp ]
 	mov word [ _reqBlock + rhStatus + bp ], OP_DONE
 
-	mov al, byte [ _RxDOS_bNumBlockDev ]
+	mov al, byte [number_block_devices]
 	mov byte [ _reqBlock + irDriveNumber + bp ], al
 	mov byte [ _reqBlock + irUnits + bp ], 00
 
@@ -1937,7 +1937,7 @@ RxDOSini_CDSSubSystem:
 	pop ds
 	mov ax, sizeCDS
 	xor bx, bx
-	mov bl, [ _RxDOS_bLastDrive ]
+	mov bl, [number_cds_entries]
 	mul bx					; (dx:)ax = size of CDS
 	mov cl, S_CDS
 	call init2_alloc_s_mcb_top
@@ -1950,7 +1950,7 @@ RxDOSini_CDSSubSystem:
 
 	mov ax, sizeLFNCDS
 	xor cx, cx
-	mov cl, byte [ _RxDOS_bLastDrive ]
+	mov cl, byte [number_cds_entries]
 	mul cx			 		; (dx:)ax = size of LFN CDS
 	mov cl, S_LFNCDS
 	call init2_alloc_s_mcb_top
@@ -1962,7 +1962,7 @@ RxDOSini_CDSSubSystem:
 	repe stosw				; init entire space to nulls
 
 	xor cx, cx
-	mov cl, byte [ _RxDOS_bLastDrive ]
+	mov cl, byte [number_cds_entries]
 	mov di, word [ _RxDOS_pLFNCDS + _pointer ]	; es is still what we put in _RxDOS_pLFNCDS+_segment
 
 	mov dx, word [ _RxDOS_pCDS + _segment ]
@@ -1979,14 +1979,12 @@ RxDOS_CDSinit_04:
 		; Fill in the default path (root directory) for each CDS
 	mov al, 'A'					; starts with A:
 	xor cx, cx
-	mov cl, byte [ _RxDOS_bLastDrive ]
+	mov cl, byte [number_cds_entries]
 	les di, [ _RxDOS_pCDS ]
 
 RxDOS_CDSinit_08:
 	mov byte [ es:di + _cdsActualDirectory ], al
-	mov byte [ es:di + _cdsActualDirectory + 1 ], ':'
-	mov byte [ es:di + _cdsActualDirectory + 2 ], '\'
-	mov byte [ es:di + _cdsActualDirectory + 3 ], 0	; drive,':\',0
+	mov word [ es:di + _cdsActualDirectory + 1 ], ":\"
 	mov byte [ es:di + _cdsNonSubstOffset ], 3	; points to the 0
 
 	inc al						; next letter
@@ -1997,17 +1995,31 @@ RxDOS_CDSinit_08:
 	xor cx, cx
 	les di, [ _RxDOS_pCDS ]
 	mov si, _RxDOS_pDPB - _dpbNextDPB
-	mov cl, byte [ _RxDOS_bNumBlockDev ]
+	or cl, byte [number_block_devices]
+	jz .skip_cds_to_dpb
 
-RxDOS_CDSinit_12:
+.loop_cds_to_dpb:
 	cmp word [ si + _dpbNextDPB ], -1
 	je .dpb_fail
 	lds si, [ si + _dpbNextDPB ]
+
+	inc cx						; skip past this
+	cmp word [si + _dpbDevice], block		; is it an empty DPB ?
+	jne @F
+	cmp word [si + _dpbDevice + 2], 70h
+	jne @F
+	cmp byte [si + _dpbUnit], -1
+	je @FF						; yes, skip -->
+@@:
+	dec cx						; fix wrong count
+
 	or word [ es:di + _cdsFlags ], _CDS_PHYSICALDRIVE
 	mov word [ es:di + _cdsPtrToDPB + _pointer ], si
 	mov word [ es:di + _cdsPtrToDPB + _segment ], ds
+@@:
 	add di, byte sizeCDS
-	loop RxDOS_CDSinit_12
+	loop .loop_cds_to_dpb
+.skip_cds_to_dpb:
 
 	pop es
 	pop ds
@@ -2196,61 +2208,120 @@ RxDOS_DRIVERinit_22:
 
 		; Initialize attached file system
 		;
-		; cl = number of blocked devices
-		; es:bx -> device header
-		; ds = DOSDATA
+		; INP:	cl = number of blocked devices
+		;	es:bx -> device header
+		;	ds = DOSDATA
+		; CHG:	cx, ax, dx
 InitializeAttachedFileSystem:
 	lframe near
+	lvar	dword, cds
+	lvar	dword, dpb
 	lenter
 	lvar	dword, deviceheader
 	 push es
 	 push bx
-	mov ch, 0
-	lvar	word, units
-	 push cx
-
-	test cx, cx					; any devices declared ?
-	jz Init_AttachedFileSystem_16			; none -->
-
 	saveSegments di, si
 
-	mov ax, sizeCDS
-	mul byte [ _RxDOS_bNumBlockDev ]		; offset into CDS
+	mov ch, 0
+	test cx, cx					; any devices declared ?
+	jz .return					; none -->
 
-	les di, [ _RxDOS_pCDS ]
-	add di, ax					; pointer to first CDS
+	mov ah, 0					; ah = unit in device
 
-	mov ax, sizeDPB
-	mul byte [ _RxDOS_bNumBlockDev ]		; offset into DPB
-	lds si, [ _RxDOS_pDPB ]				; starting DPB address in ds:si
-	add si, ax					; offset to drive
-	xor ax, ax					; logical unit
+.loop_unit:
+	mov al, 0					; al = drive
 
-Init_AttachedFileSystem_08:
-	or word [ es:di + _cdsFlags ], _CDS_PHYSICALDRIVE
-	mov word [ es:di + _cdsPtrToDPB + _pointer ], si
-	mov word [ es:di + _cdsPtrToDPB + _segment ], ds
+	les di, [first_cds]
+.loop_cds:
+	test word [es:di + _cdsFlags], _CDS_VALID	; free ?
+	jz .got_cds					; yes, use -->
+	add di, CDS_size				; -> next CDS entry
+	inc ax						; next drive
+	cmp al, byte [number_cds_entries]		; valid ?
+	jb .loop_cds					; yes, try next -->
+.no_cds:
+	mov dx, init_msg.init_fs_no_cds
+	call init2_disp_msg_asciz_cs_dx
+	jmp .return
 
-	mov byte [ _dpbUnit + si ], al
-	mov byte [ _dpbAccessFlag + si ], -1		; never used before
+.got_cds:
+	mov word [bp + ?cds], di
+	mov word [bp + ?cds + 2], es			; store
+
+	les di, [first_dpb]				; -> DPB
+.loop_dpb:
+	cmp di, -1					; invalid ?
+	je .no_dpb					; yes -->
+
+	cmp byte [es:di + _dpbDrive], al		; our drive ?
+	je .got_dpb					; yes -->
+
+	les di, [es:di + _dpbNextDPB]			; -> next DPB
+	jmp .loop_dpb					; try next
+
+.no_dpb:
+	mov dx, init_msg.init_fs_no_dpb_1
+	call init2_disp_msg_asciz_cs_dx
+	add al, "A"
+	call init2_disp_al
+	mov dx, init_msg.init_fs_no_dpb_2
+	call init2_disp_msg_asciz_cs_dx
+	jmp .return
+
+.dpb_in_use:
+	mov dx, init_msg.init_fs_dpb_in_use_1
+	call init2_disp_msg_asciz_cs_dx
+	add al, "A"
+	call init2_disp_al
+	mov dx, init_msg.init_fs_dpb_in_use_2
+	call init2_disp_msg_asciz_cs_dx
+	jmp .return
+
+.got_dpb:
+	mov word [bp + ?dpb], di
+	mov word [bp + ?dpb + 2], es
+
+	cmp word [es:di + _dpbDevice], block		; check it is unused
+	jne .dpb_in_use
+	cmp word [es:di + _dpbDevice + 2], 70h
+	jne .dpb_in_use
+	cmp byte [es:di + _dpbUnit], -1
+	jne .dpb_in_use					; is in use already -->
+
 	push word [bp + ?deviceheader + 2]
 	push word [bp + ?deviceheader]
-	pop word [si + _dpbptrDeviceDriver]
-	pop word [si + _dpbptrDeviceDriver + 2]
+	pop word [es:di + _dpbDevice]
+	pop word [es:di + _dpbDevice + 2]		; set our device header
+	mov byte [es:di + _dpbUnit], ah			; set our unit
+	mov byte [es:di + _dpbAccessFlag], -1		; set access flag
 
-	inc ax
-	add si, byte sizeDPB
-	add di, byte sizeCDS
-	loop Init_AttachedFileSystem_08
+	push es
+	push di
 
+	les di, [bp + ?cds]
+
+	pop word [es:di + _cdsDPB]
+	pop word [es:di + _cdsDPB + 2]			; set DPB in CDS entry
+	add al, "A"
+	mov byte [es:di + _cdsPath], al
+	mov word [es:di + _cdsPath + 1], ":\"
+	mov byte [es:di + _cdsPath + 1 + 2], 0
+	and word [es:di + _cdsCluster], 0
+	and word [es:di + _cdsCluster + 2], 0
+	mov word [es:di + _cdsNonSubstOffset], 3
+	or word [es:di + _cdsFlags], _CDS_PHYSICALDRIVE	; enable CDS entry
+
+	inc ah						; next unit
+	inc byte [number_block_devices]			; on success, increment
+	loop .j_loop_unit				; next, if any -->
+
+.return:
 	restoreSegments si, di
-
-	mov al, byte [bp + ?units]
-	add byte [number_block_devices], al
-
-Init_AttachedFileSystem_16:
 	lleave
 	lret
+
+.j_loop_unit:
+	jmp .loop_unit
 
 
 		align 4
@@ -2559,13 +2630,6 @@ RxDOS_initialize:
 
 	mov ax, 0500h					; set page zero
 	int 10h
-
-
-		; compute number of block devices installed
-	call init2_to_doscode, maxBlockDevices
-	 push ss
-	 pop ds
-	mov byte [ _RxDOS_bNumBlockDev ], cl		; number of block devices
 
 		; initialized environment size
 	mov ax, _RxDOS_SharedBuffer
@@ -2954,6 +3018,11 @@ init_msg:
 .dpb_error_after:
 .devices_error_after:	db "h.",13,10,0
 .too_many_block_units:	db "init: Too many block device units, ignoring!",13,10,0
+.init_fs_dpb_in_use_1:	asciz "init: Internal error! DPB found for drive "
+.init_fs_dpb_in_use_2:	asciz ": is in use, ignoring!",13,10
+.init_fs_no_dpb_1:	asciz "init: Internal error! No DPB found for drive "
+.init_fs_no_dpb_2:	asciz ", ignoring!",13,10
+.init_fs_no_cds:	asciz "init: No CDS found for unit, ignoring!",13,10
 .reboot_prompt:		db "Halted. Press Ctrl+Alt+Del to reboot.",13,10
 .double_null:		db 0,0
 
