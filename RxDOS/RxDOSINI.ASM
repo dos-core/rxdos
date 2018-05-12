@@ -1748,9 +1748,13 @@ RxDOSini_DPBSubSystem:
 	push ss
 	pop ds
 
+%if 0
 	mov al, sizeDPB
 	mov cl, 32
 	mul cl					; max number of logical devices
+%else
+	mov ax, sizeDPB * 32
+%endif
 	mov cl, S_DPB
 	call init2_alloc_s_mcb_top		; allocate DPBs for all devices
 
