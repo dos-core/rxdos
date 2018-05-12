@@ -44,7 +44,6 @@ Unfortunately there was never a December version.
 
 	global checkforDeviceType
 	global checkforDeviceName
-	global maxBlockDevices
 	global DevMediaRequest
 	global DevRemovableRequest
 	global DevRead
@@ -263,88 +262,6 @@ chkDevName_26:
 	pop di
 	pop ds
 	Return
-
-
-		; Locate Blocked Devices
-		;
-		; Input:
-		; al	drive
-		;
-		; Output:
-		; dx:cx	pointer to driver header block
-findInstalledBlockDevice:
-
-	Entry
-	def	drive, ax
-
-	push es
-	push bx
-	call maxBlockDevices				; get number of blocked devices
-
-	currSegment es
-	mov bx, _RxDOS_NULLDev				; get start of chain
-	getarg ax, _drive
-
-findBlockedDev_08:
-	cmp bx, byte -1					; end of list ?
-	stc						; set error
-	jz findBlockedDev_16				; if end of list -->
-
-	test word [ es:devAttributes + bx ], ( DEV_CHAR )
-	jnz findBlockedDev_14				; if a character device -->
-
-	sub cl, byte [ es:bx + devUnits ]		; # units supported
-	cmp al, cl					; compare against drive code
-	jb findBlockedDev_14				; if not device of interest -->
-
-	or ax, ax					; clear carry
-	jmp short findBlockedDev_16			; return -->
-
-findBlockedDev_14:
-	les bx, [ es:devLink + bx ]
-	jmp short findBlockedDev_08			; go to next ->
-
-findBlockedDev_16:
-	mov cx, es
-	mov dx, bx
-	getarg ax, _drive
-	pop bx
-	pop es
-	Return
-
-
-		; Report Max Block Devices Available
-		;
-		; Output:
-		; cx	number of blocked devices
-	doscode_insure_low_byte_not_0CCh
-maxBlockDevices:
-
-	push es
-	currSegment es
-	mov bx, _RxDOS_NULLDev		; get start of chain
-	xor cx, cx			; # blocked devices
-
-.08:
-	cmp bx, byte -1			; end of list ?
-	jz .16				; if end of list -->
-
-	test word [ es:bx + devAttributes ], ( DEV_CHAR )
-	jnz .14				; if a character device -->
-	add cl, byte [ es:bx + devName ]
-	jc .max
-	cmp cl, 32
-	ja .max
-
-.14:
-	les bx, [ es:bx + devLink ]
-	jmp short .08			; go to next ->
-
-.max:
-	mov cl, 32
-.16:
-	pop es
-	retn
 
 
 		; Driver Media Request
@@ -1022,7 +939,7 @@ BlockedDevRequest:
 	call getAddrDPB					; (es:bx) Device Parameter Block
 	ifc BlockedDevRequest_28			; no device info -->
 	
-	les bx, [ es:bx + _dpbptrDeviceDriver ]
+	les bx, [ es:bx + _dpbDevice ]
 
 	push es
 	push bx
@@ -1675,16 +1592,6 @@ initDriveParameters:
 	mov word [ es:bx + _dpbFreeCount + _high ], -1	; invalidate disk free space
 	mov word [ es:bx + _dpbFreeCount + _low ], -1
 
-	mov dx, word [ es:bx + _dpbptrDeviceDriver + _pointer ]
-	or dx, word [ es:bx + _dpbptrDeviceDriver + _segment ]
-	jnz initDriveParameters_10
-
-	call findInstalledBlockDevice
-	jc initDriveParameters_22
-	mov word [ es:bx + _dpbptrDeviceDriver + _pointer ], dx
-	mov word [ es:bx + _dpbptrDeviceDriver + _segment ], cx
-
-initDriveParameters_10:
 	getarg ax, _drive				; restore drive
 	mov ah, BUILDBPB
 	lea di, [ byte _reqBlock + bp ]
