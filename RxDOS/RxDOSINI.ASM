@@ -1752,23 +1752,23 @@ RxDOSini_DPBSubSystem:
 	pop ds
 
 	mov al, sizeDPB
-	mul byte [ _RxDOS_bNumBlockDev ]		; number of logical devices
+	mov cl, 32
+	mul cl					; max number of logical devices
 	mov cl, S_DPB
-	call AllocateSystemSpace_with_type		; allocate DPBs for all used devices
+	call AllocateSystemSpace_with_type	; allocate DPBs for all devices
 
 	mov word [ _RxDOS_pDPB + _pointer ], di
 	mov word [ _RxDOS_pDPB + _segment ], es
 
 	xor ax, ax
-	xor cx, cx
-	mov cl, byte [ _RxDOS_bNumBlockDev ]
-	setDS es					; point to PDB area
+	mov cx, 32
+	setDS es				; point to PDB area
 
 		; values are defaults without special meaning
 		; actual values are assigned later by calling driver
 RxDOS_DPBinit_12:
 	mov byte [ _dpbDrive + di ], al
-	mov byte [ _dpbUnit + di ], 0
+	mov byte [ _dpbUnit + di ], -1		; unit 0FFh of default block
 	mov word [ _dpbBytesPerSector + di ], 512
 	mov byte [ _dpbClusterSizeMask + di ], 0FEh
 	mov byte [ _dpbClusterSizeShift + di ], 0
@@ -1780,12 +1780,12 @@ RxDOS_DPBinit_12:
 
 	mov word [ _dpbSectorsPerFat + di ], 2
 	mov word [ _dpbFirstDirSector + di ], 5
-	mov word [ _dpbptrDeviceDriver + _segment + di ], 0
-	mov word [ _dpbptrDeviceDriver + _pointer + di ], 0
+	mov word [ _dpbptrDeviceDriver + _segment + di ], 70h
+	mov word [ _dpbptrDeviceDriver + _pointer + di ], block
 	mov byte [ _dpbMediaDescriptor + di ], 0
-	mov byte [ _dpbAccessFlag + di ], -1		; UNACCESSED
+	mov byte [ _dpbAccessFlag + di ], -1	; UNACCESSED
 
-	lea bx, [ sizeDPB + di ]			; current pointer + sizeDPB
+	lea bx, [ sizeDPB + di ]		; current pointer + sizeDPB
 	mov word [ _dpbNextDPB + _segment + di ], ds
 	mov word [ _dpbNextDPB + _pointer + di ], bx
 	mov word [ _dpbNextFree + di ], 0
