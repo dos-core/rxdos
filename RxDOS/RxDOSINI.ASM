@@ -2013,7 +2013,7 @@ RxDOS_CDSinit_08:
 @@:
 	dec cx						; fix wrong count
 
-	or word [ es:di + _cdsFlags ], _CDS_PHYSICALDRIVE
+	mov word [ es:di + _cdsFlags ], _CDS_PHYSICAL
 	mov word [ es:di + _cdsPtrToDPB + _pointer ], si
 	mov word [ es:di + _cdsPtrToDPB + _segment ], ds
 @@:
@@ -2309,7 +2309,7 @@ InitializeAttachedFileSystem:
 	and word [es:di + _cdsCluster], 0
 	and word [es:di + _cdsCluster + 2], 0
 	mov word [es:di + _cdsNonSubstOffset], 3
-	or word [es:di + _cdsFlags], _CDS_PHYSICALDRIVE	; enable CDS entry
+	mov word [es:di + _cdsFlags], _CDS_PHYSICAL	; enable CDS entry
 
 	inc ah						; next unit
 	inc byte [number_block_devices]			; on success, increment
