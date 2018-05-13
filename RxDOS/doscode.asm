@@ -5376,7 +5376,8 @@ _SetUpperMemLink:
 	mov ax, errorMCBDestroyed
 	stc
 .end:
-	pop si
+	pop si					; discard flags word
+	pop si					; discard loop counter word
 	pop si
 	retn
 %endif
