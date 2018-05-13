@@ -17,35 +17,40 @@ the file LICENSE.TXT.
 
 %if 0
 
-Load remainder of RxDOS
-
-When RxBIO is loaded by the disk boot loader, it loads automatically
-the first three sectors regardless of the cluster allocation. For RxDOS,
-only the first sector in a cluster needs to actually be loaded. This
-loads this portion of the RxBIO code, which loads the remainder of the
-program using FAT allocations.
-
-The boot program has also detected and read the first sector of the
-root directory which is located at 0000:0500 (that is, 50:0).
-
 Boot sequence is
  
-RxMBR (master boot record)
+ldosmbr (master boot record)
  loads at 0:7C00h, relocated to 60h:0
  located at LBA 0 (cyl: 0 head: 0 sector: 1)
  
-boot12/16/32 (boot record)
+boot12/16/32 (partition boot record) - ldosboot
  loads at 0:7C00h
  located at start of partition (in partition's logical sector 0)
 
-iniload
+iniload - ldosboot
  loaded at eg 70h:0 (entry :400h), loads remainder of BIO + DOS
+ located at beginning of RxDOS.COM
 
 RxBIO
 RxDOS
+ located in RxDOS.COM (lDOSLOAD.BIN portion)
  provides user-level DOS services
  sets up DOS memory management
- currently the code segment and the DOS data segment are synonymous
+ contains the following segments:
+ * DOSENTRY (relocated by INIT1 to 70h:0)
+	ldos/entry.asm, RxDOS/bioentry.asm, RxDOS/int19.asm
+ * DOSCODE (later relocated by INIT2 to LMA, UMA, or HMA)
+	ldos/init.asm, RxDOS/biocode.asm, RxDOS/doscode.asm, RxDOS/RxDOS*.ASM
+ * DOSDATA (later relocated by INIT2 to LMA or UMA)
+	RxDOS/dosdata.asm
+ * INIT0 (early relocation, discarded immediately, before MCBs are set up)
+	ldos/init.asm
+ * INIT1 (early initialisation, sets up DOSENTRY and hooks interrupts)
+	ldos/init.asm
+ * INIT2 (data init, RxCONFIG.SYS processing, UMB linking, relocations)
+	ldos/init.asm, RxDOS/RxDOSINI.ASM
+ * INIT3 (init PSP)
+	ldos/init.asm
 
 RxCMD
  loaded by RxDOS if not otherwise instructed
