@@ -255,7 +255,7 @@ the file LICENSE.TXT.
 %iassign controlz	ctrl('Z')
 
 %iassign bell		7
-%iassign bs		8
+;%iassign bs		8
 %iassign tab		9
 %iassign lf		10
 %iassign cr		13
