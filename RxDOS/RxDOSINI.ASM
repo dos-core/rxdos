@@ -2649,6 +2649,11 @@ RxDOS_initialize:
 	mov word [ _RxDOS_UserCodePage ], DEFAULT_CODEPAGE
 	mov word [ _RxDOS_SystemCodePage ], DEFAULT_CODEPAGE
 
+
+	mov dx, 2
+	call init2_call_rploader
+
+
 		; parse RXCONFIG.SYS file
 	mov cl, S_INITCONFIG
 	mov ax, 65535
@@ -2677,6 +2682,18 @@ RxDOS_initialize:
 	call init2_relocate_device
 	mov ax, word [cs:init2_dosflags]
 	call init2_relocate_end
+
+
+	mov dx, 3
+	call init2_call_rploader
+
+		; Refer to RBIL 61 2F12FFBX0005
+	mov ax, 12FFh
+	mov bx, 5
+	xor cx, cx
+	xor dx, dx
+	int 2Fh						; MemoryMAX broadcast
+
 
 	push cs
 	pop ds						; ds = INIT2
