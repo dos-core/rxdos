@@ -102,11 +102,10 @@ Unfortunately there was never a December version.
 
 		; Locate Device Driver By Type
 		;
-		; Input:
-		; ax	type to match.	must match all bits set.
-		;
-		; Output:
-		; es:bx	pointer to driver header block
+		; INP:	ax = device flags to match; is matching if all bits set
+		; OUT:	CY if none found
+		;	NC if found,
+		;	 es:bx -> device header
 	doscode_insure_low_byte_not_0CCh
 checkforDeviceType:
 
