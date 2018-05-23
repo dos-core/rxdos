@@ -2143,6 +2143,8 @@ RxDOS_CCBinit_10:
 
 
 		; Allocate SFTs for StdIn and StdOut Devices
+		;
+		; INP:	ds = DOSDATA
 RxDOSini_StdInStdOutDrivers:
 
 	push es
