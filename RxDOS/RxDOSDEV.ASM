@@ -99,25 +99,6 @@ Unfortunately there was never a December version.
 	extern getSysDateinDirFormat
 %endif
 
-		; Default StdIn Access
-		;
-		; Input:
-		; es:bx	buffer address.
-		; cx	length.
-readConsoleIn:
-
-	or cx, cx
-	jz readConsoleIn_08
-
-	xor dx, dx
-	mov di, bx
-	push word [ ss:_RxDOS_pCONdriver + _segment ]
-	push word [ ss:_RxDOS_pCONdriver + _pointer ]
-	call devCharReadLine				; read til cr or eof
-
-readConsoleIn_08:
-	retn
-
 
 		; Default Stdout Access
 		;
