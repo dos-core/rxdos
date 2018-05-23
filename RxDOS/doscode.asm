@@ -1576,9 +1576,18 @@ CtrlC_CheckCallBack:
 	setes cs
 	mov di, _RxDOS_ContrlC_Message			; es:di -> "^C",13,10
 	mov cx, 4					; length
+
+	mov dx, word [ _RxDOS_pCONdriver + _pointer ]
+	inc dx						; if -1, now 0
+	jz @F
+	mov dx, word [ _RxDOS_pCONdriver + _segment ]
+	test dx, dx
+	jz @F						; if no CON driver -->
+
 	push word [ ss:_RxDOS_pCONdriver + _segment ]
 	push word [ ss:_RxDOS_pCONdriver + _pointer ]
 	call devCharWrite
+@@:
 
 	cli
 	mov bx, word [ _RxDOS_CurrentInstance ]		; base address of current user stack
