@@ -222,7 +222,14 @@ configProcessing:
 	xor ax, ax
 	mov al, byte [ ss:_RxDOS_CurrentDrive ]	; startup drive
 	call init2_to_doscode, scanDirectory	; search CONFIG.SYS
-	jc .Return				; if none found -->
+	jnc .08					; if none found -->
+
+		; No [RX]CONFIG.SYS found, initialise to empty config.
+	les di, [bp + _configNextLine]
+	mov word [ es:di + configType ], CONFIGTYPE_ENDOFARGS
+	and word [ es:di + configLength ], 0
+	jmp .36
+
 
 .08:
 	push word [ es:si + deFileSize + _low ]
