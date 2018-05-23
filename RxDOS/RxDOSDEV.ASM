@@ -100,25 +100,6 @@ Unfortunately there was never a December version.
 %endif
 
 
-		; Default Stdout Access
-		;
-		; Input:
-		; es:bx	buffer address.
-		; cx	length.
-writeConsoleOut:
-
-	or cx, cx
-	jz writeConsoleOut_08
-
-	mov di, bx
-	push word [ ss:_RxDOS_pCONdriver + _segment ]
-	push word [ ss:_RxDOS_pCONdriver + _pointer ]
-	call devCharWrite
-
-writeConsoleOut_08:
-	retn
-
-
 		; Locate Device Driver By Type
 		;
 		; Input:

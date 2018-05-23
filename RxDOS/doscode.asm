@@ -1572,9 +1572,11 @@ CtrlC_Check18:
 CtrlC_CheckCallBack:
 
 	setes cs
-	mov cx, 4
-	mov bx, _RxDOS_ContrlC_Message			; "^C",13,10
-	call writeConsoleOut
+	mov di, _RxDOS_ContrlC_Message			; es:di -> "^C",13,10
+	mov cx, 4					; length
+	push word [ ss:_RxDOS_pCONdriver + _segment ]
+	push word [ ss:_RxDOS_pCONdriver + _pointer ]
+	call devCharWrite
 
 	cli
 	mov bx, word [ _RxDOS_CurrentInstance ]		; base address of current user stack
