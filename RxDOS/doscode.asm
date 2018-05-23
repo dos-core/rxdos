@@ -1360,6 +1360,8 @@ _cmp32: Entry 2
 		; AL	00 if none, -1 if available
 		;
 		; di destroyed
+		;
+		; RxDOS 7.2x: This shouldn't use _RxDOS_pCONdriver.
 CheckKeyboardCharsAvailable:
 
 	entry
