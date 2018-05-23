@@ -390,7 +390,6 @@ configProcessing:
 	call processAnyDevice
 
 		; Return
-.Return:
 	Return
 
 
