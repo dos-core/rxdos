@@ -1373,25 +1373,27 @@ CheckKeyboardCharsAvailable:
 	mov ax, word [ _RxDOS_pCONdriver + _pointer ]
 	inc ax				; if -1, now 0
 					; (al is zero as well if this branches)
-	jz CtrlC_Check18
+	jz checkKeybd_None
 	mov ax, word [ _RxDOS_pCONdriver + _segment ]
 	test ax, ax
-	jz CtrlC_Check18		; if no CON driver -->
+	jz checkKeybd_None		; if no CON driver -->
 					; (al is zero as well if this branches)
 
 	push word [ _RxDOS_pCONdriver + _segment ]
 	push word [ _RxDOS_pCONdriver + _pointer ]
 	call CharDevRequest		; ask CON for character
 
-	mov al, 00			; set character available
 	test word [ bp + _reqBlock + ndrStatus ], OP_DONE
 	jz checkKeybd_None		; if no character -->
 	test word [ bp + _reqBlock + ndrStatus ], OP_BUSY
 	jnz checkKeybd_None		; if no character -->
 
-	dec al				; = -1, set character available
+	mov al, -1			; = -1, set character available
 
+	db __TEST_IMM16			; (skip mov al, 0)
 checkKeybd_None:
+	mov al, 0
+
 	or al, al
 	return
 
