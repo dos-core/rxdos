@@ -389,6 +389,13 @@ configProcessing:
 	getdarg es, di, _configStatements
 	call processAnyDevice
 
+
+	mov ax, word [cs:init2_dosflags]
+	call init2_relocate_device
+	mov ax, word [cs:init2_dosflags]
+	call init2_relocate_end
+
+
 		; Return
 	Return
 
@@ -2683,11 +2690,6 @@ RxDOS_initialize:
 		; parse command line
 	setDS cs
 	setES ss
-
-	mov ax, word [cs:init2_dosflags]
-	call init2_relocate_device
-	mov ax, word [cs:init2_dosflags]
-	call init2_relocate_end
 
 
 	mov dx, 3
