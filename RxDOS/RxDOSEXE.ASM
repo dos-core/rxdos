@@ -784,60 +784,77 @@ checkEXEHeader_08:
 		; ZR = No parent PSP, not copied
 		; NZ = Parent PSP found and copied
 copyCurrentPSP:
-
 	SaveSegments
-	mov ax, word [ ss:_RxDOS_CurrentPSP ]		; current PSP
-	or ax, ax					; any current PSP ?
-	jz copyCurrentPSP_36				; no -->
+
+	mov ax, word [ ss:_RxDOS_CurrentPSP ]	; current PSP
+	or ax, ax				; any current PSP ?
+	jz .36					; no -->
 
 	xor si, si
 	xor di, di
-	mov ds, ax					; current PSP
+	mov ds, ax				; ds => current PSP
 	mov cx, (sizePSP +1)/2
-	repz movsw
+	rep movsw				; copy PSP
 
-		; duplicate all file handles (except for no inherit)
+	mov di, pspPHT				; es:di => PHT
+	mov cx, pspPHT_size
+
+	mov word [ es:pspPHTEntries ], cx
+	mov word [ es:pspPHTAddress + 2 ], es
+	mov word [ es:pspPHTAddress ], di	; initialise variables
+
+	mov al, -1
+	rep stosb				; initialise PHT to all closed
+
+	mov cx, word [pspPHTEntries]
+	lds si, [pspPHTAddress]			; ds:si -> source PHT, size cx
+
 	mov ax, word [ ss:_RxDOS_CurrentPSP ]
-	mov word [ es:pspParentId ], ax			; parent PSP address
+	mov word [ es:pspParent ], ax		; parent PSP address
 
-	mov cx, sizePSPHandleTable 
-	mov bx, pspHandleTable 
-	mov word [ es:pspFileHandleCount ], cx
-	mov word [ es:pspFileHandlePtr + _segment ], es
-	mov word [ es:pspFileHandlePtr + _pointer ], bx
+	cmp cx, pspPHT_size			; more than fit ?
+	jb @F					; no -->
+	mov cx, pspPHT_size			; clamp to default PHT size
+@@:
 
-copyCurrentPSP_08:
+	jcxz .no_source_handles
+		; duplicate all file handles (except for no inherit)
+.08:
 	xor ax, ax
-	mov al, byte [ es:bx ]				; get old handle
-	cmp al, -1					; if entry not set
-	jz copyCurrentPSP_14				; skip around -->
+	mov al, byte [si]			; get source entry
+	cmp al, -1				; if entry not set
+	je .14					; skip around -->
 
+	push ax
 	push es
-	push bx
-	call FindSFTbyHandle				; get corresponding SFT (es:di)
+	push di
+	call FindSFTbyHandle			; get corresponding SFT (es:di)
 	test word [ es:di + sftDevInfo ], sftNoInherit
-	jnz copyCurrentPSP_12				; if no inherit -->
+	jnz .12					; if no inherit -->
 
-	inc word [ es:di + sftRefCount ]		; bump in use count
+	inc word [ es:di + sftRefCount ]	; bump in use count
 
-	pop bx
+	pop di
 	pop es
-	jmp short copyCurrentPSP_14
+	pop ax
+	mov byte [ es:di ], al			; set SFT handle in dest PHT
+	jmp short .14
 
-copyCurrentPSP_12:
-	pop bx
+.12:
+	pop di
 	pop es
-	mov byte [ es:bx ], -1				; free SFT handle in copy of PSP
+	pop ax
 
-copyCurrentPSP_14:
-	inc bx
-	cmp bx, byte (pspHandleTable + sizePSPHandleTable)
-	jb copyCurrentPSP_08
+.14:
+	inc si					; -> next source PHT entry
+	inc di					; -> next dest PHT entry
+	loop .08
+.no_source_handles:
 
-	or bx, bx					; set NZ
+	or al, 1				; set NZ
 
 		; done
-copyCurrentPSP_36:
+.36:
 	RestoreSegments
 	retn
 
