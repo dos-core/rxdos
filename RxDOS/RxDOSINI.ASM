@@ -389,6 +389,9 @@ configProcessing:
 	getdarg es, di, _configStatements
 	call processAnyDevice
 
+	 push ss
+	 pop ds
+	call RxDOSini_StdInStdOutDrivers
 
 	mov ax, word [cs:init2_dosflags]
 	call init2_relocate_device
@@ -820,6 +823,10 @@ processAnyDevice_60:
 	Int21 FreeAllocatedMemory			; if error while loading
 
 processAnyDevice_64:
+	 push ss
+	 pop ds
+	call RxDOSini_StdInStdOutDrivers		; initialize drivers
+
 	mov ax, word [cs:init2_dosflags]
 	call init2_relocate_device
 
@@ -2683,11 +2690,6 @@ RxDOS_initialize:
 	rep stosw					; discard this space
 	mov ah, 49h
 	int 21h
-
-	d4bp
-	 push ss
-	 pop ds
-	call RxDOSini_StdInStdOutDrivers		; initialize drivers
 
 		; parse command line
 	setDS cs
