@@ -103,8 +103,7 @@ _RxDOS_MachineType	db 0			; 1 if 80386+, else 0
 _RxDOS_ExtendedMem	dw 0			; extended memory size in KiBs
 
 buffer_info_record:
-_RxDOS_BufferList:
-first_ccb:		dd -1
+			dd -1	; -> disk buffer (CCBs differ, so not used)
 			dw 0	; number of dirty disk buffers
 			dd 0	; -> lookahead buffer
 			dw 0	; number of lookahead sectors
@@ -123,6 +122,8 @@ first_umcb:		dw -1
 
 			align 4, db 0
 		; the remainder of these arguments are not compatible with MS-DOS
+_RxDOS_BufferList:
+first_ccb:		dd -1
 _RxDOS_MaxMemory	dw 0			; max memory
 _RxDOS_NumFileHandles	dw sizePSPHandleTable	; default
 _RxDOS_pLFNCDS		dd -1			; expanded LFN buffer
