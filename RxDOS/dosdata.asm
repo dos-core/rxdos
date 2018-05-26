@@ -413,15 +413,6 @@ Con_TabPosition		dw 0
 Con_ScanCode		db 0
 
 
-		; Device Assign Table
-	align 4
-stdDeviceAssignTable:
-	STDREDIREC 'CON', stdRedirec_Con, (sftIsDevice + sftIsstdout + sftIsstdin)
-	STDREDIREC 'AUX', stdRedirec_Aux, (sftIsDevice)
-	STDREDIREC 'PRN', stdRedirec_Prn, (sftIsDevice)
-	STDREDIREC -1
-
-
 	align 2
 dosdata_to_diskbuffer_segment:	dw 0
 dosdata_to_doscode_segment:	dw 0
