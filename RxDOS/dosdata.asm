@@ -382,7 +382,6 @@ SDAExtendedSwapArea:
 
 
 			align 2
-_RxDOS_DOSROMStatusFlag:
 _RxDOS_DOSLocation	db RXDOS_DOSLOCATION	; DOS in ROM and DOS moved to HMA status
 			align 2
 _RxDOS_DOSVersion	dw RXDOS_MS_VERSION	; reported MS-DOS version
