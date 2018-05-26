@@ -291,6 +291,7 @@ findSFTHandle_12:
 	popf
 
 	mov ax, word [ _handle + bp ]			; counted SFT handle number
+	clc
 	jmp short findSFTHandle_30			; exit -->
 
 findSFTHandle_14:
