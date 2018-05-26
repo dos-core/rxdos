@@ -110,45 +110,32 @@ MapSFTToAppHandle:
 
 	SaveRegisters es, si, cx, bx
 
-%if 1
-	mov es, word [ ss:_RxDOS_CurrentPSP ]		; get PSP
-	mov cx, word [ es:pspFileHandleCount ]		; get maximal count
-	les si, [ es:pspFileHandlePtr ]			; get JHT pointer
-
-	cmp word [ ss:_RxDOS_CurrentPSP ], byte 0	; PSP valid ?
-	jnz MapSFTToAppHandle_08			; yes -->
-
-	push ss
-	pop es
-	mov cx, sizepspSysHandleTable
-	mov si, pspSysHandleTable			; default to DOSDATA:pspSysHandleTable
-
-MapSFTToAppHandle_08:
-%else
-	call GetAppHandleTable				; es:si-> application handle table, cx = number of entries
-%endif
+	call GetProcessHandleTable	; es:si-> PHT, cx = number of entries
 
 	mov bx, si
 
-MapSFTToAppHandle_12:
-	cmp byte [ es:si ], -1				; empty slot ?
-	jz MapSFTToAppHandle_16				; yes, allocate -->
+	jcxz .no_handles
+.12:
+	cmp byte [ es:si ], -1		; empty slot ?
+	jz .16				; yes, allocate -->
 
-	inc si						; next
-	loop MapSFTToAppHandle_12			; continue looping
+	inc si				; next
+	loop .12			; continue looping
 
+.no_handles:
 	stc
-	mov ax, pexterrNoHandlesAvailable		; problem, no application handles left
-	jmp short MapSFTToAppHandle_22			; exit -->
+	mov ax, pexterrNoHandlesAvailable	; problem, no application handles left
+	jmp short .22			; exit -->
 
-		; allocate App Handle
-MapSFTToAppHandle_16:
-	mov byte [ es:si ], al				; place SFT handle into application handle table
-	mov ax, si					; application handle offset
-	sub ax, bx					; always sets NC
+		; allocate process handle
+.16:
+	mov byte [ es:si ], al		; place SFT handle into PHT entry
+	mov ax, si			; PHT entry offset
+	sub ax, bx			; calculate PHT index
+	clc
 
 		; return
-MapSFTToAppHandle_22:
+.22:
 	RestoreRegisters bx, cx, si, es
 	retn
 
@@ -160,92 +147,49 @@ MapSFTToAppHandle_22:
 		;	 ax = SFT handle
 		;	CY if table entry not found or unused,
 		;	 ax = 00FFh
-		;
-		; Releases <= RxDOS 7.20N return the CF state inverted
 	doscode_insure_low_byte_not_0CCh
 MapAppToSFTHandle:
-
-%if 1		; use GetAppHandleTable
-	push es
 	push si
-	mov si, ax
-	mov ax, 00FFh					; assume can't be found
+	push es
+	push cx
+	call GetProcessHandleTable
+	add si, ax			; es:si-> selected application handle, if valid
+	cmp ax, cx			; compare given handle to maximal
+	mov ax, 00FFh			; in case of error
+	jae .16				; if given handle too high -->
+	mov ah, 0
+	mov al, byte [ es:si ]		; get selected application handle
 
-	cmp word [ ss:_RxDOS_CurrentPSP ], byte 0
-	jnz MapAppToSFTHandle_06			; if PSP found -->
-
-		; if no PSP, use default system table
-%if 0
-		; RxDOS 7.20N:	This check is also required for the
-		;		default system table!
-	cmp si, sizepspSysHandleTable
-	jnc MapAppToSFTHandle_16			; beyond highest handle -->
-%endif
-	xor ah, ah
-	mov al, byte [ ss:si + pspSysHandleTable ]
-	jmp short MapAppToSFTHandle_16
-
-		; if valid PSP, use pointer from PSP
-MapAppToSFTHandle_06:
-	mov es, word [ ss:_RxDOS_CurrentPSP ]		; get PSP
-	cmp si, word [ es:pspFileHandleCount ]		; beyond max handles
-	jnc MapAppToSFTHandle_16			; yes, can't convert -->
-
-	les ax, [ es:pspFileHandlePtr ]			; get JHT address
-	add si, ax					; use file handle as offset
-	mov al, byte [ es:si ]				; get SFT handle
-	xor ah, ah
-
-MapAppToSFTHandle_16:
-	pop si
+.16:
+	pop cx
 	pop es
-	cmp ax, 00FFh					; see if it's unused (valid handles are < 00FF, so they set CY)
-%if 0
-		; RxDOS 7.20N:	Invert CF to get normal CY if error and NC else.
-	cmc
-%endif
+	pop si
+	cmp al, 0FFh			; see if it's unused (valid handles are < 0FFh, so they set CY)
+	cmc				; invert CF: NC if valid, CY if invalid
 	retn
 
-%else		; use GetAppHandleTable
-	mpush si, es, cx
-	call GetAppHandleTable
-	add si, ax					; es:si-> selected application handle, if valid
-	cmp ax, cx					; compare given handle to maximal
-	mov ax, 00FFh					; in case of error
-	jae MapAppToSFTHandle_16			; if given handle too high -->
-	mov al, byte [ es:si ]				; get selected application handle (ah is already zero)
 
-MapAppToSFTHandle_16:
-	mpop cx, es, si
-	cmp al, 0FFh					; see if it's unused (valid handles are < 0FFh, so they set CY)
-	cmc						; invert CF: NC if valid, CY if invalid
-	retn
-%endif		; use GetAppHandleTable
-
-
-%if 0
 		; Get current application handle table
 		;
 		; OUT:	es:si-> Application handle table
 		;	cx = number of entries in the table
 		;	NC if PSP loaded, es:si points to PSP's handle table
 		;	CY if no PSP loaded, es:si points to internal handle table
-GetAppHandleTable:
-
+GetProcessHandleTable:
 	cmp word [ ss:_RxDOS_CurrentPSP ], byte 1
-	jae GetAppHandleTable_08			; if PSP found --> (flags: NC)
-							;  else (flags: CY) use internal handle table
-	setES ss
-	mov si, pspSysHandleTable			; es:si-> internal handle table
-	mov cx, sizepspSysHandleTable			; size of this table
+	jae .08				; if PSP found --> (flags: NC)
+					;  else (flags: CY) use internal handle table
+	push ss
+	pop es
+	mov si, pspSysHandleTable	; es:si-> internal handle table
+	mov cx, sizepspSysHandleTable	; size of this table
 	retn
 
-GetAppHandleTable_08:
-	mov es, word [ ss:_RxDOS_CurrentPSP ]		; get PSP
-	mov cx, word [ es:pspFileHandleCount ]		; get maximal count
-	les si, [ es:pspFileHandlePtr ]			; get application handle table
+.08:
+	mov es, [ ss:_RxDOS_CurrentPSP ]; get PSP
+	mov cx, [ es:pspPHTEntries ]	; get number of PHT entries
+	les si, [ es:pspPHTAddress ]	; get PHT address
 	retn
-%endif
 
 
 		; Find available file handle

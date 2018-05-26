@@ -1170,27 +1170,6 @@ get_first_hmcb:
 	iret
 
 
-		; Get Current Handle Table (Job File Table)
-		;
-		; OUT:	NC if PSP loaded
-		;	 es:bx-> Handle table
-		;	CY if no PSP loaded
-		;	 es:bx-> internal handle table
-		; CHG:	es, bx
-getHandleTable:
-	call getpsp
-	mov es, bx
-	les bx, [ es:pspFileHandlePtr ]
-	jnc getHandleTable_08
-
-	push ss
-	pop es
-	mov bx, pspSysHandleTable
-
-getHandleTable_08:
-	retn
-
-
 		; For Directory Functions, Change Error to 'Path Not Found'
 		;
 		; Usage:
@@ -4115,22 +4094,20 @@ _CloseFile:
 
 	entry
 	def	handle, bx
-	ddef	sftPointer
-	defbytes	diskAccess, sizeDISKACCESS
 
-	mov ax, bx					; handle
-	call MapAppToSFTHandle				; map to internal handle info
-	call FindSFTbyHandle				; get corresponding SFT (es:di)
-	jc _CloseFile_error				; if could not find -->
+	mov ax, bx			; handle
+	call MapAppToSFTHandle		; map to internal handle info
+	call FindSFTbyHandle		; get corresponding SFT (es:di)
+	jc _CloseFile_error		; if could not find -->
 
-	call _SFTCloseFile				; close SFT Entry
-	jc _CloseFile_error				; if error -->
+	call _SFTCloseFile		; close SFT Entry
+	jc _CloseFile_error		; if error -->
 
-	call getHandleTable				; get handle table
-	add bx, word [ bp + _handle ]
-	mov byte [ es:bx ], -1				; cancel handle reference in PSP's handle table
-
-	or bx, bx					; no carry
+	call GetProcessHandleTable	; es:si -> PHT, size cx
+		; (It is implied here that the handle is below cx.)
+	add si, word [ bp + _handle ]
+	mov byte [ es:si ], -1		; cancel handle reference in PHT
+	clc
 
 _CloseFile_error:
 	return
