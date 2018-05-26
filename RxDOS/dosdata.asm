@@ -124,9 +124,8 @@ first_umcb:		dw -1
 		; the remainder of these arguments are not compatible with MS-DOS
 _RxDOS_BufferList:
 first_ccb:		dd -1
-_RxDOS_MaxMemory	dw 0			; max memory
-_RxDOS_NumFileHandles	dw sizePSPHandleTable	; default
 _RxDOS_pLFNCDS		dd -1			; expanded LFN buffer
+_RxDOS_MaxMemory	dw 0			; max memory
 
 _RxDOS_pExtErrorCode	dw 0			; Error code.
 _RxDOS_ExtErrorFlag	dw 0			; flag if infor set
