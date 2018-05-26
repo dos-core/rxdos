@@ -389,8 +389,7 @@ configProcessing:
 	getdarg es, di, _configStatements
 	call processAnyDevice
 
-	 push ss
-	 pop ds
+
 	call RxDOSini_StdInStdOutDrivers
 
 	mov ax, word [cs:init2_dosflags]
@@ -823,8 +822,6 @@ processAnyDevice_60:
 	Int21 FreeAllocatedMemory			; if error while loading
 
 processAnyDevice_64:
-	 push ss
-	 pop ds
 	call RxDOSini_StdInStdOutDrivers		; initialize drivers
 
 	mov ax, word [cs:init2_dosflags]
@@ -2095,7 +2092,7 @@ RxDOSini_SFTSubSystem:
 	mov word [ es:di + nextFTPointer + _segment ], ax
 	pop word [ es:di + numberSFTEntries ]
 
-	call RxDOSini_StdInStdOutDrivers		; initialize drivers
+	call RxDOSini_StdInStdOutDrivers.only_list_of_lists_pointers
 	pop ds
 	retn
 
@@ -2151,12 +2148,52 @@ RxDOS_CCBinit_10:
 
 		; Allocate SFTs for StdIn and StdOut Devices
 		;
-		; INP:	ds = DOSDATA
+		; INP:	ss = DOSDATA
 RxDOSini_StdInStdOutDrivers:
+	d4bp
 
 	push es
 	push ds
 
+	xor ax, ax
+.loop:
+	push ax
+
+	call init2_to_doscode, MapAppToSFTHandle
+	call init2_to_doscode, FindSFTbyHandle
+	jc .next
+
+	push es
+	pop ds
+	mov si, di
+
+	test word [si + sftDevInfo], sftinfo_Device
+	jz .next
+
+	lea di, [di + sftFileName]
+	call init2_to_doscode, checkforDeviceName
+	jc .next
+
+	mov word [si + sftDevice], bx
+	mov word [si + sftDevice + 2], es
+
+.next:
+	pop ax
+	inc ax
+	cmp ax, STDPRN
+	jbe .loop
+
+	pop ds
+	pop es
+
+.only_list_of_lists_pointers:
+	d4bp
+
+	push es
+	push ds
+
+	push ss
+	pop ds
 		; Update system CON pointer to last driver with StdIn and StdOut bits
 	mov ax, ( DEV_STDINPUT + DEV_STDOUTPUT )
 	call init2_to_doscode, checkforDeviceType
@@ -2177,51 +2214,6 @@ RxDOS_DRIVERinit_10:
 
 		; allocate StdIn, StdOut, StdErr, StdAux, StdPrn
 RxDOS_DRIVERinit_12:
-	push ss
-	pop ds
-	mov di, stdDeviceAssignTable
-
-RxDOS_DRIVERinit_14:
-	push ss
-	pop es
-	call init2_to_doscode, checkforDeviceName	; locate device
-	jc RxDOS_DRIVERinit_22				; if can't be located -->
-
-	push bx
-	push es						; save pointer to driver
-
-	push di
-	mov ax, word [ ss:di + stdIOHandle ]		; get assigned handle
-	call init2_to_doscode, FindSFTbyHandle		; find SFT address (es:di)
-	mov bx, di					; SFT address to bx
-	pop di						; restore
-	jc RxDOS_DRIVERinit_22				; if can't be located -->
-
-	mov ax, word [ ss:di + stdDevInfo ]
-	or ax, sftProtected				; can't close those
-	mov word [ es:bx + sftDevInfo ], ax
-
-	push di
-	push bx
-	mov cx, sizeFnName
-
-RxDOS_DRIVERinit_16:
-	mov al, byte [ ss:di + stdDriverName ]		; copy name
-	mov byte [ es:bx + sftFileName ], al
-	inc bx
-	inc di
-	loop RxDOS_DRIVERinit_16
-
-	pop bx
-	pop di
-	pop word [ es:bx + sftDHD + _segment ]
-	pop word [ es:bx + sftDHD + _pointer ]		; set pointer to device header
-	inc word [ es:bx + sftRefCount ]		; bump use count
-
-RxDOS_DRIVERinit_22:
-	add di, byte sizeStdRedirec
-	cmp word [ ss:di ], byte -1
-	jnz RxDOS_DRIVERinit_14
 
 	pop ds
 	pop es
@@ -2670,6 +2662,78 @@ RxDOS_initialize:
 
 	mov word [ _RxDOS_UserCodePage ], DEFAULT_CODEPAGE
 	mov word [ _RxDOS_SystemCodePage ], DEFAULT_CODEPAGE
+
+
+initialise_handles:
+	push cs
+	pop ds				; ds = INIT1 cs
+
+	d4bp
+
+	mov ax, 3D00h + (0_000_0_010b)	; inherit, sharing COMPAT, R/W
+	mov dx, init2_msg.con
+	int 21h				; open CON
+	jc .error
+
+	mov bx, ax
+	xor cx, cx			; STDIN
+.loop_con:
+	mov ah, 46h			; FORCEDUP
+	cmp cx, bx			; target same as source ?
+	je .next_con			; yes, skip -->
+	int 21h				; duplicate handle
+	jnc .next_con
+.error:
+	mov si, init2_msg.internal_error_handles
+	jmp init2_internal_error_reboot_prompt
+
+.next_con:
+	inc cx
+	cmp cx, STDAUX			; next is STDOUT or STDERR ?
+	jb .loop_con			; yes, loop -->
+
+	cmp bx, STDAUX			; source is one of the first three ?
+	jb @F				; yes -->
+	mov ah, 3Eh
+	int 21h				; no, close
+	jc .error
+@@:
+
+	mov ax, 3D00h + (0_000_0_010b)	; inherit, sharing COMPAT, R/W
+	mov dx, init2_msg.aux
+	int 21h				; open AUX
+	jc .error
+
+	mov bx, ax
+	cmp bx, STDAUX			; already the handle we want to set ?
+	je @F				; yes -->
+
+	mov cx, STDAUX
+	mov ah, 46h
+	int 21h				; FORCEDUP to STDAUX handle
+	jc .error
+	mov ah, 3Eh
+	int 21h				; close the other handle
+	jc .error
+@@:
+
+	mov ax, 3D00h + (0_000_0_001b)	; inherit, sharing COMPAT, write-only
+	mov dx, init2_msg.prn
+	int 21h				; open PRN
+	jc .error
+
+	mov bx, ax
+	cmp bx, STDPRN			; already the handle we want to set ?
+	je @F				; yes -->
+
+	mov cx, STDPRN
+	mov ah, 46h
+	int 21h				; FORCEDUP to STDPRN handle
+	jc .error
+	mov ah, 3Eh
+	int 21h				; close the other handle
+	jc .error
+@@:
 
 
 	mov dx, 2

@@ -162,6 +162,7 @@ MapSFTToAppHandle_22:
 		;	 ax = 00FFh
 		;
 		; Releases <= RxDOS 7.20N return the CF state inverted
+	doscode_insure_low_byte_not_0CCh
 MapAppToSFTHandle:
 
 %if 1		; use GetAppHandleTable
