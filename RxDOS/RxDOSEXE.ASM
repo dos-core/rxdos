@@ -879,23 +879,6 @@ createPSP:
 	mov cx, (sizePSPHandleTable +1)/2
 	repz stosw					; init handle table
 
-	mov dx, 1
-	mov al, byte [ ss:(stdRedirec_Aux * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-	mov byte [ es:pspHandleTable + STDAUX ], al
-	call incrRefCount
-
-	mov al, byte [ ss:(stdRedirec_Prn * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-	mov byte [ es:pspHandleTable + STDPRN ], al
-	call incrRefCount
-
-	mov al, byte [ ss:(stdRedirec_Con * sizeStdRedirec) + stdDeviceAssignTable + stdIOHandle ]
-	mov byte [ es:pspHandleTable + STDIN ], al
-	mov byte [ es:pspHandleTable + STDOUT ], al
-	mov byte [ es:pspHandleTable + STDERR ], al
-
-	mov dx, 3
-	call incrRefCount
-
 	mov al, ' '
 	mov cx, (sizefnName +sizefnExtension)
 	mov di, pspFCB_1
@@ -1069,31 +1052,6 @@ createPSP_56:
 	pop ds
 	return
 
-
-		; Increment Ref Count
-		;
-		; Input:
-		; al	SFT handle
-		; dx	increment value
-incrRefCount:
-
-	push es
-	push di
-	push dx
-%if 1
-	xor ah, ah
-%endif
-	call FindSFTbyHandle				; get corresponding SFT
-
-	pop dx
-	test word [ es:di + sftDevInfo ], sftNoInherit
-	jnz incrRefCount_08				; if no inherit -->
-	add word [ es:di + sftRefCount ], dx		; bump in use count
-
-incrRefCount_08:
-	pop di
-	pop es
-	retn
 
 
 		; Allocate Loader Memory, copy Env block, init PSP
