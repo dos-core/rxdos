@@ -379,16 +379,9 @@ SDAPathNameLast		dw 0
 		;		not used by RxDOS at all.
 
 SDAExtendedSwapArea:
+
+
 			align 2
-
-		; System Default Handle Table (used if no PSP loaded)
-		; RxDOS 7.20N:	Could be smaller. 5 handles should be enough.
-pspSysHandleTable:	db 0, 0, 0
-			times 17 db 0FFh
-sizepspSysHandleTable equ $-pspSysHandleTable
-
-		; RxDOS Product Identification
-
 _RxDOS_DOSROMStatusFlag:
 _RxDOS_DOSLocation	db RXDOS_DOSLOCATION	; DOS in ROM and DOS moved to HMA status
 			align 2

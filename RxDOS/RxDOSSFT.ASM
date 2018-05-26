@@ -176,19 +176,14 @@ MapAppToSFTHandle:
 		;	NC if PSP loaded, es:si points to PSP's handle table
 		;	CY if no PSP loaded, es:si points to internal handle table
 GetProcessHandleTable:
+	xor cx, cx			; initialise to empty table
 	cmp word [ ss:_RxDOS_CurrentPSP ], byte 1
-	jae .08				; if PSP found --> (flags: NC)
-					;  else (flags: CY) use internal handle table
-	push ss
-	pop es
-	mov si, pspSysHandleTable	; es:si-> internal handle table
-	mov cx, sizepspSysHandleTable	; size of this table
-	retn
-
-.08:
+	jb .ret				; if no PSP found --> (CY)
+					; here, NC
 	mov es, [ ss:_RxDOS_CurrentPSP ]; get PSP
 	mov cx, [ es:pspPHTEntries ]	; get number of PHT entries
 	les si, [ es:pspPHTAddress ]	; get PHT address
+.ret:
 	retn
 
 
