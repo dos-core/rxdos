@@ -2704,6 +2704,9 @@ _SetInterruptVector:
 		; dx = segment address
 		;
 		; (see related function 55 - Duplicate PSP )
+		;
+		; Note:	This is not valid to call when the current PSP is 0.
+		; (RxDOS 7.2x: Error flag and/or message then?)
 _CreateNewProgramSeg:
 
 	mov es, dx					; new PSP segment address
@@ -5118,6 +5121,9 @@ _GetVerify:
 		; si	value to place in memory size field
 		;
 		; (see related function 26 - Create PSP )
+		;
+		; Note:	This is not valid to call when the current PSP is 0.
+		; (RxDOS 7.2x: Error flag and/or message then?)
 _DuplicatePSP:
 
 	push dx						; new seg
