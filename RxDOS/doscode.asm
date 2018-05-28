@@ -5573,7 +5573,13 @@ _CreateUniqueFile_36:
 	jc _CreateUniqueFile_40			 ; if error -->
 
 	call MapSFTToAppHandle				; if no space, create error
+	jnc @F
 
+	call releaseSFT
+	stc
+	jmp _CreateUniqueFile_40
+
+@@:
 	push ax
 	push ss
 	push word [ _tempnamePointer + bp ]
