@@ -5557,6 +5557,7 @@ _CreateUniqueFile_18:
 	dec di						; adj address
 	loop _CreateUniqueFile_18			; and loop -->
 	stc						; just in case
+	mov ax, pexterrFileExists
 	jmp short _CreateUniqueFile_40			; we'll have an error exit -->
 
 _CreateUniqueFile_32:
