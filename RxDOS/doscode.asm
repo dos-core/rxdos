@@ -3478,10 +3478,10 @@ _CtrlBreakCheck:
 	Gotos 0FCh,		.setversion		; DOS-C
 	Gotos 0FFh,		.getversionstring	; DOS-C
 
+.unknown:
+	mov ax, errorInvalidFunction
 	stc
 	call setFCBErrorIfCarry				; Sets FCB error (al = 0FFh)
-
-.unknown:
 	retn
 
 
