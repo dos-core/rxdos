@@ -4235,7 +4235,9 @@ _MoveFilePointer:
 	Goto SEEK_BEG,	_moveFilePointer_beg
 	Goto SEEK_CUR,	_moveFilePointer_cur
 	Goto SEEK_END,	_moveFilePointer_end
-	SetError -1,	_moveFilePointer_36
+	mov ax, errorInvalidFunction
+	stc
+	jmp _moveFilePointer_36
 
 		; seek from end
 _moveFilePointer_end:
@@ -4256,10 +4258,10 @@ _moveFilePointer_beg:
 	clc						; no error
 
 		; Return
-_moveFilePointer_36:
 	RetCallersStackFrame ds, bx
 	mov word [ bx + _AX ], dx
 	mov word [ bx + _DX ], cx
+_moveFilePointer_36:
 	return
 
 
