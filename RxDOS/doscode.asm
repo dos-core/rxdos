@@ -4723,14 +4723,15 @@ getCurrDir_22:
 	retn						; ds:si will be returned.
 
 		; 48h Allocate Memory
-
-		; bx	number of paragraphs of memory requested
-
-		; Returns:
-		; ax	segment address of allocated memory block
-		; bx	size of largest block of memory available in
-		;	paragraphs, if allocation fails.
-
+		;
+		; INP:	bx = requested number of paragraphs
+		; OUT:	CY if error,
+		;	 ax = error code
+		;	 bx = paragraph size of largest available block
+		;		(zero unless error 0008h)
+		;	NC if successful,
+		;	 ax = segment address of allocation
+		;	 bx = paragraph size of allocation (same as INP)
 _AllocateMemory:
 			; bx = size
 	call AllocateMCB
@@ -4744,7 +4745,8 @@ _AllocateMemory:
 
 		; 49h Free Allocated Memory
 		;
-		; es	paragraph to free
+		; INP:	es = memory block's segment
+		; OUT:	ax = MCB address
 _FreeAllocatedMemory:
 	RetCallersStackFrame ds, si
 	mov ax, word [ si + _ES ]
@@ -4756,8 +4758,13 @@ _FreeAllocatedMemory:
 
 		; 4Ah Modify Allocated Memory
 		;
-		; es	paragraph to free
-		; bx	new paragraph size
+		; INP:	es = memory block's segment
+		;	bx = requested number of paragraphs
+		; OUT:	bx = new size of block (equals or is below requested)
+		;	CY if error,
+		;	 ax = error code
+		;	NC if successful,
+		;	 ax = memory block's segment
 _ModifyAllocatedMemory:
 	RetCallersStackFrame ds, si
 	mov ax, word [ si + _ES ]
