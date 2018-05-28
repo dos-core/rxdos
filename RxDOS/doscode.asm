@@ -4690,16 +4690,10 @@ _ForceFileHandle_InvHandleError:
 		; dl	drive number
 		; ds:si	pointer to max 64 byte user memory area
 _GetCurrentDirectory:
-
 	push dx
 	call GetActualDrive				; actual drive (in ax)
-	jnc getCurrDir_14				; if no error -->
+	jc .return					; if error --> (CY)
 
-	RetCallersStackFrame ds, bx
-	mov word [ _AX + bx ], ax			; else save error code
-	retn						; return
-
-getCurrDir_14:
 	mov cl, sizeCDS
 	mul cl						; ax contains offset to current drive
 
@@ -4712,17 +4706,17 @@ getCurrDir_14:
 
 	push ds
 	RetCallersStackFrame ds, bx
-	mov es, word [ _DataSegment + bx ]
+	mov es, word [ _DS + bx ]
 	mov di, word [ _SI + bx ]
 	pop ds
 
-getCurrDir_22:
+.22:
 	lodsb						; copy buffer
 	stosb
-	or al, al
-	jnz getCurrDir_22
+	test al, al					; (NC)
+	jnz .22
 
-	clc
+.return:
 	retn						; ds:si will be returned.
 
 		; 48h Allocate Memory
