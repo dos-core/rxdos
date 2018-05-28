@@ -3338,13 +3338,13 @@ _TerminateStayResident:
 	storarg _parentPSP, dx				; save for later
 
 	mov word [ es:pspParentId ], 0000		; kill parent for next time.
-	or dx, dx					; no parent ?
+	or dx, dx					; no parent ? (NC)
 	jz _TerminateStayResident_20			; can't terminate -->
 
 		; restore interrupts
 	cli
 	push ds
-	xor ax, ax
+	xor ax, ax					; ! NC
 	mov ds, ax
 	mov es, word [ ss:_RxDOS_CurrentPSP ]
 
@@ -4903,6 +4903,7 @@ _TerminateProcess_20:
 	mov word [ es:bx + _IP ], ax
 
 	dec word [ _RxDOS_AbortInProgress ]		; restore critical error
+	clc
 	return
 
 		; 4Dh Get Return Code
