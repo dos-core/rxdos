@@ -571,6 +571,7 @@ InitSFTEntry:
 	mov word [ es:bx + sftPSP ], ax
 	pop word [ es:bx + sftRefCount ]
 %else
+		; RxDOS 7.2x
 	mov di, bx
 	add di, 2					; skip reference count
 	mov cx, (sizeSFT - 2) / 2

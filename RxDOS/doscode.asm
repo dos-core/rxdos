@@ -68,6 +68,8 @@ _RxDOS_ContrlC_Message	asciz '^C',13,10
 dos_msg:
 .int0:		db "Interrupt 00h: Divide by zero.", 13, 10, 0
 .int6:		db "Interrupt 06h: Invalid opcode.", 13, 10, 0
+.int_0_or_6_code_bytes_1:	asciz "Code bytes:"
+.int_0_or_6_code_bytes_2:	asciz 13,10
 
 
 		; Code Segment Data
@@ -248,6 +250,46 @@ _RxDOS_functions:
 _RxDOS_maxFunctionCode equ ($ - _RxDOS_functions)/2
 
 
+	align 4
+doscode_dump_regs_table:
+	dw  +0, "SS"
+	dw  +8, "BP"
+	dw  +6, "SP"
+	dw +24, "CS"
+	dw +22, "IP"
+	dw +26, "FL"
+	db -1, -1, 13,10
+	dw  +4, "DS"
+	dw +12, "SI"
+	dw  +2, "ES"
+	dw +10, "DI"
+	db -1, -1, 13,10
+	dw +18, "AX"
+	dw +16, "BX"
+	dw +14, "CX"
+	dw +20, "DX"
+	db -1, -1, 13,10
+	dw +28, "S0"
+	dw +30, "S1"
+	dw +32, "S2"
+	dw +34, "S3"
+	dw +36, "S4"
+	dw +38, "S5"
+	dw +40, "S6"
+	dw +42, "S7"
+	db -1, -1, 13,10
+	dw +44, "S8"
+	dw +46, "S9"
+	dw +48, "SA"
+	dw +50, "SB"
+	dw +52, "SC"
+	dw +54, "SD"
+	dw +56, "SE"
+	dw +58, "SF"
+	db -1, -1, 13,10
+.end:
+
+
 		; Display Message
 		;
 		; Uses Int10.0E
@@ -274,14 +316,78 @@ dos_disp_msg:
 
 
 relocated i00:
-	mov si, dos_msg.int0
+	push dx
+	mov dx, dos_msg.int0
 	jmp relocatedi06.common
 
 
 relocated i06:
-	mov si, dos_msg.int6
+		; S0	; +28
+		; flags	; +26
+		; cs	; +24
+		; ip	; +22
+	push dx	; +20
+	mov dx, dos_msg.int6
 .common:
+
+	push ax	; +18
+	push bx	; +16
+	push cx	; +14
+	push si	; +12
+	push di	; +10
+	push bp	; +8
+	mov ax, sp
+	add ax, 22
+	push ax	; +6 SP
+	push ds	; +4
+	push es	; +2
+	push ss	; +0
+
+	mov si, dx
 	call dos_disp_msg
+
+	mov si, sp
+	 push ss
+	 pop ds
+	mov di, doscode_dump_regs_table
+	 push cs
+	 pop es			; -> dump_regs_table
+.loop_table:
+	mov bx, [es:di + 0]	; offset on stack, or -1
+	mov al, 32
+	call doscode_disp_al	; store blank
+	mov ax, [es:di + 2]	; what to display
+	call doscode_disp_al	; first character
+	xchg al, ah
+	call doscode_disp_al	; second character
+	cmp bx, -1		; only the two characters valid ?
+	je @F			; yes, skip next part -->
+	mov al, '='
+	call doscode_disp_al	; display equals sign
+	mov ax, [si + bx]	; get value from stack
+	call doscode_disp_ax_hex	; display
+@@:
+	add di, 4		; -> next table entry
+	cmp di, doscode_dump_regs_table.end	; any more to go ?
+	jb .loop_table		; yes, loop -->
+
+	les di, [si + 22]	; -> where cs:ip points to
+	mov si, dos_msg.int_0_or_6_code_bytes_1
+	call dos_disp_msg
+
+	mov cx, 16
+.loop_code_bytes:
+	mov al, 32
+	call doscode_disp_al
+	mov al, [es:di]
+	inc di
+	call doscode_disp_al_hex
+	loop .loop_code_bytes
+
+	mov si, dos_msg.int_0_or_6_code_bytes_2
+	call dos_disp_msg
+
+	int3
 	mov ax, 4C7Fh
 	int 21h
 
