@@ -804,7 +804,9 @@ copyCurrentPSP:
 	mov word [ es:pspPHTAddress ], di	; initialise variables
 
 	mov al, -1
+	push di
 	rep stosb				; initialise PHT to all closed
+	pop di
 
 	mov cx, word [pspPHTEntries]
 	lds si, [pspPHTAddress]			; ds:si -> source PHT, size cx
