@@ -274,16 +274,13 @@ dos_disp_msg:
 
 
 relocated i00:
-_Interrupt_00:
 	mov si, dos_msg.int0
-	call dos_disp_msg
-	mov ax, 4C7Fh
-	int 21h
+	jmp relocatedi06.common
 
 
 relocated i06:
-_Interrupt_06:
 	mov si, dos_msg.int6
+.common:
 	call dos_disp_msg
 	mov ax, 4C7Fh
 	int 21h
