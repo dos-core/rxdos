@@ -429,12 +429,30 @@ configProcessing:
 
 	mov word [ es:di + configLength ], cx
 	add word [ es:di + configLength ], (CONFIGLINE_size)
+		; ! this includes one byte for the configStatement buffer,
+		;  which is needed in the following handling to cover
+		;  the terminating zero byte.
 
 		; copy statement
 	pop si
 	pop ds
-	lea di, [ configStatement + di ]	; offset to statement
-	repe movsb
+	add di, configStatement 		; es:di -> next buffer
+	jc .buffer_full				; failure -->
+
+	mov ax, di				; es:di -> next buffer position
+	add ax, cx				; es:di -> after dest buffer
+	jc .buffer_full				; failure -->
+
+	cmp ax, -4 -1				; enough to store terminator ?
+		; -4: configType + configLength for terminator entry
+		; -1: zero-terminator for string to move
+		; Note that it is assumed here that the buffer is a full
+		;  64 KiB, as allocated for the configuration processing.
+		;  If that wasn't so, then (buffer size -4 -1) should be
+		;  compared to ax here, instead.
+	ja .buffer_full				; no, failure -->
+
+	repe movsb				; move string
 
 	xor ax, ax
 	stosb					; null terminate
@@ -443,6 +461,23 @@ configProcessing:
 	add di, word [ es:di + configLength ]	; advance beyond type
 	mov word [ _configNextLine + bp ], di
 	jmp .12
+
+
+.buffer_full:
+	mov dx, init2_msg.config_too_long_file_1
+	call init2_disp_msg_asciz_cs_dx
+
+	mov ax, word [bp + _linenumber]
+	call init2_to_init1, disp_ax_dec
+
+	mov dx, init2_msg.config_too_long_file_2
+	call init2_disp_msg_asciz_cs_dx
+
+	les di, [bp + _configNextLine]
+	mov word [ es:di + configType ], CONFIGTYPE_ENDOFARGS
+	and word [ es:di + configLength ], 0	; append terminator entry
+	jmp .36_close_file
+
 
 		; process menu
 .26:
