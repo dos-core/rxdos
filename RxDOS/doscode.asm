@@ -426,7 +426,7 @@ _Interrupt_21_12:
 
 	mov bx, _Unused_al00
 	cmp ah, _RxDOS_maxFunctionCode			; max function code ?
-	jnc _Interrupt_21_21				; if out of range -->
+	jae _Interrupt_21_21				; if out of range -->
 
 	xor bh, bh
 	mov bl, ah					; offset into functions table
