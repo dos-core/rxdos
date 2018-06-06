@@ -194,35 +194,27 @@ configProcessing:
 	def	comment	, ';'			; default comment character
 	def	charsread
 	def	linenumber, 0000
-
-	defbytes	diskAccess, sizeDISKACCESS
-	defbytes	linebuffer, 255
+	def	filehandle
+	def	bytesread
+?linebuffer_size equ 256
+	defbytes	linebuffer, ?linebuffer_size
 
 		; find/open RXCONFIG.SYS
+	d4bp
+
 	push cs
 	pop ds
-	push cs
-	pop es
-	xor dx, dx
-	xor cx, cx
-	xor ax, ax
-	mov al, byte [ ss:_RxDOS_CurrentDrive ]	; startup drive
-
-	mov di, _RxDOS_RXCONFIGSYS		; RXCONFIG.SYS filename
-	call init2_to_doscode, scanDirectory	; search RXCONFIG.SYS
+	mov dx, init2_msg.rxconfigsys
+	mov ax, 3D00h + 1_010_0_000b
+		; do not inherit, DENYWRITE, read-only
+	int 21h
 	jnc .08					; RXCONFIG.SYS found -->
 						; open CONFIG.SYS instead if no RXCONFIG.SYS
-	push cs
-	pop ds
-	push cs
-	pop es
-	mov di, _RxDOS_ConfigFile		; CONFIG.SYS filename
-	xor dx, dx
-	xor cx, cx
-	xor ax, ax
-	mov al, byte [ ss:_RxDOS_CurrentDrive ]	; startup drive
-	call init2_to_doscode, scanDirectory	; search CONFIG.SYS
-	jnc .08					; if none found -->
+	mov dx, init2_msg.configsys
+	mov ax, 3D00h + 1_010_0_000b
+		; do not inherit, DENYWRITE, read-only
+	int 21h
+	jnc .08					; if found -->
 
 		; No [RX]CONFIG.SYS found, initialise to empty config.
 	les di, [bp + _configNextLine]
@@ -232,32 +224,155 @@ configProcessing:
 
 
 .08:
-	push word [ es:si + deFileSize + _low ]
-	push word [ es:si + deFileSize + _high ]
-
-	setES ss
-	lea bx, [ _diskAccess + bp ]		; build access control block
-	call init2_to_doscode, initdiskAccess	; ax is drive, cx:dx is cluster
-
-	pop word [ ss:bx + diskAcFileSize + _high ]
-	pop word [ ss:bx + diskAcFileSize + _low ]
+	mov word [bp + _filehandle], ax
 
 .12:
 	getdarg es, di, _configNextLine
 	mov word [ es:di + configType ], CONFIGTYPE_ENDOFARGS
 	mov word [ es:di + configLength ], 0000
 
-	setES ss
-	mov cx, 254
-	lea di, [ _linebuffer + bp ]
-	lea bx, [ _diskAccess + bp ]		; build access control block
-	call init2_to_doscode, readLine		; read a line
-	ifz .36					; at end, reconfigure system -->
+	inc word [bp + _linenumber]
 
-	inc word [ _linenumber + bp ]		; lines read
+	mov bx, word [bp + _filehandle]
+
+	push ss
+	pop ds
+	lea dx, [bp + _linebuffer]
+	mov cx, ?linebuffer_size
+	mov ah, 3Fh
+	int 21h
+	jnc @F
+
+.error_reading:
+	mov dx, init2_msg.config_error_reading_1
+	call init2_disp_msg_asciz_cs_dx
+
+	call init2_disp_ax_hex
+	mov dx, init2_msg.config_error_reading_2
+	call init2_disp_msg_asciz_cs_dx
+
+.j_36_close_file:
+	jmp .36_close_file
+
+@@:
+	test ax, ax				; at EOF ?
+	jz .j_36_close_file			; yes -->
+
+	mov cx, ax
+	mov word [bp + _bytesread], ax
+	mov si, dx
+.loop_find_linebreak:
+		; never cx = 0 here because the prior conditional jump branched
+		;  if cx would be zero here.
+	cmp byte [si], 13
+	je .found_linebreak_eat_lf		; (si -> at possible LF, after end)
+	cmp byte [si], 10
+	je .found_linebreak			; (si -> after end)
+	inc si
+	loop .loop_find_linebreak
+
+	cmp word [bp + _bytesread], ?linebuffer_size	
+						; buffer full ?
+	jb .found_linebreak			; no --> (si -> after end)
+
+.too_long_line:
+	mov dx, init2_msg.config_too_long_line_1
+	call init2_disp_msg_asciz_cs_dx
+
+	mov ax, word [bp + _linenumber]
+	call init2_to_init1, disp_ax_dec
+
+	mov dx, init2_msg.config_too_long_line_2
+	call init2_disp_msg_asciz_cs_dx
+
+
+		; first, check whether this was a special condition.
+		;  (actually, where CR was in the last byte of the buffer.)
+		; skip the too long line handling if we read either an LF
+		;  or a CR already in the buffer.
+	mov cx, word [bp + _bytesread]
+	lea si, [bp + _linebuffer]
+@@:
+	cmp byte [si], 13
+	je .found_too_long_line
+	cmp byte [si], 10
+	je .found_too_long_line
+	inc si
+	loop @B
+
+
+		; read file one byte at a time to find next linebreak.
+.loop_too_long_line:
+	mov cx, 1
+	mov ah, 3Fh
+	lea dx, [bp + _linebuffer]
+		; bx still handle
+	int 21h
+	jc .error_reading			; error -->
+	test ax, ax				; at EOF ?
+	jz .j_36_close_file			; yes -->
+
+	cmp byte [bp + _linebuffer], 13		; CR ?
+	je .found_too_long_line_eat_lf		; yes, eat possible LF -->
+	cmp byte [bp + _linebuffer], 10		; LF ?
+	je .found_too_long_line			; yes, next line -->
+	jmp .loop_too_long_line			; read next byte
+
+.found_too_long_line_eat_lf:
+	mov cx, 1
+	mov ah, 3Fh
+	int 21h					; read one byte to check for LF
+	jc .error_reading			; error -->
+	test ax, ax
+	jz .j_36_close_file			; at EOF -->
+
+	cmp byte [bp + _linebuffer], 10		; LF ?
+	je .found_too_long_line			; yes, ate it -->
+
+	mov ax, 4201h				; lseek from current position
+	mov cx, -1
+	mov dx, cx				; cx:dx = -1
+	int 21h					; point at last byte read
+	jc .error_reading
+
+.found_too_long_line:
+	jmp .12					; process next line -->
+
+
+.found_linebreak_eat_lf:
+	cmp cx, 2				; 2 bytes remaining in buffer ?
+	jb @F					; no, check for too long -->
+	dec cx					; if it is LF:
+						;  decrease count remaining
+	cmp byte [si + 1], 10			; is it LF ?
+	je .found_linebreak			; yes -->
+	inc cx					; restore count remaining
+	jmp .found_linebreak
+
+@@:						; here, cx = 1
+	cmp word [bp + _bytesread], ?linebuffer_size
+						; CR last byte in full buffer?
+	je .too_long_line			; yes, line too long -->
+
+		; ds:si -> linebreak byte(s)
+		; cx = how many bytes read into buffer beyond linebreak + 1
+.found_linebreak:
+
+	mov byte [si], 0
+	dec cx	; = amount bytes read into buffer beyond linebreak
+	xor dx, dx
+	neg cx					; negative amount, or zero
+	jz @F					; zero -->
+	dec dx					; sign-extend
+@@:
+	xchg cx, dx				; cx:dx = how much to seek back
+	mov ax, 4201h				; lseek from current position
+	int 21h					; point after linebreak
 
 		; strip trailing newline
 .14:
+	push ss
+	pop es
 	lea di, [ _linebuffer + bp ]
 
 	getarg ax, _comment			; parse out comments
@@ -276,7 +391,7 @@ configProcessing:
 	jnc .20
 
 	; typeout msgUnknownCommandinConfig
-	jmp short short .12
+	jmp .12
 
 		; [ blockitem_name ]
 .16:
@@ -314,8 +429,6 @@ configProcessing:
 	mov word [ es:di + configFlags ], 0
 
 	mov word [ es:di + configLength ], cx
-
-		; RxDOS 7.20N:	I think here's a bug for you.
 	add word [ es:di + configLength ], (CONFIGLINE_size)
 
 		; copy statement
@@ -344,6 +457,12 @@ configProcessing:
 .28:
 	storarg _comment, ax			; save comment character(s)
 	jmp .12					; continue
+
+
+.36_close_file:
+	mov bx, word [bp + _filehandle]
+	mov ah, 3Eh
+	int 21h					; close file
 
 		; process menu
 .36:
@@ -1252,22 +1371,26 @@ configRemoveComments:
 
 	push di						; save buffer pointer
 	cmp ah, 0					; double character comments ?
-	jnz configRemoveComments_12			; yes -->
+	jnz .12						; yes -->
 
-configRemoveComments_06:
+.06:
+	cmp byte [ss:di], 0				; end of line ?
+	jz .20						; yes -->
 	cmp al, byte [ ss:di ]				; is it comment character ?
-	jz configRemoveComments_20			; yes -->
+	jz .20						; yes -->
 	inc di
-	loop configRemoveComments_06
-	jmp short configRemoveComments_20
+	loop .06
+	jmp short .20
 
-configRemoveComments_12:
+.12:
+	cmp byte [ss:di], 0				; end of line ?
+	jz .20						; yes -->
 	cmp ax, word [ ss:di ]				; is it comment character ?
-	jz configRemoveComments_20			; yes -->
+	jz .20						; yes -->
 	inc di
-	loop configRemoveComments_12
+	loop .12
 
-configRemoveComments_20:
+.20:
 	mov cx, di
 	pop di
 	sub cx, di					; new length
