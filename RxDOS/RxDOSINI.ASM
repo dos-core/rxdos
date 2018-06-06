@@ -286,21 +286,6 @@ configProcessing:
 	call init2_disp_msg_asciz_cs_dx
 
 
-		; first, check whether this was a special condition.
-		;  (actually, where CR was in the last byte of the buffer.)
-		; skip the too long line handling if we read either an LF
-		;  or a CR already in the buffer.
-	mov cx, word [bp + _bytesread]
-	lea si, [bp + _linebuffer]
-@@:
-	cmp byte [si], 13
-	je .found_too_long_line
-	cmp byte [si], 10
-	je .found_too_long_line
-	inc si
-	loop @B
-
-
 		; read file one byte at a time to find next linebreak.
 .loop_too_long_line:
 	mov cx, 1
@@ -352,7 +337,21 @@ configProcessing:
 @@:						; here, cx = 1
 	cmp word [bp + _bytesread], ?linebuffer_size
 						; CR last byte in full buffer?
-	je .too_long_line			; yes, line too long -->
+	jne .found_linebreak			; no --> (would have LF if so)
+	mov cx, 1
+	mov ah, 3Fh
+	lea dx, [bp + _linebuffer + ?linebuffer_size - 1]
+	int 21h					; read one byte to check for LF
+	jc .error_reading			; error -->
+	mov cx, 1
+		; initialise cx for .found_linebreak (seek back 0 bytes)
+	test ax, ax
+	jz .found_linebreak			; at EOF -->
+
+	cmp byte [bp + _linebuffer + ?linebuffer_size - 1], 10		; LF ?
+	je .found_linebreak			; yes, ate it -->
+
+	inc cx					; signal: seek back 1 byte
 
 		; ds:si -> linebreak byte(s)
 		; cx = how many bytes read into buffer beyond linebreak + 1
