@@ -1032,8 +1032,8 @@ _SFTOpenFile:
 
 		; if file opened is a device
 	getarg di, _ptrDirAccess			; dir access block
-	mov dx, word [ fileAcDevicePtr + _segment + di ]
-	mov ax, word [ fileAcDevicePtr + _pointer + di ]
+	mov dx, word [ss:di + fileAcDevicePtr + 2]
+	mov ax, word [ss:di + fileAcDevicePtr]
 	or dx, dx					; _segment
 	jz _SFTOpenFile_22				; if not a device -->
 
