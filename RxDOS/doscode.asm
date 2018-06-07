@@ -247,7 +247,7 @@ _RxDOS_functions:
 	dw _Int21Function73			; 73 -	FAT32 extended drive functions
 						;   *-	items: undocumented DOS function
 
-_RxDOS_maxFunctionCode equ ($ - _RxDOS_functions)/2
+_RxDOS_functions_amount equ ($ - _RxDOS_functions)/2
 
 
 	align 4
@@ -531,7 +531,7 @@ _Interrupt_21_12:
 	mov word [ _RxDOS_FunctionCall ], ax		; AX on call
 
 	mov bx, _Unused_al00
-	cmp ah, _RxDOS_maxFunctionCode			; max function code ?
+	cmp ah, _RxDOS_functions_amount			; max function code ?
 	jae _Interrupt_21_21				; if out of range -->
 
 	xor bh, bh
