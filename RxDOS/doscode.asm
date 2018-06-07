@@ -337,7 +337,7 @@ relocated i06:
 	push di	; +10
 	push bp	; +8
 	mov ax, sp
-	add ax, 22
+	add ax, 20
 	push ax	; +6 SP
 	push ds	; +4
 	push es	; +2
