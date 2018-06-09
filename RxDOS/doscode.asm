@@ -402,6 +402,17 @@ relocated i31:
 	rcr byte [bp + ?flags], 1	; rotate CF (error state) into bit7 of saved FL
 	rol byte [bp + ?flags], 1	; rotate error state into bit0+CF
 	lleave
+
+		; Interrupt 28
+		;
+		; DOS idle loop
+relocated i28:
+_Interrupt_28:
+		; Interrupt 2A
+		;
+		; DOS critical sections
+relocated i2A:
+_Interrupt_2a:
 	iret
 
 
@@ -1232,17 +1243,6 @@ _Interrupt_27:
 relocated i2F:
 	cmp ax, 4A04h
 	je get_first_hmcb
-
-		; Interrupt 28
-		;
-		; DOS idle loop
-relocated i28:
-_Interrupt_28:
-		; Interrupt 2A
-		;
-		; DOS critical sections
-relocated i2A:
-_Interrupt_2a:
 	iret
 
 
