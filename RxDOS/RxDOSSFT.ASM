@@ -1689,9 +1689,9 @@ _SFTCloseAllFiles_36:
 
 		; Commit SFT File
 		;
-		; Input:
-		; es:di-> SFT entry
+		; INP:	es:di -> SFT entry
 		; OUT:	NC
+		; CHG:	ax, dx, cx, bx
 _SFTCommitFile:
 
 	Entry
