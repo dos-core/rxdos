@@ -392,30 +392,6 @@ relocated i06:
 	int 21h
 
 
-relocated i31:
-	lframe 0
-	lpar word, flags
-	lpar dword, csip
-	lenter
-	mov ax, 1		; error 1, invalid function
-	stc			; CY
-	rcr byte [bp + ?flags], 1	; rotate CF (error state) into bit7 of saved FL
-	rol byte [bp + ?flags], 1	; rotate error state into bit0+CF
-	lleave
-
-		; Interrupt 28
-		;
-		; DOS idle loop
-relocated i28:
-_Interrupt_28:
-		; Interrupt 2A
-		;
-		; DOS critical sections
-relocated i2A:
-_Interrupt_2a:
-	iret
-
-
 		; Interrupt 21
 		;
 		; ah = requested function
@@ -656,6 +632,17 @@ _Interrupt_21_48:
 
 	pop ds
 	pop es						; restore registers from frame
+
+		; Interrupt 28
+		;
+		; DOS idle loop
+relocated i28:
+_Interrupt_28:
+		; Interrupt 2A
+		;
+		; DOS critical sections
+relocated i2A:
+_Interrupt_2a:
 	iret						; restore flags and cs:ip
 
 
@@ -1235,6 +1222,10 @@ _Interrupt_27:
 
 	mov ax, 3100h
 	jmp _Interrupt_21
+
+
+relocated i31:
+	jmp iret_CY_ax1
 
 
 %include "int2F.asm"
