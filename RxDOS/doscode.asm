@@ -1237,40 +1237,7 @@ _Interrupt_27:
 	jmp _Interrupt_21
 
 
-		; Interrupt 2F
-		;
-		; DOS hard-coded multiplex, MS Windows, many services
-relocated i2F:
-	cmp ax, 4A04h
-	je get_first_hmcb
-	iret
-
-
-get_first_hmcb:
-	push dx
-	push ds
-	mov dx, 70h
-	mov ds, dx
-	mov ds, word [dosentry_to_dosdata_segment]
-	mov dx, word [first_hmcb]
-		; Note:	In MS-DOS 7.10, if DOS is not in the HMA, this
-		;	 points at eg 021Ch:0030h, which seems to be an
-		;	 LMA DOSCODE segment (BIO?). That HMCB has its
-		;	 hmcbSignature field set to "MS", but hmcbOwner,
-		;	 hmcbSize, and hmcbNext are all zero.
-		;	We instead only support the call if in the HMA.
-	test dx, dx
-	jz .return
-
-	xor ax, ax
-	dec ax
-	mov es, ax
-	inc ax
-	mov di, dx
-.return:
-	pop ds
-	pop dx
-	iret
+%include "int2F.asm"
 
 
 		; For Directory Functions, Change Error to 'Path Not Found'
