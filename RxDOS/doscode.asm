@@ -1895,13 +1895,13 @@ _BufferedKeyboardInput:
 	mov bx, dx
 	xor ah, ah
 	mov al, byte [ es:bx ]	; [ byte es:bx + bufMaxLength ]	; max requested
-	or ax, ax					; any requested ?
+	or ax, ax					; any requested ? (NC)
 	ifz _buffkbdInput_42				; if none, exit -->
 
 	mov ax, STDIN					; handle is stdin
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
-	jc _buffkbdInput_38				; if SFT not located -->
+	jc _buffkbdInput_42				; if SFT not located -->
 
 		; read from redirected file (SFT pointer at es:di)
 	xor cx, cx
@@ -1951,16 +1951,18 @@ _buffkbdInput_22:
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
 	pop cx
-	jc _buffkbdInput_38				; if SFT not located -->
+	jc _buffkbdInput_42				; if SFT not located -->
 
 	push word [ bp + _buffer + _segment ]
 	mov bx, word [ bp + _buffer + _pointer ]
 	lea bx, [ word bx + bufData ]			; pointer to actual data
 	push bx
 	call _SFTWriteFile				; write using sft (at es:di)
+	jc _buffkbdInput_42
 
 		; exit
 _buffkbdInput_38:
+	clc
 	getdarg es, bx, _buffer
 	mov al, byte [ byte es:bx + bufActualLength ]	; actual bytes read
 	mov ah, 0
