@@ -1087,7 +1087,12 @@ initReqBlock:
 	cmp al, -1					; character device ?
 	jz initReqBlock_08				; yes, skip address -->
 	call getAddrDPB					; get address of DOS Parameter Block
+	jnc @F
+	mov al, -1
+	jmp @FF
+@@:
 	mov al, [ es:bx + _dpbUnit ]			; get unit 
+@@:
 
 initReqBlock_08:
 	push ax						; save unit
@@ -1117,7 +1122,7 @@ initReqBlock_12:
 	setes ss
 	pop ax						; unit
 	cmp al, -1					; character device ?
-	jnz initReqBlock_16				; no -->
+	jne initReqBlock_16				; no -->
 	xor al, al					; set unit to 00
 
 initReqBlock_16:
