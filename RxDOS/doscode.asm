@@ -1474,7 +1474,7 @@ _RedirectedInput:
 
 		; exit
 _redirectedInput_22:
-	xor ax, ax
+	xor ax, ax					; (NC)
 	RetCallersStackFrame es, bx
 	mov al, byte [ bp + _tempbuffer ]
 	mov word [ es:bx + _AX ], ax
@@ -1990,7 +1990,7 @@ _CheckKeyboardInput:
 _checkkbdInput_22:
 	RetCallersStackFrame es, bx
 	mov byte [ es:bx + _AX + _AL ], al		; set chars available
-	clc
+	clc						; (NC)
 	retn
 
 
@@ -4688,10 +4688,10 @@ _duplFileHandle_12:
 	xor ax, ax
 	mov al, bl					; old handle
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
-	inc word [ es:di + sftRefCount ]		; bump in use count
-
 	pop ax						; new handle
-	clc
+	jc _duplFileHandle_InvHandleError
+							; (NC)
+	inc word [ es:di + sftRefCount ]		; bump in use count
 
 		; if error, exit with error code.
 _duplFileHandle_Return:
@@ -4740,6 +4740,7 @@ _ForceFileHandle_10:
 	mov byte [ es:di + bx ], al			; duplicate handle
 
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
+	jc _ForceFileHandle_InvHandleError
 	inc word [ es:di + sftRefCount ]		; bump in use count
 	or ax, ax					; no carry
 	retn
@@ -5304,12 +5305,12 @@ _renameFile_40:
 		; dx	date
 _SetFileDateTime:
 
-	push ax						 ; save mode
+	push ax						; save mode
 	mov ax, bx					; handle
 	call MapAppToSFTHandle				; map to internal handle info
 	call FindSFTbyHandle				; get corresponding SFT (es:di)
+	jc _SetFileDateTime_20.pop			; if could not find -->
 	pop ax						; restore mode
-	jc _SetFileDateTime_20				; if could not find -->
 
 	Goto 00h, _GetFileDateTime			; get date/time
 	Goto 01h, _SetFileDateTime_06			; set date/time
@@ -5341,7 +5342,10 @@ _GetFileDateTime:
 	mov word [ _CX + bx ], cx
 	mov word [ _DX + bx ], dx
 	clc
+	retn
 
+_SetFileDateTime_20.pop:
+	pop bx						; (discard)
 _SetFileDateTime_20:
 	retn
 
