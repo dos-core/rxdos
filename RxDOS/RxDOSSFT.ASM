@@ -1286,7 +1286,7 @@ _SFTReadLine:
 	jz _SFTReadLine_14				; if file -->
 
 	test word [ es:di + sftDevInfo ], sftEof
-	jz _SFTReadLine_36				; if at end of file -->
+	jz _SFTReadLine_34				; if at end of file --> (ZR)
 
 	xor dx, dx					; echo bytes
 	push word [ es:di + sftDPB + _segment ]
@@ -1314,12 +1314,12 @@ _SFTReadLine_10:
 	inc cx						; adjust return count
 
 _SFTReadLine_12:
-	jmp _SFTReadLine_36
+	jmp _SFTReadLine_32
 
 		; initialize disk access block
 _SFTReadLine_14:
 	or cx, cx					; reading any ?
-	jz _SFTReadLine_34				; if length is zero -->
+	jz _SFTReadLine_34				; if length is zero --> (ZR)
 
 	lea bx, [ word _diskAccess + bp ]		; build access control block
 	call buildAccessRef				;  from SFT
@@ -1348,10 +1348,11 @@ _SFTReadLine_14:
 	mov word [ es:di + sftCurCluster + _high ], dx
 	call _computeRelativeCluster
 
+_SFTReadLine_32:
+	or al, 1					; NZ
+
 _SFTReadLine_34:
 	clc
-
-_SFTReadLine_36:
 	mov ax, cx					; return count
 	Return
 
