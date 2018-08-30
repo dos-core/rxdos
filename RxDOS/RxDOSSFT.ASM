@@ -195,6 +195,8 @@ GetProcessHandleTable:
 		; OUT:	NC if available SFT entry found,
 		;	 ax = SFT handle
 		;	 es:bx-> available SFT entry
+		;	 Note that the SFT entry is not initialised, other
+		;	  than the sftRefCount field which is set to 1.
 		;	CY if no available SFT entry found,
 		;	 ax = extended error pointer
 		; CHG:	es, bx, cx
