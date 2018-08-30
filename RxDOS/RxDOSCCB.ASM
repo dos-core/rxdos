@@ -111,7 +111,6 @@ selBuffer_32:
 	mov word [ es:di + ccbLBN + _high ], cx		; set logical block number
 	mov word [ es:di + ccbLBN + _low ], dx		; set logical block number
 	mov byte [ es:di + ccbStatus ], 0		; clear status
-	call setFlagIfDriveIsRemote			; sets remote flag
 
 	push es
 	push di
@@ -133,32 +132,6 @@ selBuffer_36:
 selBuffer_38:
 	test byte [ es:di + ccbStatus ], ( ccb_isVALID )
 	RestoreRegisters dx, cx, bx, ax
-	retn
-
-
-		; Is Drive Remote
-		;
-		; al = drive
-		; es:di-> CCB buffer
-setFlagIfDriveIsRemote:
-
-	push ax
-	push di
-	push es
-
-	mov cl, sizeCDS
-	mul cl						; ax contains drive's entry in CDS
-	les di, [ ss:_RxDOS_pCDS ]			; actual address of CDS
-	add di, ax					; current drive
-	test word [ es:di + _cdsFlags ], _CDS_NETWORKEDDRIVE	
-	pop es
-	pop di
-	jz IfDriveIsRemote_12				; if not remote -->
-
-	or byte [ es:di + ccbStatus ], ( ccb_isREMOTE )
-
-IfDriveIsRemote_12:
-	pop ax
 	retn
 
 
