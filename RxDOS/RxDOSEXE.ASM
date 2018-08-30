@@ -831,6 +831,7 @@ copyCurrentPSP:
 	push es
 	push di
 	call FindSFTbyHandle			; get corresponding SFT (es:di)
+	jc .12					; if invalid -->
 	test word [ es:di + sftDevInfo ], sftNoInherit
 	jnz .12					; if no inherit -->
 
