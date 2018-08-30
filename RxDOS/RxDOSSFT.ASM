@@ -562,26 +562,17 @@ InitSFTEntry:
 	push ax
 
 	xor ax, ax
-%if 1
-	push word [ es:bx + sftRefCount ]
 
 	mov di, bx
-	mov cx, sizeSFT / 2
-	repe stosw					; must have pointer at es:di
-
-	mov ax, word [ ss:_RxDOS_CurrentPSP ]		; get owner PSP
-	mov word [ es:bx + sftPSP ], ax
-	pop word [ es:bx + sftRefCount ]
-%else
-		; RxDOS 7.2x
-	mov di, bx
-	add di, 2					; skip reference count
+	scasw						; skip reference count
 	mov cx, (sizeSFT - 2) / 2
 	repe stosw					; must have pointer at es:di
+%if sizeSFT & 1
+	stosb
+%endif
 
 	mov ax, word [ ss:_RxDOS_CurrentPSP ]		; get owner PSP
 	mov word [ es:bx + sftPSP ], ax
-%endif
 
 	pop ax
 	pop cx
