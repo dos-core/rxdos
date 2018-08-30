@@ -265,12 +265,11 @@ findSFTHandle_30:
 		;	 es:di-> SFT entry
 		;	CY if SFT handle invalid,
 		;	 ax = extended error pointer
-		;	 di modified
+		; CHG:	es, di
 	doscode_insure_low_byte_not_0CCh
 FindSFTbyHandle:
 
 	push ax
-	push es
 	les di, [ ss:_RxDOS_pFT ]			; point to first FT
 	cmp ax, 00FFh					; if not assigned (>= 00FF indicates invalid)
 	jae FindSFTbyHandle_12
@@ -288,7 +287,6 @@ FindSFTbyHandle_08:
 
 		; if error
 FindSFTbyHandle_12:
-	pop es						; restore es
 	pop ax						; throw away ax
 	mov ax, pexterrInvalidHandle			; set illegal handle error
 	stc
@@ -297,13 +295,13 @@ FindSFTbyHandle_12:
 		; if located handle space
 FindSFTbyHandle_16:
 	push cx
+
 	mov cl, sizeSFT
 	mul cl						; get offset
 	add di, byte sizeFT				; point past FT header
 	add di, ax					; plus offset
 
 	pop cx						; restore cx
-	pop ax						; throw away es
 	pop ax						; restore ax
 	clc
 	retn
