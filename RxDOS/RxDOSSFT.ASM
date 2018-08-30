@@ -174,7 +174,7 @@ MapAppToSFTHandle:
 		; OUT:	es:si-> Application handle table
 		;	cx = number of entries in the table
 		;	NC if PSP loaded, es:si points to PSP's handle table
-		;	CY if no PSP loaded, es:si points to internal handle table
+		;	CY if no PSP loaded, es:si uninitialised, cx = 0
 GetProcessHandleTable:
 	xor cx, cx			; initialise to empty table
 	cmp word [ ss:_RxDOS_CurrentPSP ], byte 1
