@@ -1029,7 +1029,16 @@ _SFTOpenFile:
 	or dx, dx					; _segment
 	jz _SFTOpenFile_22				; if not a device -->
 
-	or word [ es:bx + sftDevInfo ], sftIsDevice
+	push ds
+	mov ds, dx
+	mov si, ax
+	mov cx, [si + devAttributes]
+	pop ds
+	and cx, sftinfo_Ioctl | sftinfo_Stdout | sftinfo_Stdin \
+		| sftinfo_Nul | sftinfo_Clock | sftinfo_Special \
+		| sftinfo_Pipe | sftinfo_NetworkSpooler
+	or cx, sftinfo_Device
+	mov word [ es:bx + sftDevInfo ], cx
 	mov word [ es:bx + sftDPB + _segment ], dx
 	mov word [ es:bx + sftDPB + _pointer ], ax	; device address
 
