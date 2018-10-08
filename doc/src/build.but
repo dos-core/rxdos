@@ -19,20 +19,37 @@ only be build with NASM, object file output support is discontinued.
 
 \H{} Warnings to expect
 
-Recent attempts to assemble the provided source code (with NASM 2.10rc1\-20101106)
-caused several warnings in RxCMD.ASM, mostly by re-using variable names
-without manually undefining these pre-processor variables. The reason that this
-was not yet fixed might have been that RxCMD wasn't finished yet. Some (but probably
-not all) of these cases warn with "trailing garbage after expression ignored"
-because the %[i]assign directives get passed something like "\cw{_-2\_-2}" (as %1 is
-already expanded). A simple solution to these problems (in the macros) requires
-the %# feature that is not yet implemented in NASM.
+The "word data exceeds bounds" warnings that are displayed for
+biocode.asm:455, biocode.asm:504, and doscode.asm:600 can probably be ignored.
 
-The "word data exceeds bounds" warnings that are displayed for RxCMD.ASM too
-can probably be ignored.
+ldosboot shows messages indicating how many bytes are left available in the
+boot sector loaders, these are:
 
-The erroneous relocation in the RxDOS.EXE file as reported by exe2bin is,
-though non-sensical, indeed in the source.
+\n Main boot sector for all FAT types.
+
+\n FSINFO for the FSIBOOT-using FAT32.
+
+ldosboot iniload shows messages indicating how many bytes are left
+available before the various fixed labels, these are:
+
+\n ms7_entry: MS-DOS 7/8 load protocol entrypoint, at 200h.
+
+\n ldos_entry: lDOS load protocol entrypoint, at 400h.
+
+\n end: End of common early loader (for lDOS and MS-DOS 6 entrypoints).
+
+\n end2: End of extended early loader (for MS-DOS 7/8 entrypoint).
+
+iniblz shows a message indicating how many bytes are used by the depacker.
+Additionally, building RxDOSPAK.COM also shows the same messages for
+ldosboot iniload as the normal build, these will generally be the same.
+
+lDOS entry.asm and RxDOS dosdata.asm show how many bytes are left in front of
+specific fixed labels, these are:
+
+\n The Interrupt Restoration Table (IRT), at 70h:100h (DOSENTRY:100h).
+
+\n The pre-SDA (pre Swappable Data Area), in DOSDATA.
 
 \H{} Script
 
