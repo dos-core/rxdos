@@ -4,6 +4,8 @@
 \cfg{text-chapter-numeric}{true}
 \cfg{text-indent-preamble}{false}
 \cfg{text-quotes}{"}{"}
+\cfg{text-indent}{4}
+\cfg{text-width}{74}
 
 \cfg{html-chapter-numeric}{true}
 \cfg{html-suppress-address}{true}
