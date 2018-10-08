@@ -62,6 +62,15 @@ nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-D_MAP=../map/RxDOS.MAP ../ldosboot/iniload.asm \
 || exit
 
+cd ../iniblz
+echo Building compressed RxDOSPAK.COM
+blzpack ../ldos/lDOSLOAD.BIN lDOSLOAD.BLZ
+nasm iniblz.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -I ../lmacros/ \
+&& nasm -Ox -D_REVISIONID="'$build_revision_id'" \
+	-I ../lmacros/ -f bin -o ../bin/RxDOSPAK.COM -l ../lst/RxDOSPAK.LST \
+	-D_MAP=../map/RxDOSPAK.MAP ../ldosboot/iniload.asm \
+	-D_PAYLOAD_FILE=iniblz.bin
+
 cd ../RxCMD
 if [ -f RxCMD.ASM -a \
 	-f RxCMDCPY.ASM -a \
