@@ -21,8 +21,8 @@ design.
 If you're running some DOS (possible RxDOS from an installation disk) locate
 the executable instsect.com. Type \cq{instsect A:} (without the quotes),
 substituting \cq{A:} by the drive you want to install RxDOS on. In general you'll
-have to type \cq{MAKEBOOT A:} or \cq{MAKEBOOT B:} to install RxDOS on a floppy drive
-or \cq{MAKEBOOT C:} to install RxDOS on a hard drive.
+have to type \cq{instsect A:} or \cq{instsect B:} to install RxDOS on a floppy drive
+or \cq{instsect C:} to install RxDOS on a hard drive.
 (Note that RxDOS can boot from any partition, including
 non-primary partitions and subsequent hard drives.) Then, copy the files
 RxDOS.COM and RxCMD.EXE to the drive you want to install RxDOS on.
