@@ -32,57 +32,37 @@ which is a file packed with BriefLZ and given a boot-time unpacker.
 
 \H{} What are the files RxDOS is made up of?
 
-\dt \cw{RXBIO.SYS}
+\dt \cw{RxDOS.COM}
 
-\dd The RxBIO (Basic Input/Output) core. Required to boot RxDOS.
+\dd The RxDOS (Disk Operating System) kernel core. Required to boot RxDOS.
 
-\dt \cw{RXDOS.SYS}
+\dt \cw{RxDOSPAK.COM}
 
-\dd The RxDOS (Disk Operating System) core. Required to boot RxDOS.
+\dd The RxDOS kernel core, compressed with BriefLZ.
+Can be substituted as RxDOS.COM to boot RxDOS.
 
-\dt \cw{RXCMD.EXE}
+\dt \cw{RxCMD.EXE}
 
 \dd The RxCMD (Command line interpreter) program. This is the
 		program that RxDOS will start by default after it booted. You
 		can however use RXCMD.EXE like any other program. You can also
-		instruct RxDOS to start another program after it booted. Type
+		instruct RxDOS to start another program after it booted.
+		\#{Type
 		\cq{RXCMD.EXE /?} at the command prompt to
-		get help on the usage of RxCMD.
+		get help on the usage of RxCMD.}
 
-\dt \cw{RXD_BOOT.COM}
+\dt \cw{instsect.com}
 
-\dd This program installs RXBOOT.SYS to a DOS drive. Type in
-		\cq{RXD_BOOT.COM /?} at the command prompt to
-		get help on the usage of RxD_BOOT. A copy of RXBOOT.SYS is
-		contained inside RXD_BOOT.COM, you don't need RXBOOT.SYS to
-		use RXD_BOOT.COM.
+\dd This program installs ldosboot to a DOS drive. Copies of boot12.bin,
+		boot16.bin, and boot32.bin are contained inside instsect.com,
+		you don't need these files separately to use instsect.com.
 
 \dt \cw{RXVDISK.SYS}
 
 \dd This system driver creates a virtual drive inside the low
 		memory area. It is used inside RXCONFIG.SYS with a line like
-		\cq{DEVICE=RXVDISK.SYS} (see RXCONFIG.TXT for a description of the
-		RXCONFIG.SYS file).
-
-\dt \cw{RXBOOT.SYS}
-
-\dd This binary file is an image for the RxDOS boot loader for
-		FAT12 or FAT16 drives. You don't need this file unless you've
-		some special program capable of installing it to a drive.
-
-\dt \cw{RXMBR.SYS}
-
-\dd This binary file is an image for the RxDOS boot loader for
-		hard disks. You don't need this file unless you've some special
-		program capable of installing it to a disk.
-
-\dt \cw{MAKEBOOT.BAT}
-
-\dd This text file contains a batch script to install the RxDOS
-		boot loader (using RXD_BOOT.COM), both RxDOS system cores and
-		the command line interpreter to a drive. This is no real
-		program and it's only distributed with RxDOS to make installing
-		RxDOS easier.
+		\cq{DEVICE=RXVDISK.SYS}.
+		WARNING: This device driver is outdated and should not be used.
 
 \#{
 \H{} RxCMD deletes my hidden Windows environment variables!
