@@ -108,5 +108,9 @@ sed -re 's/\//\\/g') WARPLINK.EXE obj @warplink.lin" || exit
   } fi
 } fi
 
+cd ../doc
+echo Building doc
+./makdoc
+
 cd ..
 
