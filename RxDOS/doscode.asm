@@ -3598,7 +3598,7 @@ _CtrlBreakCheck:
 
 	mov word [ si + _AX ], "Rx"			; 7852h
 	mov word [ si + _CX ], 2018
-	mov word [ si + _DX ], 04<<8|03			; cx:dx = build (2018-04-03)
+	mov word [ si + _DX ], 10<<8|08			; cx:dx = build (2018-10-08)
 	mov word [ si + _BX ], RXDOS_VERP		; bx = version
 	mov word [ si + _DI ], RXDOS_VERP
 		; RxBIO compatibility level (can no longer differ)
