@@ -80,7 +80,7 @@ DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
 \n    This notice may not be removed or altered from any source
       distribution.
 
-\#{
+
 \C{} Introduction
 
 This is the free RxDOS operating system. The main programs are a widely MS-DOS
@@ -114,7 +114,7 @@ so well and I really like Assembly more. In 2008 I heard from RxDOS and got it
 from the FreeDOS mirror servers. Later (2008-05 or so) I started porting the free
 RxDOS version 7.1.5 from the MASM source to NASM. This port eventually became
 RxDOS 7.20N.
-}
+
 
 \C{contact} Contact
 
