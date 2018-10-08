@@ -2,25 +2,20 @@
 
 \H{} Required tools
 
-\n NASM 2.04 .. 2.10, other versions might work
+\n NASM 2.04 .. 2.13, other versions might work
 
 \n One of these linkers:
 
 \lcont{
 \n WarpLink 2.70
 
-\n ALink, possibly
-
 \n Other 16-bit OMF linkers, with trivial adjustments
 
-\n NASM's internal linker (output format \c{bin}), requiring some adjustments to
- the source code and scripts
+\n NASM's internal linker (output format \c{bin})
 }
 
-\n exe2bin (tested with OpenWatcom 1.6 .. 1.9 program)
-
-Note that usage of NASM's internal linker would make exe2bin unnecessary too. Some
-other linkers will output a flat binary instead of an .EXE file too.
+Usage of NASM's internal linker made exe2bin unnecessary. The kernel can now
+only be build with NASM, object file output support is discontinued.
 
 \H{} Warnings to expect
 
