@@ -26,12 +26,12 @@ ldosmbr (master boot record)
 boot12/16/32 (partition boot record) - ldosboot
  loads at 0:7C00h
  located at start of partition (in partition's logical sector 0)
+ FSIBOOT: located in FAT32 partition's FSINFO sector
 
 iniload - ldosboot
  loaded at eg 70h:0 (entry :400h), loads remainder of BIO + DOS
  located at beginning of RxDOS.COM
 
-RxBIO
 RxDOS
  located in RxDOS.COM (lDOSLOAD.BIN portion)
  provides user-level DOS services
