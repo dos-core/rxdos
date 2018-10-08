@@ -46,6 +46,11 @@ nasm -D_COMPAT_LDOS -D_LOAD_NAME="'$NAME'" -D_CHS=1 -D_LBA_SKIP_CHECK \
 	-o boot32${SUFFIX}.bin -D_MAP=boot32${SUFFIX}.map \
 	-l boot32${SUFFIX}.lst -I../lmacros/
 
+cd ../instsect
+echo Building instsect.com
+nasm instsect.asm -D_MAP=instsect.map -l instsect.lst \
+	-I../gopt/ -I../ldosboot/ -I../lmacros/ -o ../bin/instsect.com "$@"
+
 cd ../ldos
 echo Building RxDOS.COM
 nasm -Ox -D_REVISIONID="'$build_revision_id'" \
