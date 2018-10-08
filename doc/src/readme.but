@@ -84,12 +84,12 @@ DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
 \C{} Introduction
 
 This is the free RxDOS operating system. The main programs are a widely MS-DOS
-compatible DOS kernel (split into RxBIO and RxDOS) and a custom command line
+compatible DOS kernel (RxDOS.COM) and a custom command line
 interpreter/\cw{COMMAND.COM} replacement (RxCMD). The RxDOS distribution includes
 some supplemental programs as well. These are a virtual file system driver for
-use in conventional memory (RxVDISK), a boot loader that loads RxBIO (RxBOOT),
-a master boot record that loads RxBOOT on partitioned disks (RxMBR) and a small
-program that installs RxBOOT on a DOS drive (RxD_BOOT).
+use in conventional memory (RxVDISK), boot loaders that load RxDOS.COM
+(ldosboot boot12, boot16, boot32), and a small
+program that installs ldosboot on a DOS drive (instsect).
 
 \C{} Bug reports
 
