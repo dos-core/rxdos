@@ -14,7 +14,7 @@
 
 \lcont{
 \c RxDOSBIO    (renamed RxBIO, later integrated into RxDOS.COM)
-\c RxD_BOOT    (dropped, use ldosboot instead)
+\c RxD_BOOT    (dropped, use ldosboot and instsect instead)
 \c RxDOSMBR    (dropped, use ldosmbr instead)
 }
 
@@ -168,6 +168,14 @@
    means DOSCODE=HMA. DOSDATA=UMA and DOSCODE=UMA do not have any equivalent
    compatible options.)
 
+\n As of 93ca7200fbc0 2018-05-12, UMA and HMA relocation can be turned on with
+   UMA=ALL and HMA=ALL in [RX]CONFIG.SYS.
+
+\n As of bc8dee4269a0 2018-05-15, DR-DOS-style RPLOADER broadcasts are made.
+
+\n As of a9f4fa3bad20 2018-06-06, [RX]CONFIG.SYS is read using the loaded DOS
+   like a normal user, not with disk accesses directly.
+
 
 \S{} Misc
 
@@ -190,4 +198,5 @@
 \n ldosboot and lmacros (b06c90a1009c 2018-03-28) are included as subrepos.
    ldos is included as subrepo. (8fa5fccbcf40 2018-03-30)
 
+\n instsect and iniblz are included as subrepos. (cd662caf7879 2018-10-08)
 
