@@ -143,6 +143,9 @@
    DOSENTRY. This supports use cases where the HMA or UMA may not be
    available to the handler any longer.
 
+
+\S{} Later kernel changes
+
 \n As of 8b75542e6ba1 2018-04-26, DOSCODE can be relocated to the HMA.
 
 \n As of af2c5e43be7e 2018-04-28, DEVICE and DEVICEHIGH directives in
