@@ -19,19 +19,15 @@ design.
 \H{} How do I install RxDOS?
 
 If you're running some DOS (possible RxDOS from an installation disk) locate
-the batch script file named MAKEBOOT.BAT. Change the current directory and
-drive to the directory in which you found MAKEBOOT.BAT. Make sure the program
-files RXD_BOOT.COM and RXCMD.EXE and the system files RXBIO.SYS and RXDOS.SYS
-are also in the same directory. Then type \cq{MAKEBOOT A:} (without the quotes),
+the executable instsect.com. Type \cq{instsect A:} (without the quotes),
 substituting \cq{A:} by the drive you want to install RxDOS on. In general you'll
 have to type \cq{MAKEBOOT A:} or \cq{MAKEBOOT B:} to install RxDOS on a floppy drive
 or \cq{MAKEBOOT C:} to install RxDOS on a hard drive.
-
-If you want to install the supplemental programs locate them on a disk and copy
-them to a directory on the target drive you've just installed RxDOS on, using
-(for example) \cq{COPY A:\\RXVDISK.SYS C:\\RXDOS\\RXVDISK.SYS}. (This examples
-assumes that there's already a directory RXDOS on drive C:. Create one with
-\cq{MD C:\\RXDOS} if you want it.)
+(Note that RxDOS can boot from any partition, including
+non-primary partitions and subsequent hard drives.) Then, copy the files
+RxDOS.COM and RxCMD.EXE to the drive you want to install RxDOS on.
+If you want, you can copy RxDOSPAK.COM to be used as your RxDOS.COM,
+which is a file packed with BriefLZ and given a boot-time unpacker.
 
 
 \H{} What are the files RxDOS is made up of?
