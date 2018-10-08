@@ -5644,7 +5644,7 @@ _CreateUniqueFile_36:
 	call MapSFTToAppHandle				; if no space, create error
 	jnc @F
 
-	call releaseSFT
+	call releaseSFT				; (preserves ax)
 	stc
 	jmp _CreateUniqueFile_40
 

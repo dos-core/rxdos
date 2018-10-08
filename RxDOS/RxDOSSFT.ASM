@@ -104,7 +104,7 @@ the file LICENSE.TXT.
 		; INP:	al = SFT handle
 		; OUT:	NC if free table entry found,
 		;	 ax = application handle
-		;	CY if no free table entry found
+		;	CY if no free table entry found,
 		;	 ax = extended error pointer
 MapSFTToAppHandle:
 
