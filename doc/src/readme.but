@@ -143,7 +143,6 @@ version 7.20N is only intended for developers.
 internal structure, although it describes an older version. You will need
 a deeper understanding for development though.
 
-\n As described in \k{build} the build process currently uses tools
+\n As described in \k{build} the build process no longer uses tools
 that run and build on DOS, are considered non-free, or require non-free programs
-to build. Modifying the kernel and RxCMD to build using nothing but NASM should
-be trivial for developers.
+to build. The kernel and RxCMD have been modified to use nothing but NASM.
