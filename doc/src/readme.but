@@ -128,11 +128,15 @@ RxDOS 7.20N.
 
 \dd \W{mailto:cm -AT- bttr-software.de}{cm -AT- bttr-software.de}
 
-\C{} Advise on usage of RxDOS version 7.20N
+\C{} Advise on usage of RxDOS version 7.20N and 7.2x
 
 Do not use RxDOS version 7.20N. It tries to re-produce every bug of RxDOS 7.1.5
 (as found on the FreeDOS mirrors). It is not usable currently. The release of
 version 7.20N is only intended for developers.
+
+Versions 7.2x are also not entirely useable yet. It is planned to release
+a more complete kernel later as version 7.30,
+which would implement all basics.
 
 \H{} Developing RxDOS
 
