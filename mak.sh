@@ -49,12 +49,13 @@ nasm -D_COMPAT_LDOS -D_LOAD_NAME="'$NAME'" -D_CHS=1 -D_LBA_SKIP_CHECK \
 cd ../instsect
 echo Building instsect.com
 nasm instsect.asm -D_MAP=instsect.map -l instsect.lst \
-	-I../gopt/ -I../ldosboot/ -I../lmacros/ -o ../bin/instsect.com "$@"
+	-I../gopt/ -I../ldosboot/ -I../lmacros/ -o instsect.com "$@"
 
 cd ../ldos
 echo Building RxDOS.COM
 nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-I ../lmacros/ -I ../../lmacros/ -I ../MACRO/ -I ../RxBIO/ \
+	-I ../instsect/ -I ../bin/ \
 	-I ../RxDOS/ -f bin -D_BIN_FILE_DEFAULT=RXDOS.COM \
 	-o lDOSLOAD.BIN -l lDOSLOAD.LST init.asm \
 && nasm -Ox -D_REVISIONID="'$build_revision_id'" \
