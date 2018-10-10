@@ -200,3 +200,7 @@
 
 \n instsect and iniblz are included as subrepos. (cd662caf7879 2018-10-08)
 
+\n COMLOADER is implemented as the EXE mode of the RxDOS.COM kernel file.
+   COMLOADER programs VERSION, LIST, INSTSECT, INT3 added.
+   (09b93367241d 2018-10-11)
+
