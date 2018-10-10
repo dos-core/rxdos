@@ -5,14 +5,16 @@
 \cfg{text-indent-preamble}{false}
 \cfg{text-quotes}{"}{"}
 \cfg{text-indent}{4}
-\cfg{text-width}{74}
+\cfg{text-width}{75}
 
 \cfg{html-chapter-numeric}{true}
 \cfg{html-suppress-address}{true}
 \cfg{html-single-filename}{readme.htm}
 \cfg{html-leaf-level}{0}
+\cfg{html-template-fragment}{%k}{%b}
+\cfg{html-head-end}{<meta name="viewport" content="width=device-width, initial- cale=1.0">}
 
-\title RxDOS version 7.24 notes
+\title RxDOS version 7.25 notes
 
 \copyright This document (2008-2018 by C. Masloch) is in the Public Domain.
 
@@ -126,11 +128,15 @@ RxDOS 7.20N.
 
 \dd \W{mailto:cm -AT- bttr-software.de}{cm -AT- bttr-software.de}
 
-\C{} Advise on usage of RxDOS version 7.20N
+\C{} Advise on usage of RxDOS version 7.20N and 7.2x
 
 Do not use RxDOS version 7.20N. It tries to re-produce every bug of RxDOS 7.1.5
 (as found on the FreeDOS mirrors). It is not usable currently. The release of
 version 7.20N is only intended for developers.
+
+Versions 7.2x are also not entirely useable yet. It is planned to release
+a more complete kernel later as version 7.30,
+which would implement all basics.
 
 \H{} Developing RxDOS
 
