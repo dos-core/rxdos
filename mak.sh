@@ -58,6 +58,8 @@ nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-I ../RxDOS/ -f bin -D_BIN_FILE_DEFAULT=RXDOS.COM \
 	-o lDOSLOAD.BIN -l lDOSLOAD.LST init.asm \
 && nasm -Ox -D_REVISIONID="'$build_revision_id'" \
+	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
+	-D_IMAGE_EXE_MIN_CALC="(((_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
 	-I ../lmacros/ -f bin -o ../bin/RxDOS.COM -l ../lst/RxDOS.LST \
 	-D_MAP=../map/RxDOS.MAP ../ldosboot/iniload.asm \
 || exit
