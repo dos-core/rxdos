@@ -68,10 +68,14 @@ cd ../iniblz
 echo Building compressed RxDOSPAK.COM
 blzpack ../ldos/lDOSLOAD.BIN lDOSLOAD.BLZ
 nasm iniblz.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -I ../lmacros/ \
+	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
 && nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-I ../lmacros/ -f bin -o ../bin/RxDOSPAK.COM -l ../lst/RxDOSPAK.LST \
 	-D_MAP=../map/RxDOSPAK.MAP ../ldosboot/iniload.asm \
-	-D_PAYLOAD_FILE=iniblz.bin
+	-D_PAYLOAD_FILE=iniblz.bin \
+	-D_IMAGE_EXE_MIN_CALC="((($(stat -c %s ../ldos/lDOSLOAD.BIN) + \
+		_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
+	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32
 
 cd ../RxCMD
 if [ -f RxCMD.ASM -a \
