@@ -1114,7 +1114,7 @@ initReqBlock_08:
 	mov bl, ah					; get index into devDefaultLength table
 	xor bh, bh
 %endif
-	mov al, byte [ ss:bx + devDefaultLength ]	; retrieve length of request header
+	mov al, byte [ cs:devDefaultLength + bx ]	; retrieve length of request header
 
 initReqBlock_12:
 	mov byte [ es:di + rhLength ], al		; set length of request header
