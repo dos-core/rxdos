@@ -287,11 +287,11 @@ CopyStringArgs:
 	getdarg ds, si, _srcstring
 	getdarg es, di, _dststring
 
-CopyStringArgs_08:
+.08:
 	lodsb
 	stosb
 	or al, al
-	jnz CopyStringArgs_08
+	jnz .08
 
 	dec di
 	restoreRegisters ax, si, ds
