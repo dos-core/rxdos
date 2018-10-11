@@ -1445,9 +1445,12 @@ _NonLBARead_12:
 	jnz _NonLBARead_14				; read contiguous -->
 
 	mov ax, word [ di + _dskBPB + _bpbSectorsPerTrack ]
+	test ax, ax			; uninitialised / invalid ?
+	jz @F				; yes, read single sector -->
 	mov bx, cx					; sector
 	and bx, byte 003Fh				; drop high order cyl portion
 	sub ax, bx					; sectors remaining in track
+@@:					; ax = 0 if to read single sector
 	inc ax						; number is inclusive
 	cmp ax, word [ bp + _numSectorsRemain ]		; more than sectors requested ?
 	jc _NonLBARead_14				; if carry, only allow max -->
