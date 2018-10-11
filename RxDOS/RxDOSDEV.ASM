@@ -1259,6 +1259,7 @@ getDPB_24:
 	getarg ax, _drive
 	call invalidateBuffers				; invalidate buffers
 	call initDriveParameters			; rebuild drive parameters
+	jc getDPB_36
 
 	getdarg es, bx, _dpbAddress			; get address of dpb
 	mov ax, word [ bp + _devVolumeId + _low ]
