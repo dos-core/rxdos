@@ -275,7 +275,6 @@ CopyStringLowercase:
 		;
 		; Returns:
 		; es:di-> null terminator of destination string
-	doscode_insure_low_byte_not_0CCh
 CopyStringArgs:
 
 	Entry 4

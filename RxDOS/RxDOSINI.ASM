@@ -1305,7 +1305,7 @@ processShell_08:
 	push ds
 	mov bx, _RxDOSini_CommandShell
 	push bx						; destination args
-	call init2_to_doscode, CopyStringArgs		; copy string
+	call init2_CopyStringArgs			; copy string
 
 processShell_12:
 	pop di
@@ -1317,6 +1317,36 @@ processShell_12:
 		; return
 processShell_24:
 
+	Return
+
+
+		; Copy string from arguments
+		;
+		; Usage:
+		; stack-> source ASCIZ string
+		; stack-> destination buffer
+		;
+		; Returns:
+		; es:di-> null terminator of destination string
+init2_CopyStringArgs:
+
+	Entry 4
+	darg	srcstring
+	darg	dststring
+
+	saveRegisters ds, si, ax
+
+	getdarg ds, si, _srcstring
+	getdarg es, di, _dststring
+
+.08:
+	lodsb
+	stosb
+	or al, al
+	jnz .08
+
+	dec di
+	restoreRegisters ax, si, ds
 	Return
 
 
