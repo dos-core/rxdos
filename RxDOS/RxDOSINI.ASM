@@ -1302,7 +1302,7 @@ processShell_08:
 
 	push es
 	push di						; source args
-	push ds
+	push cs
 	mov bx, _RxDOSini_CommandShell
 	push bx						; destination args
 	call init2_CopyStringArgs			; copy string
