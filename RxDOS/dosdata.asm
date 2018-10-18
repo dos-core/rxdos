@@ -141,7 +141,11 @@ _RxDOS_StackLongJump	dw 0			; long jump
 first_hmcb:		dw 0
 current_driver:		dw 0
 error_flags:		dw 0
+alloc_strategy_ext:	db 0
+			; 1: use lDOS meaning of UMA-then-LMA
+			; 2: use area flags and disregard UMB link status
 
+			align 2, db 0
 		; Tab Expansion
 _RxDOS_TabPosition	dw 0			; tab position
 

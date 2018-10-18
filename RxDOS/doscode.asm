@@ -5375,7 +5375,7 @@ _GetAllocationStrategy:
 		; Get allocation strategy
 _GetAllocStrategy:
 	RetCallersStackFrame es, bx
-	xor ax, ax
+	mov ah, byte [ alloc_strategy_ext ]
 	mov al, byte [ _RxDOS_AllocStrategy ]
 	mov word [ es:bx + _AX ], ax
 	retn
@@ -5386,10 +5386,11 @@ _GetAllocStrategy:
 		; We don't check for validity here, except the high byte.
 		;  No error is returned here, all values are valid.
 _SetAllocStrategy:
-	test bh, bh
+	test bh, ~(1 | 2)
 	jz @F
 	or byte [error_flags], EF_InvalidAllocStrategy
 @@:
+	mov byte [ alloc_strategy_ext ], bh
 	mov byte [ _RxDOS_AllocStrategy ], bl
 	retn
 
