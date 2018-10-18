@@ -3224,7 +3224,9 @@ init_disp_al:
 	pop ax
 	pop bx
 %else
+	push bx
 	int 29h
+	pop bx
 %endif
 	retn
 
@@ -3241,7 +3243,7 @@ RxDOSIni_TypeMessage_08:
 	or al, al
 	jz RxDOSIni_TypeMessage_12
 
-	int 29h
+	call init_disp_al
 	jmp short RxDOSIni_TypeMessage_08
 
 RxDOSIni_TypeMessage_12:
@@ -3255,9 +3257,9 @@ RxDOSIni_TypeCR:
 	push ax
 
 	mov al, 13
-	int 29h
+	call init_disp_al
 	mov al, 10
-	int 29h
+	call init_disp_al
 
 	pop ax
 	retn
