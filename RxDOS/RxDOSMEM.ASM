@@ -67,7 +67,7 @@ _allocateMinMaxMemBlock:
 		;  cx	size of largest block of memory available in paragraphs
 allocateMemBlock:
 	mov bx, cx	; bx = size
-	call AllocateMCB
+	call AllocateMCBCompatible
 	mov es, ax
 	mov cx, bx
 	retn

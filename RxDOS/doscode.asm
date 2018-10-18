@@ -4797,7 +4797,7 @@ _GetCurrentDirectory:
 		;	 bx = paragraph size of allocation (same as INP)
 _AllocateMemory:
 			; bx = size
-	call AllocateMCB
+	call AllocateMCBCompatible
 
 	RetCallersStackFrame ds, si
 	mov word [ si + _AX ], ax	; (error code or) segment allocation
@@ -6012,7 +6012,7 @@ _SetHandlesCount_08:
 	shr bx, 1
 	shr bx, 1					; compute paragraphs required
 
-	call AllocateMCB
+	call AllocateMCBCompatible
 	jc _SetHandlesCount_30
 	mov es, ax					; new segment
 	storarg _allocatedseg, ax			; save
