@@ -5386,7 +5386,7 @@ _GetAllocStrategy:
 		; We don't check for validity here, except the high byte.
 		;  No error is returned here, all values are valid.
 _SetAllocStrategy:
-	test bh, ~(1 | 2)
+	test bh, ~(1 | 2 | 4)
 	jz @F
 	or byte [error_flags], EF_InvalidAllocStrategy
 @@:

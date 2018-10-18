@@ -144,6 +144,7 @@ error_flags:		dw 0
 alloc_strategy_ext:	db 0
 			; 1: use area flags and disregard UMB link status
 			; 2: use lDOS meaning of UMA-then-LMA (one area)
+			; 4: use two-area meaning
 
 			align 2, db 0
 		; Tab Expansion
