@@ -2731,6 +2731,12 @@ config_uma_options:
 			dw ~ DOSFLAGS_RELOCATE_DOSCODE_UMA
 			db 'nodoscode', 0
 
+			dw DOSFLAGS_RELOCATE_SFT_UMA
+			db 'sft', 0
+
+			dw ~ DOSFLAGS_RELOCATE_SFT_UMA
+			db 'nosft', 0
+
 			dw DOSFLAGS_RELOCATE_ALL_UMA
 			db 'all', 0
 
