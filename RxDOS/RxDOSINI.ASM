@@ -2737,6 +2737,18 @@ config_uma_options:
 			dw ~ DOSFLAGS_RELOCATE_SFT_UMA
 			db 'nosft', 0
 
+			dw DOSFLAGS_RELOCATE_CDS_UMA
+			db 'cds', 0
+
+			dw ~ DOSFLAGS_RELOCATE_CDS_UMA
+			db 'nocds', 0
+
+			dw DOSFLAGS_RELOCATE_LFNCDS_UMA
+			db 'lfncds', 0
+
+			dw ~ DOSFLAGS_RELOCATE_LFNCDS_UMA
+			db 'nolfncds', 0
+
 			dw DOSFLAGS_RELOCATE_ALL_UMA
 			db 'all', 0
 
