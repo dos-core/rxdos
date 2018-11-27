@@ -1225,7 +1225,19 @@ _Interrupt_27:
 
 
 relocated i31:
-	jmp iret_CY_ax1
+
+iret_CY_ax1:
+	mov ax, 1		; error 1, invalid function
+	stc			; CY
+iret_CF:
+	lframe 0
+	lpar word, flags
+	lpar dword, csip
+	lenter
+	rcr byte [bp + ?flags], 1	; rotate CF (error state) into bit7 of saved FL
+	rol byte [bp + ?flags], 1	; rotate error state into bit0+CF
+	lleave
+	iret
 
 
 %include "int2F.asm"
