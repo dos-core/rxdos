@@ -66,7 +66,7 @@ nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-D_MAP=../map/RxDOS.MAP ../ldosboot/iniload.asm \
 || exit
 
-cd ../iniblz
+cd ../inicomp
 echo Building compressed RxDOSPAK.COM
 blzpack ../ldos/lDOSLOAD.BIN lDOSLOAD.BLZ
 nasm inicomp.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -D_BRIEFLZ \
