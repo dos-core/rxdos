@@ -67,6 +67,7 @@ nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 || exit
 
 cd ../inicomp
+
 echo Building compressed RxDOSBLZ.COM
 blzpack ../ldos/lDOSLOAD.BIN lDOSLOAD.BLZ
 nasm inicomp.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -D_BRIEFLZ \
@@ -79,6 +80,19 @@ nasm inicomp.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -D_BRIEFLZ \
 	-I ../lmacros/ -f bin -o ../bin/RxDOSBLZ.COM -l ../lst/RxDOSBLZ.LST \
 	-D_MAP=../map/RxDOSBLZ.MAP ../ldosboot/iniload.asm \
 	-D_PAYLOAD_FILE=iniblz.bin
+
+echo Building compressed RxDOSLZ4.COM
+lz4c -9zfk -hc ../ldos/lDOSLOAD.BIN lDOSLOAD.LZ4
+nasm inicomp.asm -o inilz4.bin -D_MAP=inilz4.map -l inilz4.lst -D_LZ4 \
+	-I ../lmacros/ -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
+&& nasm -Ox -D_REVISIONID="'$build_revision_id'" \
+	-D_IMAGE_EXE_MAX=0 \
+	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
+	-D_IMAGE_EXE_MIN_CALC="((($(stat -c %s ../ldos/lDOSLOAD.BIN) + \
+		_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
+	-I ../lmacros/ -f bin -o ../bin/RxDOSLZ4.COM -l ../lst/RxDOSLZ4.LST \
+	-D_MAP=../map/RxDOSLZ4.MAP ../ldosboot/iniload.asm \
+	-D_PAYLOAD_FILE=inilz4.bin
 
 cd ../RxCMD
 if [ -f RxCMD.ASM -a \
