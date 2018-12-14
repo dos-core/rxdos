@@ -69,8 +69,8 @@ nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 cd ../iniblz
 echo Building compressed RxDOSPAK.COM
 blzpack ../ldos/lDOSLOAD.BIN lDOSLOAD.BLZ
-nasm iniblz.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -I ../lmacros/ \
-	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
+nasm inicomp.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -D_BRIEFLZ \
+	-I ../lmacros/ -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
 && nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-D_IMAGE_EXE_MAX=0 \
 	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
