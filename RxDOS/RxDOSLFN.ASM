@@ -2541,7 +2541,7 @@ createFCBNAMEfromLFN:
 	mov cx, sizeFILENAME
 	repe stosb					; clear short name to blanks
 
-	std
+	std						; AMD erratum 109 handling not needed
 	getarg cx, _count
 	getdarg es, di, _ptrLongfilename
 	add di, cx

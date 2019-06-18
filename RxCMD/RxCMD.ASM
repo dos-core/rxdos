@@ -2192,17 +2192,77 @@ insertString:
 	dec di
 
 		; open string
-	std						; copy reverse direction
+	std						; _AMD_ERRATUM_109_WORKAROUND as below
+							; copy reverse direction
 	pop ax
 	push ax						; length of insert string
 	mov si, di					;
 	add di, ax					; where to copy to
-	repz movsb					; copy
+
+
+%include "lmacros2.mac"
+
+	numdef AMD_ERRATUM_109_WORKAROUND, 1
+%if 0
+
+Jack R. Ellis pointed out this erratum:
+
+Quoting from https://www.amd.com/system/files/TechDocs/25759.pdf page 69:
+
+109   Certain Reverse REP MOVS May Produce Unpredictable Behavior
+
+Description
+
+In certain situations a REP MOVS instruction may lead to
+incorrect results. An incorrect address size, data size
+or source operand segment may be used or a succeeding
+instruction may be skipped. This may occur under the
+following conditions:
+
+* EFLAGS.DF=1 (the string is being moved in the reverse direction).
+
+* The number of items being moved (RCX) is between 1 and 20.
+
+* The REP MOVS instruction is preceded by some microcoded instruction
+  that has not completely retired by the time the REP MOVS begins
+  execution. The set of such instructions includes BOUND, CLI, LDS,
+  LES, LFS, LGS, LSS, IDIV, and most microcoded x87 instructions.
+
+Potential Effect on System
+
+Incorrect results may be produced or the system may hang.
+
+Suggested Workaround
+
+Contact your AMD representative for information on a BIOS update.
+
+%endif
+
+%if _AMD_ERRATUM_109_WORKAROUND
+	jcxz @FF
+	cmp cx, 20
+	ja @FF
+@@:
+	movsb
+	loop @B
+@@:
+%endif
+	rep movsb					; copy
 
 	pop cx
 	pop si
 	push di						; saved end of insert string pointer
-	repz movsb					; copy
+
+%if _AMD_ERRATUM_109_WORKAROUND
+	jcxz @FF
+	cmp cx, 20
+	ja @FF
+@@:
+	movsb
+	loop @B
+@@:
+%endif
+	rep movsb					; copy
 	cld						; restore direction
 
 		; done
