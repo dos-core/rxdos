@@ -823,25 +823,12 @@ the file LICENSE.TXT.
 	%endmacro
 
 
-		; Long conditional jumps
-		;
-		; %1 = CPU condition
-		; %2 = Jump address to branch to if condition matches
-		;
-		; Recent NASM versions automatically create the two-instruction
-		; near conditional jumps when needed!
-	%imacro if_ 2.nolist
-		j%+1 %2
-	%endmacro
-
-		; Though this doesn't cover all conditions the CPU knows,
-		; RxDOS actually uses only ifc, ifnc, ifz and ifnz
-%idefine ifc	if_ c,
-%idefine ifnc	if_ nc,
-%idefine ifz	if_ z,
-%idefine ifnz	if_ nz,
-%idefine ife	if_ e,
-%idefine ifne	if_ ne,
+%idefine ifc	jc
+%idefine ifnc	jnc
+%idefine ifz	jz
+%idefine ifnz	jnz
+%idefine ife	je
+%idefine ifne	jne
 
 
 		; Normalize segment and pointer
