@@ -57,6 +57,7 @@ nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-I ../lmacros/ -I ../../lmacros/ -I ../MACRO/ -I ../RxBIO/ \
 	-I ../instsect/ -I ../bin/ \
 	-I ../RxDOS/ -f bin -D_BIN_FILE_DEFAULT=RXDOS.COM \
+	-I ../scanptab/ \
 	-o lDOSLOAD.BIN -l lDOSLOAD.LST init.asm \
 && nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-D_IMAGE_EXE_MAX=0 \
