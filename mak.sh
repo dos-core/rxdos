@@ -64,6 +64,7 @@ nasm -Ox -D_REVISIONID="'$build_revision_id'" \
 	-D_IMAGE_EXE_MIN_CALC="(((_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
 	-I ../lmacros/ -f bin -o ../bin/RxDOS.COM -l ../lst/RxDOS.LST \
 	-D_MAP=../map/RxDOS.MAP ../ldosboot/iniload.asm \
+	-I ../ldosboot/ \
 || exit
 
 cd ../inicomp
@@ -79,6 +80,7 @@ nasm inicomp.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -D_BRIEFLZ \
 		_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
 	-I ../lmacros/ -f bin -o ../bin/RxDOSBLZ.COM -l ../lst/RxDOSBLZ.LST \
 	-D_MAP=../map/RxDOSBLZ.MAP ../ldosboot/iniload.asm \
+	-I ../ldosboot/ \
 	-D_PAYLOAD_FILE=iniblz.bin
 
 echo Building compressed RxDOSLZ4.COM
@@ -92,6 +94,7 @@ nasm inicomp.asm -o inilz4.bin -D_MAP=inilz4.map -l inilz4.lst -D_LZ4 \
 		_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
 	-I ../lmacros/ -f bin -o ../bin/RxDOSLZ4.COM -l ../lst/RxDOSLZ4.LST \
 	-D_MAP=../map/RxDOSLZ4.MAP ../ldosboot/iniload.asm \
+	-I ../ldosboot/ \
 	-D_PAYLOAD_FILE=inilz4.bin
 
 cd ../RxCMD
