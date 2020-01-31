@@ -17,7 +17,7 @@
 [ -z "$INSTSECT_DIR" ] && INSTSECT_DIR=instsect/
 [ -z "$LDOSBOOT_DIR" ] && LDOSBOOT_DIR=ldosboot/
 [ -z "$SCANPTAB_DIR" ] && SCANPTAB_DIR=scanptab/
-[ -z "$INICHECK_DIR" ] && INICHECK_DIR=../../crc16-t/
+[ -z "$INICHECK_DIR" ] && INICHECK_DIR=crc16-t/
 [ -z "$INICOMP_DIR" ] && INICOMP_DIR=inicomp/
 [ -z "$INICOMP_METHOD" ] && INICOMP_METHOD=lz4
 					# none or lz4 or brieflz or snappy
