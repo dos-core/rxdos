@@ -2,6 +2,8 @@ obj/.*
 lst/.*
 map/.*
 bin/.*
+tmp/.*
 doc/readme.htm
 doc/readme.txt
 doc/readme.pdf
+ovr.sh
