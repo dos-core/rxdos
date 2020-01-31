@@ -74,32 +74,6 @@ if [ "$1" == reproduce ]; then
   exit $?
 fi
 
-mkdir -p "$reproducedir"
-
-if [ "$1" != havedt ]; then
-  nasm misc/passdt.asm -o tmp/scratch 2>&1 | \
-    perl -ne 'if (/.*(?:warning: using define )(-[UD].*?)( \[-w\+user\])?$/) { print $1."\n"; };' \
-     > "$reproducedir"/dt
-else
-  shift
-fi
-
-if [ "$1" != reproducing ]; then
-  export NASMENV
-  export -p | grep -E "^declare -x NASMENV=" > "$reproducedir"/nasmenv
-  export build_options
-  export -p | grep -E "^declare -x build_options=" > "$reproducedir"/options
-  shellquote "$@" > "$reproducedir"/cmdline
-else
-  shift
-fi
-
-# based on https://stackoverflow.com/a/22517974/738287
-declare -a dtarray=()
-while IFS='' read -r item; do
-  dtarray+=("$item")
-done < "$reproducedir"/dt
-
 if (($use_build_revision_id)); then {
   [ -z "$build_revision_id" ] && build_revision_id="hg $(hg id -i)"
   [ -z "$build_revision_id_lmacros" -a -n "$LMACROS_DIR" ] \
@@ -127,6 +101,32 @@ if (($use_build_revision_id)); then {
     && [ "$var" != "$build_revision_id" ] \
     && build_revision_id_ldosboot="'Uses ldosboot: Revision ID $var',13,10"
 } fi
+
+mkdir -p "$reproducedir"
+
+if [ "$1" != havedt ]; then
+  nasm misc/passdt.asm -o tmp/scratch 2>&1 | \
+    perl -ne 'if (/.*(?:warning: using define )(-[UD].*?)( \[-w\+user\])?$/) { print $1."\n"; };' \
+     > "$reproducedir"/dt
+else
+  shift
+fi
+
+if [ "$1" != reproducing ]; then
+  export NASMENV
+  export -p | grep -E "^declare -x NASMENV=" > "$reproducedir"/nasmenv
+  export build_options
+  export -p | grep -E "^declare -x build_options=" > "$reproducedir"/options
+  shellquote "$@" > "$reproducedir"/cmdline
+else
+  shift
+fi
+
+# based on https://stackoverflow.com/a/22517974/738287
+declare -a dtarray=()
+while IFS='' read -r item; do
+  dtarray+=("$item")
+done < "$reproducedir"/dt
 
 [ -z "$STACKSIZE" ] && STACKSIZE=2048
 
