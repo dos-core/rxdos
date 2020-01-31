@@ -70,6 +70,10 @@ if [ "$1" == reproduce ]; then
   eval "$(cat "$reproducedir"/nasmenv)"
   unset build_options
   eval "$(cat "$reproducedir"/options)"
+  unset use_build_revision_id
+  unset use_build_decomp_test
+  unset use_build_inicheck
+  eval "$(cat "$reproducedir"/usevars)"
   eval "$(printf "%q" "$0") $altervar $(cat "$reproducedir"/cmdline) $(shellquote "$@")"
   exit $?
 fi
@@ -126,6 +130,10 @@ if [ "$1" != reproducing ]; then
   export -p | grep -E "^declare -x NASMENV=" > "$reproducedir"/nasmenv
   export build_options
   export -p | grep -E "^declare -x build_options=" > "$reproducedir"/options
+  export use_build_revision_id
+  export use_build_decomp_test
+  export use_build_inicheck
+  export -p | grep -E "^declare -x use_build_(revision_id|decomp_test|inicheck)=" > "$reproducedir"/usevars
   shellquote "$@" > "$reproducedir"/cmdline
 else
   shift
