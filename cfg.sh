@@ -14,6 +14,7 @@
 # As the below only are set if no value is provided
 # yet, any value can be overridden from the shell.
 [ -z "$LMACROS_DIR" ] && LMACROS_DIR=lmacros/
+[ -z "$INSTSECT_DIR" ] && INSTSECT_DIR=instsect/
 [ -z "$LDOSBOOT_DIR" ] && LDOSBOOT_DIR=ldosboot/
 [ -z "$SCANPTAB_DIR" ] && SCANPTAB_DIR=scanptab/
 [ -z "$INICHECK_DIR" ] && INICHECK_DIR=../../crc16-t/
