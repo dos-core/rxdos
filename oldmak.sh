@@ -51,57 +51,11 @@ echo Building instsect.com
 nasm instsect.asm -D_MAP=instsect.map -l instsect.lst \
 	-I../gopt/ -I../ldosboot/ -I../lmacros/ -o instsect.com "$@"
 
-cd ../ldos
+cd ..
 echo Building RxDOS.COM
-nasm -Ox -D_REVISIONID="'$build_revision_id'" \
-	-I ../lmacros/ -I ../../lmacros/ -I ../MACRO/ -I ../RxBIO/ \
-	-I ../instsect/ -I ../bin/ \
-	-I ../RxDOS/ -f bin -D_BIN_FILE_DEFAULT=RXDOS.COM \
-	-I ../scanptab/ \
-	-o lDOSLOAD.BIN -l lDOSLOAD.LST init.asm \
-&& nasm -Ox -D_REVISIONID="'$build_revision_id'" \
-	-D_IMAGE_EXE_MAX=0 \
-	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
-	-D_IMAGE_EXE_MIN_CALC="(((_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
-	-I ../lmacros/ -f bin -o ../bin/RxDOS.COM -l ../lst/RxDOS.LST \
-	-D_MAP=../map/RxDOS.MAP ../ldosboot/iniload.asm \
-	-D_INILOAD_SIGNATURE="'Rx'" \
-	-I ../ldosboot/ -I ../scanptab/ \
-|| exit
+./mak.sh "$@"
 
-cd ../inicomp
-
-echo Building compressed RxDOSBLZ.COM
-blzpack ../ldos/lDOSLOAD.BIN lDOSLOAD.BLZ
-nasm inicomp.asm -o iniblz.bin -D_MAP=iniblz.map -l iniblz.lst -D_BRIEFLZ \
-	-I ../lmacros/ -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
-&& nasm -Ox -D_REVISIONID="'$build_revision_id'" \
-	-D_IMAGE_EXE_MAX=0 \
-	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
-	-D_IMAGE_EXE_MIN_CALC="((($(stat -c %s ../ldos/lDOSLOAD.BIN) + \
-		_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
-	-I ../lmacros/ -f bin -o ../bin/RxDOSBLZ.COM -l ../lst/RxDOSBLZ.LST \
-	-D_MAP=../map/RxDOSBLZ.MAP ../ldosboot/iniload.asm \
-	-D_INILOAD_SIGNATURE="'Rx'" \
-	-I ../ldosboot/ -I ../scanptab/ \
-	-D_PAYLOAD_FILE=iniblz.bin
-
-echo Building compressed RxDOSLZ4.COM
-lz4c -9zfk -hc ../ldos/lDOSLOAD.BIN lDOSLOAD.LZ4
-nasm inicomp.asm -o inilz4.bin -D_MAP=inilz4.map -l inilz4.lst -D_LZ4 \
-	-I ../lmacros/ -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
-&& nasm -Ox -D_REVISIONID="'$build_revision_id'" \
-	-D_IMAGE_EXE_MAX=0 \
-	-D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK -D_EXEC_OFFSET=32 \
-	-D_IMAGE_EXE_MIN_CALC="((($(stat -c %s ../ldos/lDOSLOAD.BIN) + \
-		_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
-	-I ../lmacros/ -f bin -o ../bin/RxDOSLZ4.COM -l ../lst/RxDOSLZ4.LST \
-	-D_MAP=../map/RxDOSLZ4.MAP ../ldosboot/iniload.asm \
-	-D_INILOAD_SIGNATURE="'Rx'" \
-	-I ../ldosboot/ -I ../scanptab/ \
-	-D_PAYLOAD_FILE=inilz4.bin
-
-cd ../RxCMD
+cd RxCMD
 if [ -f RxCMD.ASM -a \
 	-f RxCMDCPY.ASM -a \
 	-f RxCMDDIR.ASM -a \
