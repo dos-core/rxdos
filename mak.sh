@@ -105,8 +105,17 @@ if (($use_build_revision_id)); then {
 mkdir -p "$reproducedir"
 
 if [ "$1" != havedt ]; then
-  nasm misc/passdt.asm -o tmp/scratch 2>&1 | \
-    perl -ne 'if (/.*(?:warning: using define )(-[UD].*?)( \[-w\+user\])?$/) { print $1."\n"; };' \
+  nasm misc/passdt.asm -o tmp/scratch 2>&1 \
+  -D_REVISIONID="'$build_revision_id'" \
+  -D_REVISIONID_LMACROS="${build_revision_id_lmacros:-''}" \
+  -D_REVISIONID_INSTSECT="${build_revision_id_instsect:-''}" \
+  -D_REVISIONID_SYMSNIP="${build_revision_id_symsnip:-''}" \
+  -D_REVISIONID_SCANPTAB="${build_revision_id_scanptab:-''}" \
+  -D_REVISIONID_INICOMP="${build_revision_id_inicomp:-''}" \
+  -D_REVISIONID_INICHECK="${build_revision_id_inicheck:-''}" \
+  -D_CHECKSUM="$use_build_inicheck" \
+  -D_REVISIONID_LDOSBOOT="${build_revision_id_ldosboot:-''}" \
+  | perl -ne 'if (/.*(?:warning: using define )(-[UD].*?)( \[-w\+user\])?$/) { print $1."\n"; };' \
      > "$reproducedir"/dt
 else
   shift
