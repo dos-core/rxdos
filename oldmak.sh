@@ -15,6 +15,8 @@ function nasmobj() {
 	nasm -Ox -D_REVISIONID="'$build_revision_id'" -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
 }
 
+[ -z "$use_build_revision_id" ] && use_build_revision_id=1
+
 (($use_build_revision_id)) &&
   if [ -z "$build_revision_id" ]; then {
     build_revision_id="hg $(hg id -i)"
