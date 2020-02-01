@@ -296,7 +296,10 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         -llst/"$build_name"C.LST -D_MAP=map/"$build_name"C.MAP \
         -D_PAYLOAD_FILE="'tmp/P$build_name.$inicomp_suffix'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
-	-D_IMAGE_EXE_MIN_CALC="(((_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
+        -D_IMAGE_EXE_MIN_CALC="(( \
+          - (payload.actual_end - payload) \
+          + "$size" \
+          + _IMAGE_EXE_AUTO_STACK + 15) & ~15)" \
       && ((use_build_inicheck)) && "$CHECKSUM" bin/"$build_name".COM
     } fi
   } else {
