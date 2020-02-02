@@ -790,7 +790,7 @@ sftinfo_NetworkSpooler	equ 0800h			; Device: Network spooler
 sftinfo_Protected	equ 0100h			; SFT entry can't be deleted
 sftinfo_Device		equ 0080h			; SFT entry is a character device if 1, file if 0
 sftinfo_Written		equ 0040h			; File: File data updated since opening
-sftinfo_Eof		equ 0040h			; Device: At EOF
+sftinfo_NotEof		equ 0040h			; Device: At EOF
 sftinfo_Drivemask	equ 003Fh			; File: Drive number
 sftinfo_Binary		equ 0020h			; Device: 1 binary, 0 ASCII
 sftinfo_Special		equ 0010h			; Device: Fast I/O, CON that supports Int29
@@ -812,7 +812,7 @@ sftDeviceIsRemote	equ 8000h			; Device is remote
 sftIoctl		equ 4000h			; ioctl also supported
 sftPipe			equ 2000h			; is pipe
 sftNetworkSpooler	equ 0800h			; network spooler
-sftEof			equ 0040h			; these flags valid only IF IsDevice
+sftNotEof		equ 0040h			; these flags valid only IF IsDevice
 sftBinary		equ 0020h			; 0 means ASCII
 sftSpecial		equ 0010h
 sftIsclock		equ 0008h

@@ -1037,7 +1037,7 @@ _SFTOpenFile:
 	and cx, sftinfo_Ioctl | sftinfo_Stdout | sftinfo_Stdin \
 		| sftinfo_Nul | sftinfo_Clock | sftinfo_Special \
 		| sftinfo_Pipe | sftinfo_NetworkSpooler
-	or cx, sftinfo_Device
+	or cx, sftinfo_Device | sftinfo_NotEof
 	mov word [ es:bx + sftDevInfo ], cx
 	mov word [ es:bx + sftDPB + _segment ], dx
 	mov word [ es:bx + sftDPB + _pointer ], ax	; device address
@@ -1132,8 +1132,8 @@ _SFTReadFile:
 	jz _SFTReadFile_34				; if file -->
 
 	xor cx, cx					; actually read
-	test word [ es:di + sftDevInfo ], sftEof	; is it end of file ?
-	ifnz _SFTReadFile_56				; if end of file -->
+	test byte [ es:di + sftDevInfo ], sftNotEof	; is it end of file ?
+	jz _SFTReadFile_56				; if end of file -->
 
 	xor dx, dx					; echo bytes
 	push word [ es:di + sftDPB + _segment ]
@@ -1190,7 +1190,7 @@ _SFTReadFile_26:
 
 _SFTReadFile_30:
 	getdarg es, di, _sftpointer
-	or word [ es:di + sftDevInfo ], byte sftEof	; set end of file flag
+	and byte [ es:di + sftDevInfo ], ~ sftNotEof	; set end of file flag
 	jmp _SFTReadFile_56
 
 		; is file read from stdin ?
@@ -1292,7 +1292,7 @@ _SFTReadLine:
 	test word [ es:di + sftDevInfo ], sftIsDevice
 	jz _SFTReadLine_14				; if file -->
 
-	test word [ es:di + sftDevInfo ], sftEof
+	test byte [ es:di + sftDevInfo ], sftNotEof
 	jz _SFTReadLine_34				; if at end of file --> (ZR)
 
 	xor dx, dx					; echo bytes
@@ -1304,7 +1304,7 @@ _SFTReadLine:
 	jnz _SFTReadLine_10				; if not end of file -->
 
 	getdarg es, di, _sftpointer
-	or word [ es:di + sftDevInfo ], byte sftEof	; set end of file flag
+	and byte [ es:di + sftDevInfo ], ~ sftNotEof	; set end of file flag
 
 _SFTReadLine_10:
 	getdarg es, di, _bufPtr
