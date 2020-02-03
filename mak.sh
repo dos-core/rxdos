@@ -173,7 +173,11 @@ rc=$?
 
 if [ -n "$LDOSBOOT_DIR" ]; then {
   if [ -n "$INICOMP_METHOD" ]; then {
-    if [ "$INICOMP_METHOD" == "lz4" ]; then {
+    if [ "$INICOMP_METHOD" == "brieflz" ]; then {
+      [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
+      inicomp_suffix=BLZ
+      inicomp_option=-D_BRIEFLZ
+    } elif [ "$INICOMP_METHOD" == "lz4" ]; then {
       [ -z "$INICOMP_LZ4C" ] && INICOMP_LZ4C=lz4c
       inicomp_suffix=LZ4
       inicomp_option=-D_LZ4
@@ -181,10 +185,10 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       [ -z "$INICOMP_SNZIP" ] && INICOMP_SNZIP=snzip
       inicomp_suffix=SZ
       inicomp_option=-D_SNAPPY
-    } elif [ "$INICOMP_METHOD" == "brieflz" ]; then {
-      [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
-      inicomp_suffix=BLZ
-      inicomp_option=-D_BRIEFLZ
+    } elif [ "$INICOMP_METHOD" == "exodecr" ]; then {
+      [ -z "$INICOMP_EXOMIZER" ] && INICOMP_EXOMIZER=exomizer
+      inicomp_suffix=EXO
+      inicomp_option=-D_EXODECR
     } elif [ "$INICOMP_METHOD" != "none" ]; then {
       echo "Invalid compression method selected: $INICOMP_METHOD"
       exit 1
@@ -222,12 +226,14 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       rm -f tmp/"$build_name"."$inicomp_suffix" \
         tmp/P"$build_name"."$inicomp_suffix"
       echo "Creating ${build_name}.COM"
-      if [ "$INICOMP_METHOD" == "lz4" ]; then {
+      if [ "$INICOMP_METHOD" == "brieflz" ]; then {
+        "$INICOMP_BLZPACK" "tmp/$build_name.BIN" "tmp/$build_name.BLZ"
+      } elif [ "$INICOMP_METHOD" == "lz4" ]; then {
         "$INICOMP_LZ4C" -9zfk -hc "tmp/$build_name.BIN" "tmp/$build_name.LZ4"
       } elif [ "$INICOMP_METHOD" == "snappy" ]; then {
         "$INICOMP_SNZIP" -ck "tmp/$build_name.BIN" > "tmp/$build_name.SZ"
-      } elif [ "$INICOMP_METHOD" == "brieflz" ]; then {
-        "$INICOMP_BLZPACK" "tmp/$build_name.BIN" "tmp/$build_name.BLZ"
+      } elif [ "$INICOMP_METHOD" == "exodecr" ]; then {
+        "$INICOMP_EXOMIZER" raw "tmp/$build_name.BIN" -o "tmp/$build_name.EXO"
       } else {
         echo "Internal error!"
         exit 1
