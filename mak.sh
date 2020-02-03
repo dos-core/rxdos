@@ -264,7 +264,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
           + _IMAGE_EXE_AUTO_STACK + 15) & ~15)" \
       && decompsize="$(( $( \
         dosemu -K "${PWD}/tmp" -E T"$build_name".COM -dumb -quiet 2> /dev/null \
-        | sed -re '/^(about to execute|error:)/Id;s/[\r\n]+$//g' \
+        | tee /dev/stderr | sed -re '/^(about to execute|error:)/Id;s/[\r\n]+$//g' \
         ) * 16 ))"
           # -512 in the iniload build is for inicomp's INIT0
       rc2=$?
