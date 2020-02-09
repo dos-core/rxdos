@@ -245,6 +245,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
         "${dtarray[@]}" \
         $build_inicomp_options -otmp/T"$build_name"."$inicomp_suffix" \
+        -l lst/T"$build_name".LST \
+        -D_MAP="map/T$build_name.MAP" \
         -D_PAYLOAD_FILE="'tmp/$build_name.$inicomp_suffix'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_TEST_PROGRAM \
