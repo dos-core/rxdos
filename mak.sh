@@ -173,6 +173,7 @@ rc=$?
 
 if [ -n "$LDOSBOOT_DIR" ]; then {
   if [ -n "$INICOMP_METHOD" ]; then {
+    inicomp_additional_memory=0
     if [ "$INICOMP_METHOD" == "brieflz" ]; then {
       [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
       inicomp_suffix=BLZ
@@ -189,6 +190,11 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       [ -z "$INICOMP_EXOMIZER" ] && INICOMP_EXOMIZER=exomizer
       inicomp_suffix=EXO
       inicomp_option=-D_EXODECR
+    } elif [ "$INICOMP_METHOD" == "x" ]; then {
+      [ -z "$INICOMP_X" ] && INICOMP_X=x
+      inicomp_suffix=X
+      inicomp_option=-D_X
+      inicomp_additional_memory="$(( 4 * 256 * 256 ))"
     } elif [ "$INICOMP_METHOD" != "none" ]; then {
       echo "Invalid compression method selected: $INICOMP_METHOD"
       exit 1
@@ -234,6 +240,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         "$INICOMP_SNZIP" -ck "tmp/$build_name.BIN" > "tmp/$build_name.SZ"
       } elif [ "$INICOMP_METHOD" == "exodecr" ]; then {
         "$INICOMP_EXOMIZER" raw "tmp/$build_name.BIN" -o "tmp/$build_name.EXO"
+      } elif [ "$INICOMP_METHOD" == "x" ]; then {
+        "$INICOMP_X" -9zfk "tmp/$build_name.BIN" "tmp/$build_name.X"
       } else {
         echo "Internal error!"
         exit 1
@@ -261,7 +269,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         -D_IMAGE_EXE_MIN_CALC="((-512 \
           + $(stat -c %s "tmp/$build_name.$inicomp_suffix") \
           + $(stat -c %s "tmp/$build_name.BIN") \
-          + _IMAGE_EXE_AUTO_STACK + 15) & ~15)" \
+          + _IMAGE_EXE_AUTO_STACK + 15 \
+	  + $inicomp_additional_memory) & ~15)" \
       && decompsize="$(( $( \
         dosemu -K "${PWD}/tmp" -E T"$build_name".COM -dumb -quiet 2> /dev/null \
         | tee /dev/stderr | sed -re '/^(about to execute|error:)/Id;s/[\r\n]+$//g' \
@@ -272,6 +281,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       (($use_build_decomp_test)) || decompsize="$(( \
         + $(stat -c %s "tmp/$build_name.$inicomp_suffix") \
         + $(stat -c %s "tmp/$build_name.BIN") \
+	+ $inicomp_additional_memory
         + 4096 ))"
         # 4096 is a heuristic guess for larger than size of the decompressor
       size=0
