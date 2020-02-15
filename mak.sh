@@ -194,7 +194,9 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       [ -z "$INICOMP_X" ] && INICOMP_X=x
       inicomp_suffix=X
       inicomp_option=-D_X
-      inicomp_additional_memory="$(( 4 * 256 * 256 ))"
+      inicomp_additional_memory="$(( 4 * 256 * 256 + 16384 ))"
+	# 4 * 256 * 256 = CONTEXTSIZE
+	# 16384 = threshold for multi-layer decompression
     } elif [ "$INICOMP_METHOD" != "none" ]; then {
       echo "Invalid compression method selected: $INICOMP_METHOD"
       exit 1
