@@ -253,10 +253,13 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
         "${dtarray[@]}" \
         $build_inicomp_options -otmp/T"$build_name"."$inicomp_suffix" \
+        -l lst/T"$build_name".LST \
+        -D_MAP="map/T$build_name.MAP" \
         -D_PAYLOAD_FILE="'tmp/$build_name.$inicomp_suffix'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_TEST_PROGRAM \
         -D_TEST_PROGRAM_DECOMPRESSED_SIZE="$(stat -c %s "tmp/$build_name.BIN")" \
+        -D_INCLUDE_UNCOMPRESSED -D_UNCOMPRESSED_FILE="'tmp/$build_name.BIN'" \
       && "$NASM" "${LDOSBOOT_DIR%/}"/iniload.asm "$options_i_lmacros" \
 	"$options_i_ldosboot" \
 	"$options_i_scanptab" \
