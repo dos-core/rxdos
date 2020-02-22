@@ -20,12 +20,13 @@
 [ -z "$INICHECK_DIR" ] && INICHECK_DIR=crc16-t/
 [ -z "$INICOMP_DIR" ] && INICOMP_DIR=inicomp/
 [ -z "$INICOMP_METHOD" ] && INICOMP_METHOD=lz4
-	# none or brieflz or lz4 or snappy or exodecr or x
+	# none or brieflz or lz4 or snappy or exodecr or x or heatshrink
 [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
 [ -z "$INICOMP_LZ4C" ] && INICOMP_LZ4C=lz4c
 [ -z "$INICOMP_SNZIP" ] && INICOMP_SNZIP=snzip
 [ -z "$INICOMP_EXOMIZER" ] && INICOMP_EXOMIZER=exomizer
 [ -z "$INICOMP_X" ] && INICOMP_X=x
+[ -z "$INICOMP_HEATSHRINK" ] && INICOMP_HEATSHRINK=heatshrink
 
 [ -z "$NASM" ] && NASM=nasm
 [ -z "$CHECKSUM" ] && CHECKSUM="${INICHECK_DIR%/}"/iniload/checksum

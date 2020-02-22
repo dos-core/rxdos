@@ -197,6 +197,10 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       inicomp_additional_memory="$(( 4 * 256 * 256 + 16384 ))"
 	# 4 * 256 * 256 = CONTEXTSIZE
 	# 16384 = threshold for multi-layer decompression
+    } elif [ "$INICOMP_METHOD" == "heatshrink" ]; then {
+      [ -z "$INICOMP_HEATSHRINK" ] && INICOMP_HEATSHRINK=heatshrink
+      inicomp_suffix=HS
+      inicomp_option=-D_HEATSHRINK
     } elif [ "$INICOMP_METHOD" != "none" ]; then {
       echo "Invalid compression method selected: $INICOMP_METHOD"
       exit 1
@@ -244,6 +248,11 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         "$INICOMP_EXOMIZER" raw "tmp/$build_name.BIN" -o "tmp/$build_name.EXO"
       } elif [ "$INICOMP_METHOD" == "x" ]; then {
         "$INICOMP_X" -9zfk "tmp/$build_name.BIN" "tmp/$build_name.X"
+      } elif [ "$INICOMP_METHOD" == "heatshrink" ]; then {
+	w=14
+	l=6
+	"$INICOMP_HEATSHRINK" -ve -w $w -l $l "tmp/$build_name.BIN" "tmp/$build_name.THS"
+	( printf "\x$(printf "%02X" "$w")\x$(printf "%02X" "$l")"; cat "tmp/$build_name.THS" ) > "tmp/$build_name.HS"
       } else {
         echo "Internal error!"
         exit 1
