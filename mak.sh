@@ -250,10 +250,32 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       } elif [ "$INICOMP_METHOD" == "x" ]; then {
         "$INICOMP_X" -9zfk "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.X"
       } elif [ "$INICOMP_METHOD" == "heatshrink" ]; then {
-	w=14
-	l=6
-	"$INICOMP_HEATSHRINK" -ve -w $w -l $l "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.THS"
-	( printf "\x$(printf "%02X" "$w")\x$(printf "%02X" "$l")"; cat "tmp/$inicomp_suffix/$build_name.THS" ) > "tmp/$inicomp_suffix/$build_name.HS"
+	rm -f "tmp/$inicomp_suffix/$build_name.HS"
+	winmsg=""
+	for w in 10 11 12 13 14; do
+	  for l in 4 5 6 7 8 9 10 11 12 13 14; do
+	    ((l >= w)) && continue
+	    if msg="$("$INICOMP_HEATSHRINK" -ve -w $w -l $l "tmp/$build_name.BIN" "tmp/$inicomp_suffix/w${w}l$l.bin")"; then
+	      if [ ! -f "tmp/$inicomp_suffix/$build_name.HS" ] \
+		|| (( ( $(stat -c %s "tmp/$inicomp_suffix/w${w}l$l.bin") + 2 ) <= $(stat -c %s "tmp/$inicomp_suffix/$build_name.HS") )); then
+		echo -ne "!"
+		winmsg="$msg"
+		printf "\x$(printf "%02X" "$w")\x$(printf "%02X" "$l")" > "tmp/$inicomp_suffix/$build_name.HS"
+		cat "tmp/$inicomp_suffix/w${w}l$l.bin" >> "tmp/$inicomp_suffix/$build_name.HS"
+	      else
+		echo -ne "."
+	      fi
+	    fi
+	  done
+	done
+	echo ""
+	if [ -z "$winmsg" ]; then
+	  echo "Error: Compression failure!"
+	  false
+	else
+	  echo "$winmsg"
+	  true
+	fi
       } else {
         echo "Internal error!"
         exit 1
