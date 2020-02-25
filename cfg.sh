@@ -19,7 +19,7 @@
 [ -z "$SCANPTAB_DIR" ] && SCANPTAB_DIR=scanptab/
 [ -z "$INICHECK_DIR" ] && INICHECK_DIR=crc16-t/
 [ -z "$INICOMP_DIR" ] && INICOMP_DIR=inicomp/
-[ -z "$INICOMP_METHOD" ] && INICOMP_METHOD=lz4
+[ -z "$INICOMP_METHOD" ] && INICOMP_METHOD="brieflz lz4 snappy exodecr x heatshrink"
 	# none or brieflz or lz4 or snappy or exodecr or x or heatshrink
 [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
 [ -z "$INICOMP_LZ4C" ] && INICOMP_LZ4C=lz4c
