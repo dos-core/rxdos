@@ -313,7 +313,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	  + $inicomp_additional_memory) & ~15)" \
       && decompsize="$(( $( \
         dosemu -K "${PWD}/tmp/$inicomp_suffix" -E T"$build_name".COM -dumb -quiet 2> /dev/null \
-        | tee /dev/stderr | sed -re '/^(about to execute|error:)/Id;s/[\r\n]+$//g' \
+        | tee /dev/stderr | sed -re '/^(about to execute|error:|note:|info:)/Id;s/[\r\n]+$//g' \
         ) * 16 ))"
           # -512 in the iniload build is for inicomp's INIT0
       rc2=$?
