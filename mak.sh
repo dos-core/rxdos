@@ -172,40 +172,6 @@ echo "Creating $build_name.BIN"
 rc=$?
 
 if [ -n "$LDOSBOOT_DIR" ]; then {
-  if [ -n "$INICOMP_METHOD" ]; then {
-    inicomp_additional_memory=0
-    if [ "$INICOMP_METHOD" == "brieflz" ]; then {
-      [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
-      inicomp_suffix=BLZ
-      inicomp_option=-D_BRIEFLZ
-    } elif [ "$INICOMP_METHOD" == "lz4" ]; then {
-      [ -z "$INICOMP_LZ4C" ] && INICOMP_LZ4C=lz4c
-      inicomp_suffix=LZ4
-      inicomp_option=-D_LZ4
-    } elif [ "$INICOMP_METHOD" == "snappy" ]; then {
-      [ -z "$INICOMP_SNZIP" ] && INICOMP_SNZIP=snzip
-      inicomp_suffix=SZ
-      inicomp_option=-D_SNAPPY
-    } elif [ "$INICOMP_METHOD" == "exodecr" ]; then {
-      [ -z "$INICOMP_EXOMIZER" ] && INICOMP_EXOMIZER=exomizer
-      inicomp_suffix=EXO
-      inicomp_option=-D_EXODECR
-    } elif [ "$INICOMP_METHOD" == "x" ]; then {
-      [ -z "$INICOMP_X" ] && INICOMP_X=x
-      inicomp_suffix=X
-      inicomp_option=-D_X
-      inicomp_additional_memory="$(( 4 * 256 * 256 + 16384 ))"
-	# 4 * 256 * 256 = CONTEXTSIZE
-	# 16384 = threshold for multi-layer decompression
-    } elif [ "$INICOMP_METHOD" == "heatshrink" ]; then {
-      [ -z "$INICOMP_HEATSHRINK" ] && INICOMP_HEATSHRINK=heatshrink
-      inicomp_suffix=HS
-      inicomp_option=-D_HEATSHRINK
-    } elif [ "$INICOMP_METHOD" != "none" ]; then {
-      echo "Invalid compression method selected: $INICOMP_METHOD"
-      exit 1
-    } fi
-  } fi
   if [ -f "tmp/$build_name.BIN" ]; then {
     echo "Creating ${build_name}U.COM"
     "$NASM" -Ox "${LDOSBOOT_DIR%/}"/iniload.asm -f bin \
@@ -231,25 +197,62 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
     && perl -0777i -pe 's/(Uses inicomp[^\0]*\0)/"\0" x length $1/ge' \
       bin/"$build_name"U.COM \
     && ((use_build_inicheck)) && "$CHECKSUM" bin/"$build_name"U.COM
+    ls -lgG bin/"$build_name"U.COM
     if [ -z "$INICOMP_METHOD" -o "$INICOMP_METHOD" == "none" ]; then {
       fun_delete_compressed
     } else {
+      winmethod=""
       fun_delete_compressed silent
+      for method in $INICOMP_METHOD; do
+      	inicomp_additional_memory=0
+      	if [ "$method" == "brieflz" ]; then {
+      	  [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
+      	  inicomp_suffix=BLZ
+      	  inicomp_option=-D_BRIEFLZ
+      	} elif [ "$method" == "lz4" ]; then {
+      	  [ -z "$INICOMP_LZ4C" ] && INICOMP_LZ4C=lz4c
+      	  inicomp_suffix=LZ4
+          inicomp_option=-D_LZ4
+      	} elif [ "$method" == "snappy" ]; then {
+      	  [ -z "$INICOMP_SNZIP" ] && INICOMP_SNZIP=snzip
+      	  inicomp_suffix=SZ
+      	  inicomp_option=-D_SNAPPY
+      	} elif [ "$method" == "exodecr" ]; then {
+      	  [ -z "$INICOMP_EXOMIZER" ] && INICOMP_EXOMIZER=exomizer
+      	  inicomp_suffix=EXO
+      	  inicomp_option=-D_EXODECR
+      	} elif [ "$method" == "x" ]; then {
+      	  [ -z "$INICOMP_X" ] && INICOMP_X=x
+      	  inicomp_suffix=X
+      	  inicomp_option=-D_X
+      	  inicomp_additional_memory="$(( 4 * 256 * 256 + 16384 ))"
+		# 4 * 256 * 256 = CONTEXTSIZE
+		# 16384 = threshold for multi-layer decompression
+	} elif [ "$method" == "heatshrink" ]; then {
+	  [ -z "$INICOMP_HEATSHRINK" ] && INICOMP_HEATSHRINK=heatshrink
+	  inicomp_suffix=HS
+	  inicomp_option=-D_HEATSHRINK
+	} elif [ "$method" == "none" ]; then {
+	  continue
+	} else {
+	  echo "Invalid compression method selected: $method"
+	  exit 1
+	} fi
       mkdir -p tmp/"$inicomp_suffix"
       rm -f tmp/"$inicomp_suffix"/"$build_name"."$inicomp_suffix" \
         tmp/"$inicomp_suffix"/P"$build_name".BIN
       echo "Creating ${build_name}.COM"
-      if [ "$INICOMP_METHOD" == "brieflz" ]; then {
+      if [ "$method" == "brieflz" ]; then {
         "$INICOMP_BLZPACK" "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.BLZ"
-      } elif [ "$INICOMP_METHOD" == "lz4" ]; then {
+      } elif [ "$method" == "lz4" ]; then {
         "$INICOMP_LZ4C" -9zfk -hc "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.LZ4"
-      } elif [ "$INICOMP_METHOD" == "snappy" ]; then {
+      } elif [ "$method" == "snappy" ]; then {
         "$INICOMP_SNZIP" -ck "tmp/$build_name.BIN" > "tmp/$inicomp_suffix/$build_name.SZ"
-      } elif [ "$INICOMP_METHOD" == "exodecr" ]; then {
+      } elif [ "$method" == "exodecr" ]; then {
         "$INICOMP_EXOMIZER" raw "tmp/$build_name.BIN" -o "tmp/$inicomp_suffix/$build_name.EXO"
-      } elif [ "$INICOMP_METHOD" == "x" ]; then {
+      } elif [ "$method" == "x" ]; then {
         "$INICOMP_X" -9zfk "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.X"
-      } elif [ "$INICOMP_METHOD" == "heatshrink" ]; then {
+      } elif [ "$method" == "heatshrink" ]; then {
 	rm -f "tmp/$inicomp_suffix/$build_name.HS"
 	winmsg=""
 	for w in 10 11 12 13 14; do
@@ -287,8 +290,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
         "${dtarray[@]}" \
         $build_inicomp_options -otmp/"$inicomp_suffix"/T"$build_name".BIN \
-        -l lst/T"$build_name".LST \
-        -D_MAP="map/T$build_name.MAP" \
+        -l tmp/"$inicomp_suffix"/T"$build_name".LST \
+        -D_MAP="tmp/$inicomp_suffix/T$build_name.MAP" \
         -D_PAYLOAD_FILE="'tmp/$inicomp_suffix/$build_name.$inicomp_suffix'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_TEST_PROGRAM \
@@ -345,15 +348,32 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         "${dtarray[@]}" \
 	-D_INILOAD_SIGNATURE="'Rx'" \
         -I"${INICHECK_DIR%/}"/iniload/ -D_CHECKSUM="$use_build_inicheck" \
-        $build_iniload_options -obin/"$build_name".COM \
-        -llst/"$build_name"C.LST -D_MAP=map/"$build_name"C.MAP \
+        $build_iniload_options -otmp/"$inicomp_suffix"/"$build_name".COM \
+        -l tmp/"$inicomp_suffix"/"$build_name"C.LST -D_MAP=tmp/"$inicomp_suffix"/"$build_name"C.MAP \
         -D_PAYLOAD_FILE="'tmp/$inicomp_suffix/P$build_name.BIN'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_IMAGE_EXE_MIN_CALC="(( \
           - (payload.actual_end - payload) \
           + "$size" \
           + _IMAGE_EXE_AUTO_STACK + 15) & ~15)" \
-      && ((use_build_inicheck)) && "$CHECKSUM" bin/"$build_name".COM
+      && ((use_build_inicheck)) && "$CHECKSUM" tmp/"$inicomp_suffix"/"$build_name".COM
+	if [ -f tmp/"$inicomp_suffix"/"$build_name".COM ]; then
+	  if [ ! -f "bin/$build_name.COM" ] \
+	    || (( $(stat -c %s tmp/"$inicomp_suffix"/"$build_name".COM) <= $(stat -c %s "bin/$build_name.COM") )); then
+	    winmethod="$method"
+	    cp -a tmp/"$inicomp_suffix"/"$build_name".COM bin
+	    cp -a tmp/"$inicomp_suffix"/"$build_name"C.LST lst
+	    cp -a tmp/"$inicomp_suffix"/"$build_name"C.MAP map
+	  fi
+	fi
+      done
+	if [ -n "$winmethod" ]; then
+	  echo "Note: Method $winmethod selected."
+	  ls -lgG bin/"$build_name".COM
+	else
+	  echo Error: No compression method succeeded.
+	  false
+	fi
     } fi
   } else {
     echo "Deleting ${build_name}U.COM"
