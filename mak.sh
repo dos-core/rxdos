@@ -205,6 +205,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       fun_delete_compressed silent
       for method in $INICOMP_METHOD; do
       	inicomp_additional_memory=0
+	inicomp_def_p=""
+	inicomp_switch_p=""
       	if [ "$method" == "brieflz" ]; then {
       	  [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
       	  inicomp_suffix=BLZ
@@ -221,6 +223,9 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       	  [ -z "$INICOMP_EXOMIZER" ] && INICOMP_EXOMIZER=exomizer
       	  inicomp_suffix=EXO
       	  inicomp_option=-D_EXODECR
+	  [ -n "$INICOMP_EXOMIZER_P" ] && inicomp_def_p="-D_P=$INICOMP_EXOMIZER_P"
+	  [ -n "$INICOMP_EXOMIZER_P" ] && inicomp_switch_p="-P$INICOMP_EXOMIZER_P"
+	  [ -n "$INICOMP_EXOMIZER_P" ] && echo "Using P = $INICOMP_EXOMIZER_P"
       	} elif [ "$method" == "x" ]; then {
       	  [ -z "$INICOMP_X" ] && INICOMP_X=x
       	  inicomp_suffix=X
@@ -249,7 +254,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       } elif [ "$method" == "snappy" ]; then {
         "$INICOMP_SNZIP" -ck "tmp/$build_name.BIN" > "tmp/$inicomp_suffix/$build_name.SZ"
       } elif [ "$method" == "exodecr" ]; then {
-        "$INICOMP_EXOMIZER" raw "tmp/$build_name.BIN" -o "tmp/$inicomp_suffix/$build_name.EXO"
+        "$INICOMP_EXOMIZER" raw $inicomp_switch_p "tmp/$build_name.BIN" -o "tmp/$inicomp_suffix/$build_name.EXO"
       } elif [ "$method" == "x" ]; then {
         "$INICOMP_X" -9zfk "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.X"
       } elif [ "$method" == "heatshrink" ]; then {
@@ -289,6 +294,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       && "$NASM" "${INICOMP_DIR%/}"/inicomp.asm "$options_i_lmacros" \
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
         "${dtarray[@]}" \
+	$inicomp_def_p \
         $build_inicomp_options -otmp/"$inicomp_suffix"/T"$build_name".BIN \
         -l tmp/"$inicomp_suffix"/T"$build_name".LST \
         -D_MAP="tmp/$inicomp_suffix/T$build_name.MAP" \
