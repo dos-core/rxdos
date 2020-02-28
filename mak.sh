@@ -17,6 +17,7 @@ ppre="P"
 tpre="T"
 usuf="U"
 csuf="C"
+lpre=""
 
 blzext="BLZ"
 lz4ext="LZ4"
@@ -28,8 +29,8 @@ hsext="HS"
 
 function fun_delete_compressed {
   [ "$1" != "silent" ] && echo "Deleting ${build_name}.$comext"
-  rm -f ${rootpath}bin/"$build_name".$comext \
-    ${rootpath}lst/"$build_name"$csuf.$lstext ${rootpath}map/"$build_name"$csuf.$mapext
+  rm -f ${rootpath}bin/$lpre"$build_name".$comext \
+    ${rootpath}lst/$lpre"$build_name"$csuf.$lstext ${rootpath}map/$lpre"$build_name"$csuf.$mapext
 }
 
 . cfg.sh
@@ -193,7 +194,7 @@ rc=$?
 
 if [ -n "$LDOSBOOT_DIR" ]; then {
   if [ -f "${rootpath}tmp/$build_name.$binbigext" ]; then {
-    echo "Creating ${build_name}$usuf.$comext"
+    echo "Creating $lpre${build_name}$usuf.$comext"
     "$NASM" -Ox "${LDOSBOOT_DIR%/}"/iniload.asm -f bin \
       "$options_i_lmacros" \
       "$options_i_ldosboot" \
@@ -209,15 +210,15 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       "${dtarray[@]}" \
       -D_INILOAD_SIGNATURE="'Rx'" \
       -I"${INICHECK_DIR%/}"/iniload/ -D_CHECKSUM="$use_build_inicheck" \
-      $build_iniload_options -o${rootpath}bin/"$build_name"$usuf.$comext \
-      -l${rootpath}lst/"$build_name"$usuf.$lstext -D_MAP=${rootpath}map/"$build_name"$usuf.$mapext \
+      $build_iniload_options -o${rootpath}bin/$lpre"$build_name"$usuf.$comext \
+      -l${rootpath}lst/$lpre"$build_name"$usuf.$lstext -D_MAP=${rootpath}map/$lpre"$build_name"$usuf.$mapext \
       -D_PAYLOAD_FILE="'${rootpath}tmp/$build_name.$binbigext'" -D_EXEC_OFFSET=32 \
       -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
       -D_IMAGE_EXE_MIN_CALC="(((_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
     && perl -0777i -pe 's/(Uses inicomp[^\0]*\0)/"\0" x length $1/ge' \
-      ${rootpath}bin/"$build_name"$usuf.$comext \
-    && ((use_build_inicheck)) && "$CHECKSUM" ${rootpath}bin/"$build_name"$usuf.$comext
-    ls -lgG ${rootpath}bin/"$build_name"$usuf.$comext
+      ${rootpath}bin/$lpre"$build_name"$usuf.$comext \
+    && ((use_build_inicheck)) && "$CHECKSUM" ${rootpath}bin/$lpre"$build_name"$usuf.$comext
+    ls -lgG ${rootpath}bin/$lpre"$build_name"$usuf.$comext
     if [ -z "$INICOMP_METHOD" -o "$INICOMP_METHOD" == "none" ]; then {
       fun_delete_compressed
     } else {
@@ -266,7 +267,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       mkdir -p ${rootpath}tmp/"$inicomp_suffix"
       rm -f ${rootpath}tmp/"$inicomp_suffix"/"$build_name"."$inicomp_suffix" \
         ${rootpath}tmp/"$inicomp_suffix"/$ppre"$build_name".$binbigext
-      echo "Creating ${build_name}.$comext"
+      echo "Creating $lpre${build_name}.$comext"
       if [ "$method" == "brieflz" ]; then {
         "$INICOMP_BLZPACK" "${rootpath}tmp/$build_name.$binbigext" "${rootpath}tmp/$inicomp_suffix/$build_name.$blzext"
       } elif [ "$method" == "lz4" ]; then {
@@ -374,37 +375,37 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         "${dtarray[@]}" \
 	-D_INILOAD_SIGNATURE="'Rx'" \
         -I"${INICHECK_DIR%/}"/iniload/ -D_CHECKSUM="$use_build_inicheck" \
-        $build_iniload_options -o${rootpath}tmp/"$inicomp_suffix"/"$build_name".$comext \
-        -l ${rootpath}tmp/"$inicomp_suffix"/"$build_name"$csuf.$lstext -D_MAP=${rootpath}tmp/"$inicomp_suffix"/"$build_name"$csuf.$mapext \
+        $build_iniload_options -o${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name".$comext \
+        -l ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name"$csuf.$lstext -D_MAP=${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name"$csuf.$mapext \
         -D_PAYLOAD_FILE="'${rootpath}tmp/$inicomp_suffix/$ppre$build_name.$binbigext'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_IMAGE_EXE_MIN_CALC="(( \
           - (payload.actual_end - payload) \
           + "$size" \
           + _IMAGE_EXE_AUTO_STACK + 15) & ~15)" \
-      && ((use_build_inicheck)) && "$CHECKSUM" ${rootpath}tmp/"$inicomp_suffix"/"$build_name".$comext
-	if [ -f ${rootpath}tmp/"$inicomp_suffix"/"$build_name".$comext ]; then
-	  if [ ! -f "${rootpath}bin/$build_name.$comext" ] \
-	    || (( $(stat -c %s ${rootpath}tmp/"$inicomp_suffix"/"$build_name".$comext) <= $(stat -c %s "${rootpath}bin/$build_name.$comext") )); then
+      && ((use_build_inicheck)) && "$CHECKSUM" ${rootpath}tmp/$lpre"$inicomp_suffix"/"$build_name".$comext
+	if [ -f ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name".$comext ]; then
+	  if [ ! -f "${rootpath}bin/$lpre$build_name.$comext" ] \
+	    || (( $(stat -c %s ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name".$comext) <= $(stat -c %s "${rootpath}bin/$lpre$build_name.$comext") )); then
 	    winmethod="$method"
-	    cp -a ${rootpath}tmp/"$inicomp_suffix"/"$build_name".$comext bin
-	    cp -a ${rootpath}tmp/"$inicomp_suffix"/"$build_name"$csuf.$lstext lst
-	    cp -a ${rootpath}tmp/"$inicomp_suffix"/"$build_name"$csuf.$mapext map
+	    cp -a ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name".$comext bin
+	    cp -a ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name"$csuf.$lstext lst
+	    cp -a ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name"$csuf.$mapext map
 	  fi
 	fi
       done
 	if [ -n "$winmethod" ]; then
 	  echo "Note: Method $winmethod selected."
-	  ls -lgG ${rootpath}bin/"$build_name".$comext
+	  ls -lgG ${rootpath}bin/$lpre"$build_name".$comext
 	else
 	  echo Error: No compression method succeeded.
 	  false
 	fi
     } fi
   } else {
-    echo "Deleting ${build_name}$usuf.$comext"
-    rm -f ${rootpath}bin/"$build_name"$usuf.$comext \
-      ${rootpath}lst/"$build_name"$usuf.$lstext ${rootpath}map/"$build_name"$usuf.$mapext
+    echo "Deleting $lpre${build_name}$usuf.$comext"
+    rm -f ${rootpath}bin/$lpre"$build_name"$usuf.$comext \
+      ${rootpath}lst/$lpre"$build_name"$usuf.$lstext ${rootpath}map/$lpre"$build_name"$usuf.$mapext
     fun_delete_compressed
   } fi
 } fi
