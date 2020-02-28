@@ -13,6 +13,10 @@ comext="COM"
 mapext="MAP"
 lstext="LST"
 binbigext="BIN"
+
+lstdir="lst/"
+mapdir="map/"
+
 ppre="P"
 tpre="T"
 usuf="U"
@@ -30,7 +34,7 @@ hsext="HS"
 function fun_delete_compressed {
   [ "$1" != "silent" ] && echo "Deleting ${build_name}.$comext"
   rm -f ${rootpath}bin/$lpre"$build_name".$comext \
-    ${rootpath}lst/$lpre"$build_name"$csuf.$lstext ${rootpath}map/$lpre"$build_name"$csuf.$mapext
+    ${rootpath}${lstdir}$lpre"$build_name"$csuf.$lstext ${rootpath}${mapdir}$lpre"$build_name"$csuf.$mapext
 }
 
 . cfg.sh
@@ -180,7 +184,7 @@ echo "Creating $build_name.$binbigext"
   "$options_i_lmacros" \
   "$options_i_scanptab" \
   -o ${rootpath}tmp/"$build_name".$binbigext \
-  -l ${rootpath}lst/"$build_name".$lstext -D_MAP=${rootpath}map/"$build_name".$mapext \
+  -l ${rootpath}${lstdir}"$build_name".$lstext -D_MAP=${rootpath}${mapdir}"$build_name".$mapext \
   -D_REVISIONID="'$build_revision_id'" \
   -D_REVISIONID_LMACROS="${build_revision_id_lmacros:-''}" \
   -D_REVISIONID_INSTSECT="${build_revision_id_instsect:-''}" \
@@ -211,7 +215,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       -D_INILOAD_SIGNATURE="'Rx'" \
       -I"${INICHECK_DIR%/}"/iniload/ -D_CHECKSUM="$use_build_inicheck" \
       $build_iniload_options -o${rootpath}bin/$lpre"$build_name"$usuf.$comext \
-      -l${rootpath}lst/$lpre"$build_name"$usuf.$lstext -D_MAP=${rootpath}map/$lpre"$build_name"$usuf.$mapext \
+      -l${rootpath}${lstdir}$lpre"$build_name"$usuf.$lstext -D_MAP=${rootpath}${mapdir}$lpre"$build_name"$usuf.$mapext \
       -D_PAYLOAD_FILE="'${rootpath}tmp/$build_name.$binbigext'" -D_EXEC_OFFSET=32 \
       -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
       -D_IMAGE_EXE_MIN_CALC="(((_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
@@ -405,7 +409,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
   } else {
     echo "Deleting $lpre${build_name}$usuf.$comext"
     rm -f ${rootpath}bin/$lpre"$build_name"$usuf.$comext \
-      ${rootpath}lst/$lpre"$build_name"$usuf.$lstext ${rootpath}map/$lpre"$build_name"$usuf.$mapext
+      ${rootpath}${lstdir}$lpre"$build_name"$usuf.$lstext ${rootpath}${mapdir}$lpre"$build_name"$usuf.$mapext
     fun_delete_compressed
   } fi
 } fi
