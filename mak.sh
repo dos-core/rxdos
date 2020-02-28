@@ -6,10 +6,28 @@
 #
 # DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
 
+
+comext="COM"
+mapext="MAP"
+lstext="LST"
+binbigext="BIN"
+ppre="P"
+tpre="T"
+usuf="U"
+csuf="C"
+
+blzext="BLZ"
+lz4ext="LZ4"
+szext="SZ"
+exoext="EXO"
+xext="X"
+hsext="HS"
+
+
 function fun_delete_compressed {
-  [ "$1" != "silent" ] && echo "Deleting ${build_name}.COM"
-  rm -f bin/"$build_name".COM \
-    lst/"$build_name"C.LST map/"$build_name"C.MAP
+  [ "$1" != "silent" ] && echo "Deleting ${build_name}.$comext"
+  rm -f bin/"$build_name".$comext \
+    lst/"$build_name"$csuf.$lstext map/"$build_name"$csuf.$mapext
 }
 
 . cfg.sh
@@ -148,8 +166,8 @@ done < "$reproducedir"/dt
 
 [ -z "$STACKSIZE" ] && STACKSIZE=2048
 
-echo "Creating $build_name.BIN"
-[ -f bin/"$build_name".COM ] && rm bin/"$build_name".COM
+echo "Creating $build_name.$binbigext"
+[ -f bin/"$build_name".$comext ] && rm bin/"$build_name".$comext
 # Delete the file first so in case the actual assembly fails,
 #  there doesn't remain a stale result of the shim assembly.
 "$NASM" -Ox ldos/init.asm -f bin \
@@ -158,8 +176,8 @@ echo "Creating $build_name.BIN"
   "$options_i_instsect" \
   "$options_i_lmacros" \
   "$options_i_scanptab" \
-  -o tmp/"$build_name".BIN \
-  -l lst/"$build_name".LST -D_MAP=map/"$build_name".MAP \
+  -o tmp/"$build_name".$binbigext \
+  -l lst/"$build_name".$lstext -D_MAP=map/"$build_name".$mapext \
   -D_REVISIONID="'$build_revision_id'" \
   -D_REVISIONID_LMACROS="${build_revision_id_lmacros:-''}" \
   -D_REVISIONID_INSTSECT="${build_revision_id_instsect:-''}" \
@@ -172,8 +190,8 @@ echo "Creating $build_name.BIN"
 rc=$?
 
 if [ -n "$LDOSBOOT_DIR" ]; then {
-  if [ -f "tmp/$build_name.BIN" ]; then {
-    echo "Creating ${build_name}U.COM"
+  if [ -f "tmp/$build_name.$binbigext" ]; then {
+    echo "Creating ${build_name}$usuf.$comext"
     "$NASM" -Ox "${LDOSBOOT_DIR%/}"/iniload.asm -f bin \
       "$options_i_lmacros" \
       "$options_i_ldosboot" \
@@ -189,15 +207,15 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       "${dtarray[@]}" \
       -D_INILOAD_SIGNATURE="'Rx'" \
       -I"${INICHECK_DIR%/}"/iniload/ -D_CHECKSUM="$use_build_inicheck" \
-      $build_iniload_options -obin/"$build_name"U.COM \
-      -llst/"$build_name"U.LST -D_MAP=map/"$build_name"U.MAP \
-      -D_PAYLOAD_FILE="'tmp/$build_name.BIN'" -D_EXEC_OFFSET=32 \
+      $build_iniload_options -obin/"$build_name"$usuf.$comext \
+      -llst/"$build_name"$usuf.$lstext -D_MAP=map/"$build_name"$usuf.$mapext \
+      -D_PAYLOAD_FILE="'tmp/$build_name.$binbigext'" -D_EXEC_OFFSET=32 \
       -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
       -D_IMAGE_EXE_MIN_CALC="(((_IMAGE_EXE_AUTO_STACK) + 15) & ~15)" \
     && perl -0777i -pe 's/(Uses inicomp[^\0]*\0)/"\0" x length $1/ge' \
-      bin/"$build_name"U.COM \
-    && ((use_build_inicheck)) && "$CHECKSUM" bin/"$build_name"U.COM
-    ls -lgG bin/"$build_name"U.COM
+      bin/"$build_name"$usuf.$comext \
+    && ((use_build_inicheck)) && "$CHECKSUM" bin/"$build_name"$usuf.$comext
+    ls -lgG bin/"$build_name"$usuf.$comext
     if [ -z "$INICOMP_METHOD" -o "$INICOMP_METHOD" == "none" ]; then {
       fun_delete_compressed
     } else {
@@ -209,33 +227,33 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	inicomp_switch_p=""
       	if [ "$method" == "brieflz" ]; then {
       	  [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
-      	  inicomp_suffix=BLZ
+      	  inicomp_suffix=$blzext
       	  inicomp_option=-D_BRIEFLZ
       	} elif [ "$method" == "lz4" ]; then {
       	  [ -z "$INICOMP_LZ4C" ] && INICOMP_LZ4C=lz4c
-      	  inicomp_suffix=LZ4
+      	  inicomp_suffix=$lz4ext
           inicomp_option=-D_LZ4
       	} elif [ "$method" == "snappy" ]; then {
       	  [ -z "$INICOMP_SNZIP" ] && INICOMP_SNZIP=snzip
-      	  inicomp_suffix=SZ
+      	  inicomp_suffix=$szext
       	  inicomp_option=-D_SNAPPY
       	} elif [ "$method" == "exodecr" ]; then {
       	  [ -z "$INICOMP_EXOMIZER" ] && INICOMP_EXOMIZER=exomizer
-      	  inicomp_suffix=EXO
+      	  inicomp_suffix=$exoext
       	  inicomp_option=-D_EXODECR
 	  [ -n "$INICOMP_EXOMIZER_P" ] && inicomp_def_p="-D_P=$INICOMP_EXOMIZER_P"
 	  [ -n "$INICOMP_EXOMIZER_P" ] && inicomp_switch_p="-P$INICOMP_EXOMIZER_P"
 	  [ -n "$INICOMP_EXOMIZER_P" ] && echo "Using P = $INICOMP_EXOMIZER_P"
       	} elif [ "$method" == "x" ]; then {
       	  [ -z "$INICOMP_X" ] && INICOMP_X=x
-      	  inicomp_suffix=X
+      	  inicomp_suffix=$xext
       	  inicomp_option=-D_X
       	  inicomp_additional_memory="$(( 4 * 256 * 256 + 16384 ))"
 		# 4 * 256 * 256 = CONTEXTSIZE
 		# 16384 = threshold for multi-layer decompression
 	} elif [ "$method" == "heatshrink" ]; then {
 	  [ -z "$INICOMP_HEATSHRINK" ] && INICOMP_HEATSHRINK=heatshrink
-	  inicomp_suffix=HS
+	  inicomp_suffix=$hsext
 	  inicomp_option=-D_HEATSHRINK
 	} elif [ "$method" == "none" ]; then {
 	  continue
@@ -245,31 +263,31 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	} fi
       mkdir -p tmp/"$inicomp_suffix"
       rm -f tmp/"$inicomp_suffix"/"$build_name"."$inicomp_suffix" \
-        tmp/"$inicomp_suffix"/P"$build_name".BIN
-      echo "Creating ${build_name}.COM"
+        tmp/"$inicomp_suffix"/$ppre"$build_name".$binbigext
+      echo "Creating ${build_name}.$comext"
       if [ "$method" == "brieflz" ]; then {
-        "$INICOMP_BLZPACK" "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.BLZ"
+        "$INICOMP_BLZPACK" "tmp/$build_name.$binbigext" "tmp/$inicomp_suffix/$build_name.$blzext"
       } elif [ "$method" == "lz4" ]; then {
-        "$INICOMP_LZ4C" -9zfk -hc "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.LZ4"
+        "$INICOMP_LZ4C" -9zfk -hc "tmp/$build_name.$binbigext" "tmp/$inicomp_suffix/$build_name.$lz4ext"
       } elif [ "$method" == "snappy" ]; then {
-        "$INICOMP_SNZIP" -ck "tmp/$build_name.BIN" > "tmp/$inicomp_suffix/$build_name.SZ"
+        "$INICOMP_SNZIP" -ck "tmp/$build_name.$binbigext" > "tmp/$inicomp_suffix/$build_name.$szext"
       } elif [ "$method" == "exodecr" ]; then {
-        "$INICOMP_EXOMIZER" raw $inicomp_switch_p "tmp/$build_name.BIN" -o "tmp/$inicomp_suffix/$build_name.EXO"
+        "$INICOMP_EXOMIZER" raw $inicomp_switch_p "tmp/$build_name.$binbigext" -o "tmp/$inicomp_suffix/$build_name.$exoext"
       } elif [ "$method" == "x" ]; then {
-        "$INICOMP_X" -9zfk "tmp/$build_name.BIN" "tmp/$inicomp_suffix/$build_name.X"
+        "$INICOMP_X" -9zfk "tmp/$build_name.$binbigext" "tmp/$inicomp_suffix/$build_name.$xext"
       } elif [ "$method" == "heatshrink" ]; then {
-	rm -f "tmp/$inicomp_suffix/$build_name.HS"
+	rm -f "tmp/$inicomp_suffix/$build_name.$hsext"
 	winmsg=""
 	for w in 10 11 12 13 14; do
 	  for l in 4 5 6 7 8 9 10 11 12 13 14; do
 	    ((l >= w)) && continue
-	    if msg="$("$INICOMP_HEATSHRINK" -ve -w $w -l $l "tmp/$build_name.BIN" "tmp/$inicomp_suffix/w${w}l$l.bin")"; then
-	      if [ ! -f "tmp/$inicomp_suffix/$build_name.HS" ] \
-		|| (( ( $(stat -c %s "tmp/$inicomp_suffix/w${w}l$l.bin") + 2 ) <= $(stat -c %s "tmp/$inicomp_suffix/$build_name.HS") )); then
+	    if msg="$("$INICOMP_HEATSHRINK" -ve -w $w -l $l "tmp/$build_name.$binbigext" "tmp/$inicomp_suffix/w${w}l$l.bin")"; then
+	      if [ ! -f "tmp/$inicomp_suffix/$build_name.$hsext" ] \
+		|| (( ( $(stat -c %s "tmp/$inicomp_suffix/w${w}l$l.bin") + 2 ) <= $(stat -c %s "tmp/$inicomp_suffix/$build_name.$hsext") )); then
 		echo -ne "!"
 		winmsg="$msg"
-		printf "\x$(printf "%02X" "$w")\x$(printf "%02X" "$l")" > "tmp/$inicomp_suffix/$build_name.HS"
-		cat "tmp/$inicomp_suffix/w${w}l$l.bin" >> "tmp/$inicomp_suffix/$build_name.HS"
+		printf "\x$(printf "%02X" "$w")\x$(printf "%02X" "$l")" > "tmp/$inicomp_suffix/$build_name.$hsext"
+		cat "tmp/$inicomp_suffix/w${w}l$l.bin" >> "tmp/$inicomp_suffix/$build_name.$hsext"
 	      else
 		echo -ne "."
 	      fi
@@ -295,30 +313,30 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
         "${dtarray[@]}" \
 	$inicomp_def_p \
-        $build_inicomp_options -otmp/"$inicomp_suffix"/T"$build_name".BIN \
-        -l tmp/"$inicomp_suffix"/T"$build_name".LST \
-        -D_MAP="tmp/$inicomp_suffix/T$build_name.MAP" \
+        $build_inicomp_options -otmp/"$inicomp_suffix"/$tpre"$build_name".$binbigext \
+        -l tmp/"$inicomp_suffix"/$tpre"$build_name".$lstext \
+        -D_MAP="tmp/$inicomp_suffix/$tpre$build_name.$mapext" \
         -D_PAYLOAD_FILE="'tmp/$inicomp_suffix/$build_name.$inicomp_suffix'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_TEST_PROGRAM \
-        -D_TEST_PROGRAM_DECOMPRESSED_SIZE="$(stat -c %s "tmp/$build_name.BIN")" \
-        -D_INCLUDE_UNCOMPRESSED -D_UNCOMPRESSED_FILE="'tmp/$build_name.BIN'" \
+        -D_TEST_PROGRAM_DECOMPRESSED_SIZE="$(stat -c %s "tmp/$build_name.$binbigext")" \
+        -D_INCLUDE_UNCOMPRESSED -D_UNCOMPRESSED_FILE="'tmp/$build_name.$binbigext'" \
       && "$NASM" "${LDOSBOOT_DIR%/}"/iniload.asm "$options_i_lmacros" \
 	"$options_i_ldosboot" \
 	"$options_i_scanptab" \
         "${dtarray[@]}" \
 	-D_INILOAD_SIGNATURE="'Rx'" \
         -I"${INICHECK_DIR%/}"/iniload/ -D_CHECKSUM="$use_build_inicheck" \
-        $build_iniload_options -otmp/"$inicomp_suffix"/T"$build_name".COM \
-        -D_PAYLOAD_FILE="'tmp/$inicomp_suffix/T$build_name.BIN'" -D_EXEC_OFFSET=32 \
+        $build_iniload_options -otmp/"$inicomp_suffix"/$tpre"$build_name".$comext \
+        -D_PAYLOAD_FILE="'tmp/$inicomp_suffix/$tpre$build_name.$binbigext'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_IMAGE_EXE_MIN_CALC="((-512 \
           + $(stat -c %s "tmp/$inicomp_suffix/$build_name.$inicomp_suffix") \
-          + $(stat -c %s "tmp/$build_name.BIN") \
+          + $(stat -c %s "tmp/$build_name.$binbigext") \
           + _IMAGE_EXE_AUTO_STACK + 15 \
 	  + $inicomp_additional_memory) & ~15)" \
       && decompsize="$(( $( \
-        dosemu -K "${PWD}/tmp/$inicomp_suffix" -E T"$build_name".COM -dumb -quiet 2> /dev/null \
+        dosemu -K "${PWD}/tmp/$inicomp_suffix" -E $tpre"$build_name".$comext -dumb -quiet 2> /dev/null \
         | tee /dev/stderr | sed -re '/^(about to execute|error:|note:|info:)/Id;s/[\r\n]+$//g' \
         ) * 16 ))"
           # -512 in the iniload build is for inicomp's INIT0
@@ -326,7 +344,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       (($use_build_decomp_test)) || rc2=0
       (($use_build_decomp_test)) || decompsize="$(( \
         + $(stat -c %s "tmp/$inicomp_suffix/$build_name.$inicomp_suffix") \
-        + $(stat -c %s "tmp/$build_name.BIN") \
+        + $(stat -c %s "tmp/$build_name.$binbigext") \
 	+ $inicomp_additional_memory
         + 4096 ))"
         # 4096 is a heuristic guess for larger than size of the decompressor
@@ -336,7 +354,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       && "$NASM" "${INICOMP_DIR%/}"/inicomp.asm "$options_i_lmacros" \
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
         "${dtarray[@]}" \
-        $build_inicomp_options -otmp/"$inicomp_suffix"/P"$build_name".BIN \
+        $build_inicomp_options -otmp/"$inicomp_suffix"/$ppre"$build_name".$binbigext \
         -D_PAYLOAD_FILE="'tmp/$inicomp_suffix/$build_name.$inicomp_suffix'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
       && "$NASM" -Ox "${LDOSBOOT_DIR%/}"/iniload.asm -f bin \
@@ -354,37 +372,37 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         "${dtarray[@]}" \
 	-D_INILOAD_SIGNATURE="'Rx'" \
         -I"${INICHECK_DIR%/}"/iniload/ -D_CHECKSUM="$use_build_inicheck" \
-        $build_iniload_options -otmp/"$inicomp_suffix"/"$build_name".COM \
-        -l tmp/"$inicomp_suffix"/"$build_name"C.LST -D_MAP=tmp/"$inicomp_suffix"/"$build_name"C.MAP \
-        -D_PAYLOAD_FILE="'tmp/$inicomp_suffix/P$build_name.BIN'" -D_EXEC_OFFSET=32 \
+        $build_iniload_options -otmp/"$inicomp_suffix"/"$build_name".$comext \
+        -l tmp/"$inicomp_suffix"/"$build_name"$csuf.$lstext -D_MAP=tmp/"$inicomp_suffix"/"$build_name"$csuf.$mapext \
+        -D_PAYLOAD_FILE="'tmp/$inicomp_suffix/$ppre$build_name.$binbigext'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_IMAGE_EXE_MIN_CALC="(( \
           - (payload.actual_end - payload) \
           + "$size" \
           + _IMAGE_EXE_AUTO_STACK + 15) & ~15)" \
-      && ((use_build_inicheck)) && "$CHECKSUM" tmp/"$inicomp_suffix"/"$build_name".COM
-	if [ -f tmp/"$inicomp_suffix"/"$build_name".COM ]; then
-	  if [ ! -f "bin/$build_name.COM" ] \
-	    || (( $(stat -c %s tmp/"$inicomp_suffix"/"$build_name".COM) <= $(stat -c %s "bin/$build_name.COM") )); then
+      && ((use_build_inicheck)) && "$CHECKSUM" tmp/"$inicomp_suffix"/"$build_name".$comext
+	if [ -f tmp/"$inicomp_suffix"/"$build_name".$comext ]; then
+	  if [ ! -f "bin/$build_name.$comext" ] \
+	    || (( $(stat -c %s tmp/"$inicomp_suffix"/"$build_name".$comext) <= $(stat -c %s "bin/$build_name.$comext") )); then
 	    winmethod="$method"
-	    cp -a tmp/"$inicomp_suffix"/"$build_name".COM bin
-	    cp -a tmp/"$inicomp_suffix"/"$build_name"C.LST lst
-	    cp -a tmp/"$inicomp_suffix"/"$build_name"C.MAP map
+	    cp -a tmp/"$inicomp_suffix"/"$build_name".$comext bin
+	    cp -a tmp/"$inicomp_suffix"/"$build_name"$csuf.$lstext lst
+	    cp -a tmp/"$inicomp_suffix"/"$build_name"$csuf.$mapext map
 	  fi
 	fi
       done
 	if [ -n "$winmethod" ]; then
 	  echo "Note: Method $winmethod selected."
-	  ls -lgG bin/"$build_name".COM
+	  ls -lgG bin/"$build_name".$comext
 	else
 	  echo Error: No compression method succeeded.
 	  false
 	fi
     } fi
   } else {
-    echo "Deleting ${build_name}U.COM"
-    rm -f bin/"$build_name"U.COM \
-      lst/"$build_name"U.LST map/"$build_name"U.MAP
+    echo "Deleting ${build_name}$usuf.$comext"
+    rm -f bin/"$build_name"$usuf.$comext \
+      lst/"$build_name"$usuf.$lstext map/"$build_name"$usuf.$mapext
     fun_delete_compressed
   } fi
 } fi
