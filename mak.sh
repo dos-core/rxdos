@@ -326,6 +326,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         -D_PAYLOAD_FILE="'${rootpath}tmp/$inicomp_suffix/$build_name.$inicomp_suffix'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_TEST_PROGRAM \
+        -D_TEST_PROGRESS \
         -D_TEST_PROGRAM_DECOMPRESSED_SIZE="$(stat -c %s "${rootpath}tmp/$build_name.$binbigext")" \
         -D_INCLUDE_UNCOMPRESSED -D_UNCOMPRESSED_FILE="'${rootpath}tmp/$build_name.$binbigext'" \
       && "$NASM" "${LDOSBOOT_DIR%/}"/iniload.asm "$options_i_lmacros" \
