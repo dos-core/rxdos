@@ -370,6 +370,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       && "$NASM" "${INICOMP_DIR%/}"/inicomp.asm "$options_i_lmacros" \
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
         "${dtarray[@]}" \
+	$inicomp_def_p \
         $build_inicomp_options -o${rootpath}tmp/"$inicomp_suffix"/$ppre"$build_name".$binbigext \
         -D_PAYLOAD_FILE="'${rootpath}tmp/$inicomp_suffix/$build_name.$inicomp_suffix'" -D_EXEC_OFFSET=32 \
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
