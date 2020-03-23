@@ -32,7 +32,7 @@ hsext="HS"
 
 
 function fun_delete_compressed {
-  [ "$1" != "silent" ] && echo "Deleting ${build_name}.$comext"
+  [ "$1" != "silent" ] && echo "Deleting $lpre${build_name}.$comext"
   rm -f ${rootpath}bin/$lpre"$build_name".$comext \
     ${rootpath}${lstdir}$lpre"$build_name"$csuf.$lstext ${rootpath}${mapdir}$lpre"$build_name"$csuf.$mapext
 }
@@ -185,6 +185,7 @@ done < "$reproducedir"/dt
 
 echo "Creating $build_name.$binbigext"
 [ -f ${rootpath}bin/"$build_name".$comext ] && rm ${rootpath}bin/"$build_name".$comext
+[ -f ${rootpath}bin/$lpre"$build_name".$comext ] && rm ${rootpath}bin/$lpre"$build_name".$comext
 # Delete the file first so in case the actual assembly fails,
 #  there doesn't remain a stale result of the shim assembly.
 "$NASM" -Ox ldos/init.asm -f bin \
