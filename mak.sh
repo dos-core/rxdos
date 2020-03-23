@@ -407,8 +407,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	    || (( $(stat -c %s ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name".$comext) <= $(stat -c %s "${rootpath}bin/$lpre$build_name.$comext") )); then
 	    winmethod="$method"
 	    cp -a ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name".$comext ${rootpath}bin
-	    cp -a ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name"$csuf.$lstext ${rootpath}lst
-	    cp -a ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name"$csuf.$mapext ${rootpath}map
+	    cp -a ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name"$csuf.$lstext ${rootpath}${lstdir}
+	    cp -a ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name"$csuf.$mapext ${rootpath}${mapdir}
 	  fi
 	fi
       done
