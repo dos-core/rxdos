@@ -123,7 +123,7 @@ if (($use_build_revision_id)); then {
     && var="hg $(hg -R "$INICHECK_DIR" id -i)" \
     && [ "$var" != "$build_revision_id" ] \
     && build_revision_id_inicheck="'Uses inicheck: Revision ID $var',13,10"
-  [ -z "$build_revision_id_ldosboot" ] \
+  [ -z "$build_revision_id_instsect" ] \
     && var="hg $(hg -R "$INSTSECT_DIR" id -i)" \
     && [ "$var" != "$build_revision_id" ] \
     && build_revision_id_instsect="'Uses instsect: Revision ID $var',13,10"
