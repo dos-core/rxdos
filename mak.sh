@@ -8,6 +8,7 @@
 
 
 rootpath=""
+miscpath="misc/"
 
 comext="COM"
 mapext="MAP"
@@ -140,7 +141,7 @@ if (($use_build_revision_id)); then {
 mkdir -p "$reproducedir"
 
 if [ "$1" != havedt ]; then
-  nasm misc/passdt.asm -o ${rootpath}tmp/scratch 2>&1 \
+  nasm ${miscpath}passdt.asm -o ${rootpath}tmp/scratch 2>&1 \
   -D_REVISIONID="'$build_revision_id'" \
   -D_REVISIONID_LMACROS="${build_revision_id_lmacros:-''}" \
   -D_REVISIONID_INSTSECT="${build_revision_id_instsect:-''}" \
