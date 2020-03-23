@@ -94,6 +94,8 @@ if [ "$1" == reproduce ]; then
   unset NASMENV
   eval "$(cat "$reproducedir"/nasmenv)"
   unset build_options
+  unset build_inicomp_options
+  unset build_iniload_options
   eval "$(cat "$reproducedir"/options)"
   export use_build_revision_id=0
 #  unset use_build_revision_id
@@ -155,7 +157,9 @@ if [ "$1" != reproducing ]; then
   export NASMENV
   export -p | grep -E "^declare -x NASMENV=" > "$reproducedir"/nasmenv
   export build_options
-  export -p | grep -E "^declare -x build_options=" > "$reproducedir"/options
+  export build_inicomp_options
+  export build_iniload_options
+  export -p | grep -E "^declare -x build_(|inicomp_|iniload_)options=" > "$reproducedir"/options
 #  export use_build_revision_id
   export use_build_decomp_test
   export use_build_inicheck
