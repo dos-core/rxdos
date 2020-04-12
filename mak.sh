@@ -30,6 +30,7 @@ szext="SZ"
 exoext="EXO"
 xext="X"
 hsext="HS"
+lzext="LZ"
 
 
 function fun_delete_compressed {
@@ -274,6 +275,12 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	  [ -z "$INICOMP_HEATSHRINK" ] && INICOMP_HEATSHRINK=heatshrink
 	  inicomp_suffix=$hsext
 	  inicomp_option=-D_HEATSHRINK
+	} elif [ "$method" == "lzd" ]; then {
+	  [ -z "$INICOMP_LZIP" ] && INICOMP_LZIP=lzip
+	  inicomp_suffix=$lzext
+	  inicomp_option=-D_LZD
+      	  inicomp_additional_memory="$(( 32 * 1024 ))"
+		# 32 KiB for the probability tables
 	} elif [ "$method" == "none" ]; then {
 	  continue
 	} else {
@@ -321,6 +328,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	  echo "$winmsg"
 	  true
 	fi
+      } elif [ "$method" == "lzd" ]; then {
+        "$INICOMP_LZIP" -9vvfkc "${rootpath}tmp/$build_name.$binbigext" > "${rootpath}tmp/$inicomp_suffix/$build_name.$lzext"
       } else {
         echo "Internal error!"
         exit 1

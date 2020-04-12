@@ -27,6 +27,7 @@
 [ -z "$INICOMP_EXOMIZER" ] && INICOMP_EXOMIZER=exomizer
 [ -z "$INICOMP_X" ] && INICOMP_X=x
 [ -z "$INICOMP_HEATSHRINK" ] && INICOMP_HEATSHRINK=heatshrink
+[ -z "$INICOMP_LZIP" ] && INICOMP_LZIP=lzip
 
 [ -z "$NASM" ] && NASM=nasm
 [ -z "$CHECKSUM" ] && CHECKSUM="${INICHECK_DIR%/}"/iniload/checksum
