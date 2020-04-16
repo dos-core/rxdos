@@ -377,8 +377,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	+ $inicomp_additional_memory
         + 4096 ))"
         # 4096 is a heuristic guess for larger than size of the decompressor
-      size=0
-      [ "$decompsize" -gt "$size" ] && size="$decompsize"
+      minsize=0
+      [ "$decompsize" -gt "$minsize" ] && minsize="$decompsize"
       [ $rc2 -eq 0 -a $rc -eq 0 ] \
       && "$NASM" "${INICOMP_DIR%/}"/inicomp.asm "$options_i_lmacros" \
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
@@ -408,7 +408,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
         -D_IMAGE_EXE -D_IMAGE_EXE_AUTO_STACK="$STACKSIZE" -D_IMAGE_EXE_MAX=0 \
         -D_IMAGE_EXE_MIN_CALC="(( \
           - (payload.actual_end - payload) \
-          + "$size" \
+          + "$minsize" \
           + _IMAGE_EXE_AUTO_STACK + 15) & ~15)" \
       && ((use_build_inicheck)) && "$CHECKSUM" ${rootpath}tmp/$lpre"$inicomp_suffix"/"$build_name".$comext
 	if [ -f ${rootpath}tmp/"$inicomp_suffix"/$lpre"$build_name".$comext ]; then
