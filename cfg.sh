@@ -19,8 +19,8 @@
 [ -z "$SCANPTAB_DIR" ] && SCANPTAB_DIR=scanptab/
 [ -z "$INICHECK_DIR" ] && INICHECK_DIR=crc16-t/
 [ -z "$INICOMP_DIR" ] && INICOMP_DIR=inicomp/
-[ -z "$INICOMP_METHOD" ] && INICOMP_METHOD="brieflz lz4 snappy exodecr x heatshrink lzd"
-	# none or brieflz or lz4 or snappy or exodecr or x or heatshrink or lzd
+[ -z "$INICOMP_METHOD" ] && INICOMP_METHOD="brieflz lz4 snappy exodecr x heatshrink lzd lzo"
+	# none or brieflz or lz4 or snappy or exodecr or x or heatshrink or lzd or lzo
 [ -z "$INICOMP_BLZPACK" ] && INICOMP_BLZPACK=blzpack
 [ -z "$INICOMP_LZ4C" ] && INICOMP_LZ4C=lz4c
 [ -z "$INICOMP_SNZIP" ] && INICOMP_SNZIP=snzip
@@ -28,6 +28,7 @@
 [ -z "$INICOMP_X" ] && INICOMP_X=x
 [ -z "$INICOMP_HEATSHRINK" ] && INICOMP_HEATSHRINK=heatshrink
 [ -z "$INICOMP_LZIP" ] && INICOMP_LZIP=lzip
+[ -z "$INICOMP_LZOP" ] && INICOMP_LZOP=lzop
 
 [ -z "$NASM" ] && NASM=nasm
 [ -z "$CHECKSUM" ] && CHECKSUM="${INICHECK_DIR%/}"/iniload/checksum
