@@ -9,7 +9,9 @@
 # If you want to override configuration without the
 # hassle of having to exclude differences in this file
 # (cfg.sh) from the SCM, you may provide ovr.sh.
-[ -f ovr.sh ] && . ovr.sh
+# The meaning of this line allows you to copy cfg.sh
+# to serve as a template for ovr.sh without changes.
+[ -f ovr.sh ] && [[ "${BASH_SOURCE[0]##*/}" != ovr.sh ]] && . ovr.sh
 
 # As the below only are set if no value is provided
 # yet, any value can be overridden from the shell.
