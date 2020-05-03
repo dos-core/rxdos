@@ -6,13 +6,23 @@
 #
 # DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
 
-export NASMENV="$@"
-
 function nasmbin() {
-	nasm -Ox -D_REVISIONID="'$build_revision_id'" -i../MACRO/ -I../bin/ -I../lmacros/ -I../../lmacros/ -d__MAPFILE__=../map/$1.MAP -l../lst/$1.LST -fbin -o../bin/$2.$3 $1.ASM
+	local sourcename="$1"
+	local binname="$2"
+	local binext="$3"
+	shift 3
+	nasm -Ox -D_REVISIONID="'$build_revision_id'" -i../MACRO/ \
+		-I../bin/ -I../lmacros/ -I../../lmacros/ \
+		-d__MAPFILE__=../map/"$sourcename".MAP \
+		-l../lst/"$sourcename".LST -fbin \
+		-o../bin/"$binname"."$binext" "$sourcename".ASM "$@"
 }
 function nasmobj() {
-	nasm -Ox -D_REVISIONID="'$build_revision_id'" -i../MACRO/ -l../lst/$1.LST -fobj -o../obj/$1.OBJ $1.ASM
+	local sourcename="$1"
+	shift 1
+	nasm -Ox -D_REVISIONID="'$build_revision_id'" -i../MACRO/ \
+		-l../lst/"$sourcename".LST -fobj \
+		-o../obj/"$sourcename".OBJ "$sourcename".ASM "$@"
 }
 
 [ -z "$use_build_revision_id" ] && use_build_revision_id=1
@@ -30,7 +40,7 @@ toolsdir="${PWD}/../dostools"
 cd RxAPP
 if [ -f RxVDISK.ASM ]; then {
 	echo Building RxVDISK
-	nasmbin RxVDISK RxVDISK SYS || exit
+	nasmbin RxVDISK RxVDISK SYS "$@" || exit
 } fi
 
 cd ../ldosboot
@@ -41,12 +51,12 @@ for FAT in 12 16; do
 	nasm -D_COMPAT_LDOS -D_LOAD_NAME="'$NAME'" -D_CHS=1 -D_LBA_SKIP_CHECK \
 		-D_USE_PART_INFO=1 -D_QUERY_GEOMETRY=1 -D_FAT$FAT=1 boot.asm \
 		-o boot${FAT}${SUFFIX}.bin -D_MAP=boot${FAT}${SUFFIX}.map \
-		-l boot${FAT}${SUFFIX}.lst -I../lmacros/
+		-l boot${FAT}${SUFFIX}.lst -I../lmacros/ "$@"
 	done
 nasm -D_COMPAT_LDOS -D_LOAD_NAME="'$NAME'" -D_CHS=1 -D_LBA_SKIP_CHECK \
 	-D_USE_PART_INFO=1 -D_QUERY_GEOMETRY=1 boot32.asm \
 	-o boot32${SUFFIX}.bin -D_MAP=boot32${SUFFIX}.map \
-	-l boot32${SUFFIX}.lst -I../lmacros/
+	-l boot32${SUFFIX}.lst -I../lmacros/ "$@"
 
 cd ../instsect
 echo Building instsect.com
@@ -67,12 +77,12 @@ if [ -f RxCMD.ASM -a \
 {
   if ((!_BUILD_OBJ)); then {
 	echo Building RxCMD
-	nasmbin RxCMD RxCMD EXE || exit
+	nasmbin RxCMD RxCMD EXE "$@" || exit
   } else {
 	echo Building RxCMD
 	for x in RxCMD RxCMDCPY RxCMDDIR RxCMDFOR \
 	RxCMDPRM RxCMDREN; do
-		nasmobj "$x" || exit
+		nasmobj "$x" "$@" || exit
 	done
 
 	cd ../obj
