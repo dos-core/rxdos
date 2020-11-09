@@ -6,7 +6,6 @@
 #
 # DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
 
-
 rootpath=""
 miscpath="misc/"
 
@@ -52,6 +51,10 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 
 if [ -n "$SCANPTAB_DIR" ]; then {
   options_i_scanptab=-I"${SCANPTAB_DIR%/}"/
+} fi
+
+if [ -n "$BOOTIMG_DIR" ]; then {
+  options_i_bootimg=-I"${BOOTIMG_DIR%/}"/
 } fi
 
 if [ -n "$INSTSECT_DIR" ]; then {
@@ -343,8 +346,9 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
       } fi
       rc=$?
       decompsize=0
-      (($use_build_decomp_test)) && [ $rc -eq 0 ] \
-      && "$NASM" "${INICOMP_DIR%/}"/inicomp.asm "$options_i_lmacros" \
+      if (($use_build_decomp_test)) && [ $rc -eq 0 ]
+      then
+        if "$NASM" "${INICOMP_DIR%/}"/inicomp.asm "$options_i_lmacros" \
         -I"${INICOMP_DIR%/}"/ "$inicomp_option" \
         "${dtarray[@]}" \
 	$inicomp_def_p \
@@ -370,20 +374,70 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
           + $(stat -c %s "${rootpath}tmp/$inicomp_suffix/$build_name.$inicomp_suffix") \
           + $(stat -c %s "${rootpath}tmp/$build_name.$binbigext") \
           + _IMAGE_EXE_AUTO_STACK + 15 \
-	  + $inicomp_additional_memory) & ~15)" \
-      && decompsize="$(( $( \
-        dosemu -K "${PWD}/${rootpath}tmp/$inicomp_suffix" -E $tpre"$build_name".$comext -dumb -quiet 2> /dev/null \
-        | tee /dev/stderr | sed -re '/^(about to execute|error:|note:|info:)/Id;s/[\r\n]+$//g' \
-        ) * 16 ))"
-          # -512 in the iniload build is for inicomp's INIT0
-      rc2=$?
-      (($use_build_decomp_test)) || rc2=0
-      (($use_build_decomp_test)) || decompsize="$(( \
+	  + $inicomp_additional_memory) & ~15)"
+            # -512 in the iniload build is for inicomp's INIT0
+	then
+	  if [[ "$DEFAULT_MACHINE" == dosemu ]]
+	  then
+	    decompsize="$(( $( \
+            "$DOSEMU" -K "${PWD}/${rootpath}tmp/$inicomp_suffix" -E $tpre"$build_name".$comext -dumb -quiet 2> /dev/null \
+            | tee /dev/stderr | sed -re '/^(about to execute|error:|note:|info:)/Id;s/[\r\n]+$//g' \
+            ) * 16 ))"
+            rc2=$?
+          elif [[ "$DEFAULT_MACHINE" == qemu ]]
+          then
+            mkdir -p "${rootpath}tmp/boottest"
+	    cp -aL "$BOOT_KERNEL" "${rootpath}tmp/boottest/${BOOT_KERNEL##*/}"
+	    cp -aL "$BOOT_COMMAND" "${rootpath}tmp/boottest/${BOOT_COMMAND##*/}"
+	    echo -ne "@echo off\r\n$tpre$build_name.$comext > output.txt\r\n" > "${rootpath}tmp/boottest/"autoexec.bat
+	    echo -ne "if errorlevel 1 goto :end\r\n" >> "${rootpath}tmp/boottest/"autoexec.bat
+	    echo -ne "echo success> result.txt\r\n" >> "${rootpath}tmp/boottest/"autoexec.bat
+	    echo -ne ":end\r\nquit.com\r\n" >> "${rootpath}tmp/boottest/"autoexec.bat
+	    "$NASM" "${rootpath}misc/quit.asm" \
+	     "$options_i_lmacros" \
+	     -o "${rootpath}tmp/boottest/"quit.com &&
+	    "$NASM" "${LDOSBOOT_DIR%/}"/boot.asm -w-user \
+	     "$options_i_lmacros" \
+	     -D_COMPAT_"$BOOT_PROTOCOL"=1 \
+	     -D_LBA=0 -D_USE_PART_INFO=0 -D_QUERY_GEOMETRY=0 \
+	     -D_MAP="${rootpath}tmp/boottest/"boot.map \
+	     -l "${rootpath}tmp/boottest/"boot.lst \
+	     -o "${rootpath}tmp/boottest/"boot.bin &&
+	    "$NASM" "${BOOTIMG_DIR%/}"/bootimg.asm \
+	     -I ./ \
+	     -I "${rootpath}tmp/boottest/" \
+	     -I "${rootpath}tmp/$inicomp_suffix/" \
+	     "$options_i_bootimg" \
+	     "$options_i_lmacros" \
+	     -o "${rootpath}tmp/boottest/"diskette.img \
+	     -l "${rootpath}tmp/boottest/"diskette.lst \
+	     -D_PAYLOADFILE="${BOOT_KERNEL##*/},${BOOT_COMMAND##*/},autoexec.bat,$tpre$build_name.$comext,quit.com" \
+	     -D_BOOTFILE="'boot.bin'"
+	    (($?)) && exit $?
+	    "$QEMU" -fda "${rootpath}tmp/boottest/diskette.img" -boot order=a -display none 2> /dev/null
+	    if [[ "$(mtype -t -i "${rootpath}tmp/boottest/"diskette.img ::RESULT.TXT 2> /dev/null)" != success ]]
+	    then
+	      echo "Error: Decompression test failed" >&2
+	      exit 1
+	    fi
+	    decompsize="$(( $(mtype -t -i "${rootpath}tmp/boottest/"diskette.img ::OUTPUT.TXT 2> /dev/null) * 16))"
+          else
+	    echo "Error: invalid machine \"$DEFAULT_MACHINE\" selected" >&2
+	    exit 1
+          fi
+	  rc2=0
+        else
+          rc2=1
+        fi
+      else
+        rc2=0
+        decompsize="$(( \
         + $(stat -c %s "${rootpath}tmp/$inicomp_suffix/$build_name.$inicomp_suffix") \
         + $(stat -c %s "${rootpath}tmp/$build_name.$binbigext") \
 	+ $inicomp_additional_memory
         + 4096 ))"
         # 4096 is a heuristic guess for larger than size of the decompressor
+      fi
       minsize=0
       [ "$decompsize" -gt "$minsize" ] && minsize="$decompsize"
       [ $rc2 -eq 0 -a $rc -eq 0 ] \

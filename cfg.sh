@@ -20,6 +20,7 @@
 [ -z "$LDOSBOOT_DIR" ] && LDOSBOOT_DIR=ldosboot/
 [ -z "$SCANPTAB_DIR" ] && SCANPTAB_DIR=scanptab/
 [ -z "$INICHECK_DIR" ] && INICHECK_DIR=crc16-t/
+[ -z "$BOOTIMG_DIR" ] && BOOTIMG_DIR=../bootimg/
 [ -z "$INICOMP_DIR" ] && INICOMP_DIR=inicomp/
 [ -z "$INICOMP_METHOD" ] && INICOMP_METHOD="brieflz lz4 snappy exodecr x heatshrink lzd lzo"
 	# none or brieflz or lz4 or snappy or exodecr or x or heatshrink or lzd or lzo
@@ -32,6 +33,12 @@
 [ -z "$INICOMP_LZIP" ] && INICOMP_LZIP=lzip
 [ -z "$INICOMP_LZOP" ] && INICOMP_LZOP=lzop
 
+[ -z "$DOSEMU" ] && DOSEMU=dosemu
+[ -z "$QEMU" ] && QEMU=qemu-system-i386
+[ -z "$DEFAULT_MACHINE" ] && DEFAULT_MACHINE=dosemu
+[ -z "$BOOT_KERNEL" ] && BOOT_KERNEL=~/.dosemu/drive_c/kernel.sys
+[ -z "$BOOT_COMMAND" ] && BOOT_COMMAND=~/.dosemu/drive_c/command.com
+[ -z "$BOOT_PROTOCOL" ] && BOOT_PROTOCOL=FREEDOS
 [ -z "$NASM" ] && NASM=nasm
 [ -z "$CHECKSUM" ] && CHECKSUM="${INICHECK_DIR%/}"/iniload/checksum
 
