@@ -400,6 +400,7 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	     "$options_i_lmacros" \
 	     -D_COMPAT_"$BOOT_PROTOCOL"=1 \
 	     -D_LBA=0 -D_USE_PART_INFO=0 -D_QUERY_GEOMETRY=0 \
+	     $BOOT_OPTIONS \
 	     -D_MAP="${rootpath}tmp/boottest/"boot.map \
 	     -l "${rootpath}tmp/boottest/"boot.lst \
 	     -o "${rootpath}tmp/boottest/"boot.bin &&
