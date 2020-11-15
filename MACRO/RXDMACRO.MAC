@@ -547,7 +547,11 @@ the file LICENSE.TXT.
 	%imacro _entry 1-2.nolist 0	; %1 = # bytes for return address + 2,  %2 = # word entries
 		push bp
 		mov bp, sp
+ %ifempty %2
+		_specialentry %1/2,0,%1
+ %else
 		_specialentry %1/2,%2,%1
+ %endif
 %assign __callargs 4			; RxDOS 7.20N:	Possible intended to be used like __entrytype. However,
 					;		no code uses __callargs and farentry doesn't set it.
 	%endmacro
