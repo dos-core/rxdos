@@ -380,7 +380,8 @@ if [ -n "$LDOSBOOT_DIR" ]; then {
 	  if [[ "$DEFAULT_MACHINE" == dosemu ]]
 	  then
 	    decompsize="$(( $( \
-            "$DOSEMU" -K "${PWD}/${rootpath}tmp/$inicomp_suffix" -E $tpre"$build_name".$comext -dumb -quiet 2> /dev/null \
+            "$DOSEMU" -K "${PWD}/${rootpath}tmp/$inicomp_suffix" \
+            -E $tpre"$build_name".$comext -dumb -quiet -te 2> /dev/null \
             | tee /dev/stderr | sed -re '/^(about to execute|error:|note:|info:)/Id;s/[\r\n]+$//g' \
             ) * 16 ))"
             rc2=$?
