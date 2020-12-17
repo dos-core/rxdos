@@ -82,6 +82,7 @@ if [ "$1" == reproduce ]; then
   echo Reproducing the "$build_name" build
   if ! [ -f "$reproducedir"/nasmenv ] || \
       ! [ -f "$reproducedir"/options ] || \
+      ! [ -f "$reproducedir"/usevars ] || \
       ! [ -f "$reproducedir"/cmdline ] || \
       ! [ -f "$reproducedir"/dt ]; then
     echo Error: Reproduce files not found
