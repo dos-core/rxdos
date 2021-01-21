@@ -280,7 +280,8 @@ configProcessing:
 	call init2_disp_msg_asciz_cs_dx
 
 	mov ax, word [bp + _linenumber]
-	call init2_to_init1, disp_ax_dec
+	call init2_to_init1
+	dw disp_ax_dec
 
 	mov dx, init2_msg.config_too_long_line_2
 	call init2_disp_msg_asciz_cs_dx
@@ -468,7 +469,8 @@ configProcessing:
 	call init2_disp_msg_asciz_cs_dx
 
 	mov ax, word [bp + _linenumber]
-	call init2_to_init1, disp_ax_dec
+	call init2_to_init1
+	dw disp_ax_dec
 
 	mov dx, init2_msg.config_too_long_file_2
 	call init2_disp_msg_asciz_cs_dx
@@ -597,7 +599,8 @@ processCountry_08:
 
 		; find country info
 processCountry_12:
-	call init2_to_doscode, FindCountryInfo
+	call init2_to_doscode
+	dw FindCountryInfo
 	jc processCountry_24				; if country not found -->
 
 	push ss
@@ -769,7 +772,8 @@ processAnyDevice_08:
 		; allocate memory, load device and initialize
 	mov ax, DEVICEINIT * 256			; ah = DEVICEINIT, al = 0
 	lea di, [ word _reqBlock + bp ]
-	call init2_to_doscode, initReqBlock		; initialize request block
+	call init2_to_doscode
+	dw initReqBlock		; initialize request block
 
 
 		; scan command line parsing out extra characters at the start of name
@@ -2346,8 +2350,10 @@ RxDOSini_StdInStdOutDrivers:
 .loop:
 	push ax
 
-	call init2_to_doscode, MapAppToSFTHandle
-	call init2_to_doscode, FindSFTbyHandle
+	call init2_to_doscode
+	dw MapAppToSFTHandle
+	call init2_to_doscode
+	dw FindSFTbyHandle
 	jc .next
 
 	push es
@@ -2358,7 +2364,8 @@ RxDOSini_StdInStdOutDrivers:
 	jz .next
 
 	lea di, [di + sftFileName]
-	call init2_to_doscode, checkforDeviceName
+	call init2_to_doscode
+	dw checkforDeviceName
 	jc .next
 
 	mov word [si + sftDevice], bx
@@ -2383,7 +2390,8 @@ RxDOSini_StdInStdOutDrivers:
 	pop ds
 		; Update system CON pointer to last driver with StdIn and StdOut bits
 	mov ax, ( DEV_STDINPUT + DEV_STDOUTPUT )
-	call init2_to_doscode, checkforDeviceType
+	call init2_to_doscode
+	dw checkforDeviceType
 	jc RxDOS_DRIVERinit_10
 
 	mov word [ _RxDOS_pCONdriver + _pointer ], bx
@@ -2393,7 +2401,8 @@ RxDOS_DRIVERinit_10:
 
 		; Update system CLOCK pointer to last driver with Clock bit
 	mov ax, ( DEV_CLOCK )
-	call init2_to_doscode, checkforDeviceType
+	call init2_to_doscode
+	dw checkforDeviceType
 	jc RxDOS_DRIVERinit_12
 
 	mov word [ _RxDOS_pCLOCKdriver + _pointer ], bx
